@@ -303,6 +303,7 @@ func (b *Bridge) SetFocused(focused bool) {
 }
 
 func (b *Bridge) Hide() {
+	b.SetFocused(false)
 	runtime.WindowHide(b.ctx)
 }
 
