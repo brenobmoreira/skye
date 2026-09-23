@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api, runtime } from '../bridge';
+import { api, isWindow, runtime } from '../bridge';
 import type { Preset } from '../lib/types';
 
 export function TitleBar(props: {
@@ -10,8 +10,9 @@ export function TitleBar(props: {
 }) {
   const [open, setOpen] = useState(false);
   const pick = (preset: string) => { setOpen(false); props.onNew(preset); };
+  const windowed = isWindow();
   return (
-    <header className="titlebar" onDoubleClick={() => api().ToggleMaximise()}>
+    <header className="titlebar" onDoubleClick={windowed ? () => api().ToggleMaximise() : undefined}>
       <span className="brand">skye</span>
       <div className="menu">
         <button onClick={() => setOpen(!open)} title="novo terminal">+</button>
@@ -29,9 +30,13 @@ export function TitleBar(props: {
       </div>
       <span className="spacer" />
       <button onClick={props.onToggleSound} title="latido">{props.sound ? '🔔' : '🔕'}</button>
-      <button onClick={() => runtime().WindowMinimise()} title="minimizar">–</button>
-      <button onClick={() => api().ToggleMaximise()} title="maximizar">□</button>
-      <button onClick={() => api().Hide()} title="esconder (os terminais continuam)">×</button>
+      {windowed && (
+        <>
+          <button onClick={() => runtime().WindowMinimise()} title="minimizar">–</button>
+          <button onClick={() => api().ToggleMaximise()} title="maximizar">□</button>
+          <button onClick={() => api().Hide()} title="esconder (os terminais continuam)">×</button>
+        </>
+      )}
       <button onClick={() => api().Quit()} title="sair e encerrar todos os terminais">sair</button>
     </header>
   );

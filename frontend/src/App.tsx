@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, on } from './bridge';
+import { api, isWindow, on } from './bridge';
 import { bark } from './sound';
 import { TitleBar } from './components/TitleBar';
 import { Sidebar } from './components/Sidebar';
@@ -29,6 +29,7 @@ export function App() {
   const [sound, setSound] = useState(true);
   const [problems, setProblems] = useState<string[]>([]);
   const [fontSize, setFontSize] = useState(storedFontSize);
+  const [epoch, setEpoch] = useState(0);
 
   useEffect(() => {
     const zoom = (action: ZoomAction) =>
@@ -60,26 +61,39 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    api().List().then(setTerminals);
-    api().Conversations().then(setConversations);
-    api().Presets().then(setPresets);
-    api().Sound().then(setSound);
-    api().Problems().then(setProblems);
+    const load = () => {
+      api().List().then(setTerminals).catch(() => {});
+      api().Conversations().then(setConversations).catch(() => {});
+      api().Presets().then(setPresets).catch(() => {});
+      api().Sound().then(setSound).catch(() => {});
+      api().Problems().then(setProblems).catch(() => {});
+    };
+    const focused = () => document.visibilityState === 'visible' && document.hasFocus();
+    const report = () => { api().SetFocused(focused()).catch(() => {}); };
+    load();
     const offs = [
       on('terminals', (list: Terminal[]) => setTerminals(list)),
       on('conversations', (list: Conversation[]) => setConversations(list)),
       on('bark', () => { bark(); }),
       on('problems', (list: string[]) => setProblems(list)),
+      on('reconnected', () => {
+        load();
+        report();
+        setEpoch((n) => n + 1);
+      }),
     ];
     const focus = () => api().SetFocused(true);
     const blur = () => api().SetFocused(false);
     window.addEventListener('focus', focus);
     window.addEventListener('blur', blur);
+    const web = !isWindow();
+    if (web) document.addEventListener('visibilitychange', report);
     api().SetFocused(document.hasFocus());
     return () => {
       offs.forEach((off) => off());
       window.removeEventListener('focus', focus);
       window.removeEventListener('blur', blur);
+      if (web) document.removeEventListener('visibilitychange', report);
     };
   }, []);
 
@@ -103,7 +117,7 @@ export function App() {
           <div className="terminals">
             {problems.length > 0 && <div className="problems">{problems.join('\n')}</div>}
             {terminals.length === 0 && <div className="empty">Nenhum terminal. Abra um no +.</div>}
-            {views.map((t) => <TerminalView key={t.id} id={t.id} active={t.id === activeId} fontSize={fontSize} />)}
+            {views.map((t) => <TerminalView key={`${t.id}:${epoch}`} id={t.id} active={t.id === activeId} fontSize={fontSize} />)}
           </div>
           {activeId && <Composer key={activeId} id={activeId} />}
         </main>
