@@ -23,6 +23,7 @@ Build com `make build` (o `go build` puro precisa do `frontend/dist`).
 `~/.config/skye/config.toml`:
 
     sound = true
+    web_port = 7810           # porta do `skye web` (1024–65535)
 
     [[preset]]
     name = "blog"
