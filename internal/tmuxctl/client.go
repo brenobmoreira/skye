@@ -172,6 +172,10 @@ func Quote(s string) (string, error) {
 }
 
 func (c *Client) NewWindow(skyeID string, env map[string]string, argv []string) (Window, error) {
+	id, err := Quote(skyeID)
+	if err != nil {
+		return Window{}, err
+	}
 	parts := []string{"new-window", "-d", "-P", "-F", "'#{window_id} #{pane_id}'", "-t", Session + ":"}
 	keys := make([]string, 0, len(env))
 	for k := range env {
@@ -204,12 +208,9 @@ func (c *Client) NewWindow(skyeID string, env map[string]string, argv []string) 
 		return Window{}, fmt.Errorf("tmux: unexpected new-window reply %q", lines[0])
 	}
 	w := Window{ID: fields[0], Pane: fields[1], SkyeID: skyeID}
-	id, err := Quote(skyeID)
-	if err != nil {
-		return w, err
-	}
 	if _, err := c.Command(fmt.Sprintf("set-option -w -t %s @skye_id %s", w.ID, id)); err != nil {
-		return w, err
+		_, _ = c.Command("kill-window -t " + w.ID)
+		return Window{}, err
 	}
 	return w, nil
 }
