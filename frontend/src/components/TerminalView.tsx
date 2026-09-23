@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
-import { api, output } from '../bridge';
+import { api, input, output } from '../bridge';
 import { terminalKey } from '../lib/keys';
 
 export function TerminalView({ id, active }: { id: string; active: boolean }) {
@@ -26,7 +26,7 @@ export function TerminalView({ id, active }: { id: string; active: boolean }) {
     t.attachCustomKeyEventHandler((e) => {
       const action = terminalKey(e);
       if (action.kind === 'send') {
-        api().Write(id, action.data);
+        input(id).write(action.data);
         return false;
       }
       if (action.kind === 'paste') {
@@ -35,7 +35,7 @@ export function TerminalView({ id, active }: { id: string; active: boolean }) {
       }
       return true;
     });
-    t.onData((data) => api().Write(id, data));
+    t.onData((data) => input(id).write(data));
     t.onSelectionChange(() => {
       const selected = t.getSelection();
       if (selected) navigator.clipboard.writeText(selected).catch(() => {});

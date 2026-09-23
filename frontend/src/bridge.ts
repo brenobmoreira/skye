@@ -1,5 +1,6 @@
 import type { Conversation, OutputEvent, Preset, Terminal } from './lib/types';
 import { createOutputHub } from './output';
+import { createSendQueue } from './sendQueue';
 
 interface GoBridge {
   List(): Promise<Terminal[]>;
@@ -39,3 +40,13 @@ export const api = (): GoBridge => window.go.main.Bridge;
 export const runtime = (): WailsRuntime => window.runtime;
 export const on = (name: string, cb: (...data: any[]) => void) => window.runtime.EventsOn(name, cb);
 export const output = createOutputHub((name, cb) => { on(name, cb as (ev: OutputEvent) => void); });
+
+const queues = new Map<string, ReturnType<typeof createSendQueue>>();
+export const input = (id: string) => {
+  let queue = queues.get(id);
+  if (!queue) {
+    queue = createSendQueue((op) => (op.kind === 'write' ? api().Write(id, op.data) : api().Paste(id, op.data)));
+    queues.set(id, queue);
+  }
+  return queue;
+};

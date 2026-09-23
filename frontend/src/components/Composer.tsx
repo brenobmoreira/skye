@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { api } from '../bridge';
+import { input } from '../bridge';
 import { composerSubmits } from '../lib/keys';
 
 export function Composer({ id }: { id: string }) {
   const [text, setText] = useState('');
   const submit = () => {
     if (!text.trim()) return;
-    api().Paste(id, text);
+    input(id).paste(text);
     setText('');
   };
   return (
