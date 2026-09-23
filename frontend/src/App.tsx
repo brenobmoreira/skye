@@ -82,13 +82,13 @@ export function App() {
         setEpoch((n) => n + 1);
       }),
     ];
-    const focus = () => api().SetFocused(true);
-    const blur = () => api().SetFocused(false);
+    const focus = () => { api().SetFocused(true).catch(() => {}); };
+    const blur = () => { api().SetFocused(false).catch(() => {}); };
     window.addEventListener('focus', focus);
     window.addEventListener('blur', blur);
     const web = !isWindow();
     if (web) document.addEventListener('visibilitychange', report);
-    api().SetFocused(document.hasFocus());
+    api().SetFocused(document.hasFocus()).catch(() => {});
     return () => {
       offs.forEach((off) => off());
       window.removeEventListener('focus', focus);
