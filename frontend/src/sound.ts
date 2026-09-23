@@ -1,7 +1,10 @@
 let audio: HTMLAudioElement | null = null;
+let toneCtx: AudioContext | null = null;
 
 function beep() {
-  const ctx = new AudioContext();
+  toneCtx ??= new AudioContext();
+  const ctx = toneCtx;
+  if (ctx.state === 'suspended') ctx.resume();
   [0, 0.18].forEach((start) => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();

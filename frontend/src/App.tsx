@@ -59,7 +59,7 @@ export function App() {
             {terminals.length === 0 && <div className="empty">Nenhum terminal. Abra um no +.</div>}
             {terminals.map((t) => <TerminalView key={t.id} id={t.id} active={t.id === activeId} />)}
           </div>
-          {activeId && <Composer id={activeId} />}
+          {activeId && <Composer key={activeId} id={activeId} />}
         </main>
       </div>
     </div>
