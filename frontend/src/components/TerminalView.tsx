@@ -43,6 +43,7 @@ export function TerminalView({ id, active }: { id: string; active: boolean }) {
 
     let unsubscribe = () => {};
     let disposed = false;
+    output.prepare(id);
     api().Snapshot(id).then((snapshot) => {
       if (disposed) return;
       t.write(snapshot);
