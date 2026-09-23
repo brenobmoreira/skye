@@ -19,6 +19,7 @@ interface GoBridge {
   SetSound(on: boolean): Promise<void>;
   SetFocused(focused: boolean): Promise<void>;
   Hide(): Promise<void>;
+  ToggleMaximise(): Promise<void>;
   Quit(): Promise<void>;
   Problems(): Promise<string[]>;
 }

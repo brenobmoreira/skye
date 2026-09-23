@@ -316,6 +316,20 @@ func (b *Bridge) Hide() {
 	runtime.WindowHide(b.ctx)
 }
 
+func (b *Bridge) ToggleMaximise() {
+	if runtime.WindowIsFullscreen(b.ctx) {
+		runtime.WindowUnfullscreen(b.ctx)
+		return
+	}
+	if !runtime.WindowIsMaximised(b.ctx) {
+		runtime.WindowMaximise(b.ctx)
+		return
+	}
+	runtime.WindowUnmaximise(b.ctx)
+	runtime.WindowSetSize(b.ctx, windowWidth, windowHeight)
+	runtime.WindowCenter(b.ctx)
+}
+
 func (b *Bridge) Quit() error {
 	if a, err := b.ready(); err == nil {
 		if err := a.Quit(); err != nil {

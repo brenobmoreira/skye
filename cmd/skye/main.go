@@ -22,6 +22,11 @@ const usage = `skye — terminais do Claude Code no WSL
   skye install-hooks   instala os hooks em ~/.claude/settings.json
   skye launch <id>     uso interno: roda o comando de um terminal`
 
+const (
+	windowWidth  = 1200
+	windowHeight = 800
+)
+
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
@@ -87,8 +92,8 @@ func runApp() {
 	}
 	err = wails.Run(&options.App{
 		Title:             "skye",
-		Width:             1200,
-		Height:            800,
+		Width:             windowWidth,
+		Height:            windowHeight,
 		MinWidth:          700,
 		MinHeight:         450,
 		Frameless:         true,
