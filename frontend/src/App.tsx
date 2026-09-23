@@ -7,6 +7,9 @@ import { TerminalView } from './components/TerminalView';
 import { Composer } from './components/Composer';
 import type { Conversation, Preset, Terminal } from './lib/types';
 
+const byCreation = (a: Terminal, b: Terminal) =>
+  Date.parse(a.createdAt) - Date.parse(b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+
 export function App() {
   const [terminals, setTerminals] = useState<Terminal[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -44,6 +47,8 @@ export function App() {
     setActiveId(terminals[0]?.id ?? null);
   }, [terminals, activeId]);
 
+  const views = [...terminals].sort(byCreation);
+
   const open = async (preset: string) => setActiveId((await api().NewTerminal(preset)).id);
   const resume = async (sessionId: string) => setActiveId((await api().Resume(sessionId)).id);
   const toggleSound = () => { api().SetSound(!sound); setSound(!sound); };
@@ -57,7 +62,7 @@ export function App() {
           <div className="terminals">
             {problems.length > 0 && <div className="problems">{problems.join('\n')}</div>}
             {terminals.length === 0 && <div className="empty">Nenhum terminal. Abra um no +.</div>}
-            {terminals.map((t) => <TerminalView key={t.id} id={t.id} active={t.id === activeId} />)}
+            {views.map((t) => <TerminalView key={t.id} id={t.id} active={t.id === activeId} />)}
           </div>
           {activeId && <Composer key={activeId} id={activeId} />}
         </main>
