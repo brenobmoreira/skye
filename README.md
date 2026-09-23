@@ -7,7 +7,7 @@ skye late.
 ## Requisitos
 
 - WSL2 com WSLg (`guiApplications=true` no `.wslconfig`, depois `wsl --shutdown`)
-- Go ≥ 1.24, Node ≥ 20, tmux ≥ 3.2
+- Go ≥ 1.27.1, Node ≥ 20, tmux ≥ 3.2
 - `sudo apt install -y pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev`
 
 ## Build e instalação
@@ -15,6 +15,8 @@ skye late.
     make build
     install -m 755 skye ~/.local/bin/skye
     skye install-hooks        # uma vez; depois reinicie as sessões do claude
+
+Build com `make build` (o `go build` puro precisa do `frontend/dist`).
 
 ## Configuração
 
@@ -53,3 +55,6 @@ O latido é `frontend/public/bark.ogg`; sem o arquivo, a skye toca um bipe.
 6. Fechar a janela no ×, rodar `skye` de novo: mesma janela, terminais intactos.
 7. `pkill skye` e reabrir: terminais reencontrados com os nomes.
 8. **sair**, reabrir, *retomar*: `claude --resume` volta na pasta certa.
+9. Esconder com × e provocar um pedido de permissão: o toast aparece.
+10. Digitar rápido enquanto outro terminal despeja saída: nada fora de ordem.
+11. Com a skye escondida, rodar `skye` de novo: a mesma janela volta.

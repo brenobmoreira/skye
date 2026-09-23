@@ -7,13 +7,13 @@ import (
 
 func TestDecodeOctal(t *testing.T) {
 	cases := map[string][]byte{
-		"plain":            []byte("plain"),
+		"plain":             []byte("plain"),
 		`\033[1mhi\015\012`: []byte("\x1b[1mhi\r\n"),
-		`back\134slash`:    []byte(`back\slash`),
-		"você":             []byte("você"),
-		`trailing\03`:      []byte(`trailing\03`),
-		`not\89x`:          []byte(`not\89x`),
-		"":                 {},
+		`back\134slash`:     []byte(`back\slash`),
+		"você":              []byte("você"),
+		`trailing\03`:       []byte(`trailing\03`),
+		`not\89x`:           []byte(`not\89x`),
+		"":                  {},
 	}
 	for in, want := range cases {
 		if got := DecodeOctal(in); !bytes.Equal(got, want) {
