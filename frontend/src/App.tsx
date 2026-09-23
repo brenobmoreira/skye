@@ -6,6 +6,17 @@ import { Sidebar } from './components/Sidebar';
 import { TerminalView } from './components/TerminalView';
 import { Composer } from './components/Composer';
 import type { Conversation, Preset, Terminal } from './lib/types';
+import { applyZoom, parseFontSize, zoomKey, type ZoomAction } from './lib/zoom';
+
+const FONT_KEY = 'skye:fontSize';
+
+function storedFontSize(): number {
+  try {
+    return parseFontSize(localStorage.getItem(FONT_KEY));
+  } catch {
+    return parseFontSize(null);
+  }
+}
 
 const byCreation = (a: Terminal, b: Terminal) =>
   Date.parse(a.createdAt) - Date.parse(b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
@@ -17,6 +28,36 @@ export function App() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sound, setSound] = useState(true);
   const [problems, setProblems] = useState<string[]>([]);
+  const [fontSize, setFontSize] = useState(storedFontSize);
+
+  useEffect(() => {
+    const zoom = (action: ZoomAction) =>
+      setFontSize((size) => {
+        const next = applyZoom(size, action);
+        try {
+          localStorage.setItem(FONT_KEY, String(next));
+        } catch {}
+        return next;
+      });
+    const onKey = (e: KeyboardEvent) => {
+      const action = zoomKey(e);
+      if (!action) return;
+      e.preventDefault();
+      e.stopPropagation();
+      zoom(action);
+    };
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey || e.deltaY === 0) return;
+      e.preventDefault();
+      zoom(e.deltaY < 0 ? 'in' : 'out');
+    };
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('wheel', onWheel, { passive: false, capture: true });
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('wheel', onWheel, true);
+    };
+  }, []);
 
   useEffect(() => {
     api().List().then(setTerminals);
@@ -62,7 +103,7 @@ export function App() {
           <div className="terminals">
             {problems.length > 0 && <div className="problems">{problems.join('\n')}</div>}
             {terminals.length === 0 && <div className="empty">Nenhum terminal. Abra um no +.</div>}
-            {views.map((t) => <TerminalView key={t.id} id={t.id} active={t.id === activeId} />)}
+            {views.map((t) => <TerminalView key={t.id} id={t.id} active={t.id === activeId} fontSize={fontSize} />)}
           </div>
           {activeId && <Composer key={activeId} id={activeId} />}
         </main>

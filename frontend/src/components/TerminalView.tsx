@@ -4,7 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { api, input, output } from '../bridge';
 import { terminalKey } from '../lib/keys';
 
-export function TerminalView({ id, active }: { id: string; active: boolean }) {
+export function TerminalView({ id, active, fontSize }: { id: string; active: boolean; fontSize: number }) {
   const host = useRef<HTMLDivElement>(null);
   const term = useRef<XTerm | null>(null);
   const fit = useRef<FitAddon | null>(null);
@@ -12,7 +12,7 @@ export function TerminalView({ id, active }: { id: string; active: boolean }) {
   useEffect(() => {
     const t = new XTerm({
       fontFamily: '"JetBrains Mono", monospace',
-      fontSize: 14,
+      fontSize,
       cursorBlink: true,
       scrollback: 5000,
       theme: { background: '#0e0e12' },
@@ -56,6 +56,15 @@ export function TerminalView({ id, active }: { id: string; active: boolean }) {
       t.dispose();
     };
   }, [id]);
+
+  useEffect(() => {
+    const t = term.current;
+    if (!t || t.options.fontSize === fontSize) return;
+    t.options.fontSize = fontSize;
+    if (!active) return;
+    fit.current?.fit();
+    api().Resize(id, t.cols, t.rows);
+  }, [fontSize, active, id]);
 
   useEffect(() => {
     if (!active || !host.current) return;
