@@ -49,7 +49,12 @@ func Listen(path string, handle func(Event), logf func(string, ...any)) (*Server
 		handle(ev)
 	})
 	s := &Server{srv: &http.Server{Handler: mux, ReadHeaderTimeout: 2 * time.Second}, path: path}
-	go s.srv.Serve(ln)
+	go func() {
+		err := s.srv.Serve(ln)
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logf("hook server stopped: %v", err)
+		}
+	}()
 	return s, nil
 }
 
