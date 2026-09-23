@@ -71,7 +71,7 @@ func Listen(port int, opts Options) (*Server, error) {
 func (s *Server) Addr() net.Addr { return s.ln.Addr() }
 
 func (s *Server) URL() string {
-	return fmt.Sprintf("http://localhost:%d/?token=%s", s.port, s.opts.Token)
+	return fmt.Sprintf("http://%s:%d/?token=%s", loopbackHost, s.port, s.opts.Token)
 }
 
 func (s *Server) Serve() error {
@@ -103,6 +103,8 @@ func (s *Server) Clients() int {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("X-Frame-Options", "DENY")
+	w.Header().Set("Content-Security-Policy", "frame-ancestors 'none'")
 	if r.URL.Path == "/" && r.URL.Query().Has("token") {
 		s.login(w, r)
 		return
@@ -142,8 +144,13 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) hasCookie(r *http.Request) bool {
-	c, err := r.Cookie(CookieName)
-	return err == nil && s.matches(c.Value)
+	found := false
+	for _, c := range r.Cookies() {
+		if c.Name == CookieName && s.matches(c.Value) {
+			found = true
+		}
+	}
+	return found
 }
 
 func (s *Server) originAllowed(origin string) bool {
@@ -281,12 +288,16 @@ type event struct {
 }
 
 func (s *Server) handle(data []byte) []byte {
+	var envelope struct {
+		ID json.RawMessage `json:"id"`
+	}
+	_ = json.Unmarshal(data, &envelope)
+	id := envelope.ID
+	if len(id) == 0 {
+		id = json.RawMessage("null")
+	}
 	var req request
 	if err := json.Unmarshal(data, &req); err != nil || len(req.ID) == 0 || req.Method == "" {
-		id := req.ID
-		if len(id) == 0 || err != nil {
-			id = json.RawMessage("null")
-		}
 		return mustMarshal(errorReply{ID: id, Error: frameNotParsed})
 	}
 	result, err := s.call(req)

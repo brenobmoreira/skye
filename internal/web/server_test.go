@@ -127,7 +127,7 @@ func TestListenBindsOnlyLoopback(t *testing.T) {
 	if !addr.IP.Equal(net.IPv4(127, 0, 0, 1)) {
 		t.Fatalf("listening on %v, want 127.0.0.1", addr)
 	}
-	if got := h.srv.URL(); got != fmt.Sprintf("http://localhost:%d/?token=%s", h.port, testToken) {
+	if got := h.srv.URL(); got != fmt.Sprintf("http://127.0.0.1:%d/?token=%s", h.port, testToken) {
 		t.Fatalf("url = %q", got)
 	}
 }
@@ -362,5 +362,59 @@ func TestManifestIsServedAsManifest(t *testing.T) {
 	resp := get(t, h.base+"/manifest.webmanifest", true)
 	if resp.StatusCode != http.StatusOK || resp.Header.Get("Content-Type") != "application/manifest+json" {
 		t.Fatalf("status %d content-type %q", resp.StatusCode, resp.Header.Get("Content-Type"))
+	}
+}
+
+func assertNoFraming(t *testing.T, what string, resp *http.Response) {
+	t.Helper()
+	if got := resp.Header.Get("X-Frame-Options"); got != "DENY" {
+		t.Fatalf("%s: X-Frame-Options = %q", what, got)
+	}
+	if got := resp.Header.Get("Content-Security-Policy"); got != "frame-ancestors 'none'" {
+		t.Fatalf("%s: Content-Security-Policy = %q", what, got)
+	}
+}
+
+func TestEveryResponseForbidsFraming(t *testing.T) {
+	h := start(t)
+	assertNoFraming(t, "static", get(t, h.base+"/app.js", true))
+	assertNoFraming(t, "login", get(t, h.base+"/?token="+testToken, false))
+	assertNoFraming(t, "wrong token", get(t, h.base+"/?token=nope", false))
+	assertNoFraming(t, "no cookie", get(t, h.base+"/", false))
+	_, resp, _ := dial(t, h, true, "http://evil.example")
+	assertNoFraming(t, "bad origin", resp)
+}
+
+func TestAnyMatchingCookieIsAccepted(t *testing.T) {
+	h := start(t)
+	req, _ := http.NewRequest(http.MethodGet, h.base+"/app.js", nil)
+	req.Header.Set("Cookie", CookieName+"=planted; "+CookieName+"="+testToken)
+	resp, err := noRedirect().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d with planted cookie first", resp.StatusCode)
+	}
+	header := http.Header{}
+	header.Set("Cookie", CookieName+"=planted; "+CookieName+"="+testToken)
+	header.Set("Origin", fmt.Sprintf("http://127.0.0.1:%d", h.port))
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	conn, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(h.base, "http")+"/ws", &websocket.DialOptions{HTTPHeader: header})
+	if err != nil {
+		t.Fatalf("ws with planted cookie first: %v", err)
+	}
+	conn.CloseNow()
+}
+
+func TestMalformedArgsReplyKeepsID(t *testing.T) {
+	h := start(t)
+	conn := open(t, h)
+	send(t, conn, `{"id":7,"method":"Echo","args":"oi"}`)
+	m := recv(t, conn)
+	if string(m["id"]) != "7" || len(m["error"]) == 0 {
+		t.Fatalf("reply = %v", m)
 	}
 }

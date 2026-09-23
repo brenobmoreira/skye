@@ -47,9 +47,9 @@ O latido é `frontend/public/bark.ogg`; sem o arquivo, a skye toca um bipe.
     skye web              # ou: skye web --no-open
 
 A skye sobe um servidor só em `127.0.0.1` (porta `web_port` do `config.toml`, padrão
-`7810`), imprime o endereço com o token — `http://localhost:7810/?token=...` — e abre no
+`7810`), imprime o endereço com o token — `http://127.0.0.1:7810/?token=...` — e abre no
 navegador padrão do Windows. O endereço grava um cookie e some da barra; depois disso,
-`http://localhost:7810/` basta.
+`http://127.0.0.1:7810/` basta.
 
 Para instalar como aplicativo: no Edge, menu → *Aplicativos* → *Instalar skye*; no
 Chrome, menu → *Transmitir, salvar e compartilhar* → *Instalar página como app* (ou
