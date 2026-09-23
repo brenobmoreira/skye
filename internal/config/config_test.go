@@ -1,0 +1,123 @@
+package config
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func write(t *testing.T, body string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestLoadMissingFileReturnsDefaults(t *testing.T) {
+	cfg, err := Load(filepath.Join(t.TempDir(), "nope.toml"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.Sound || cfg.Shell != "" || len(cfg.Presets) != 0 {
+		t.Fatalf("got %+v, want defaults", cfg)
+	}
+}
+
+func TestLoadPresets(t *testing.T) {
+	path := write(t, `
+shell = "/bin/zsh"
+
+[[preset]]
+name = "blog"
+command = "cd ~/projects/blog && claude"
+`)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Shell != "/bin/zsh" || !cfg.Sound {
+		t.Fatalf("got %+v", cfg)
+	}
+	p, ok := cfg.Preset("blog")
+	if !ok || p.Command != "cd ~/projects/blog && claude" {
+		t.Fatalf("preset = %+v, %v", p, ok)
+	}
+	if _, ok := cfg.Preset("other"); ok {
+		t.Fatal("unknown preset found")
+	}
+}
+
+func TestLoadSoundOff(t *testing.T) {
+	cfg, err := Load(write(t, "sound = false\n"))
+	if err != nil || cfg.Sound {
+		t.Fatalf("cfg=%+v err=%v", cfg, err)
+	}
+}
+
+func TestLoadInvalidTomlFallsBackToDefaults(t *testing.T) {
+	cfg, err := Load(write(t, "shell = \n"))
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !cfg.Sound || cfg.Shell != "" {
+		t.Fatalf("got %+v, want defaults", cfg)
+	}
+}
+
+func TestLoadRejectsDuplicateAndNamelessPresets(t *testing.T) {
+	for _, body := range []string{
+		"[[preset]]\nname = \"a\"\n[[preset]]\nname = \"a\"\n",
+		"[[preset]]\ncommand = \"claude\"\n",
+	} {
+		if _, err := Load(write(t, body)); err == nil {
+			t.Fatalf("expected error for %q", body)
+		}
+	}
+}
+
+func TestResolveShell(t *testing.T) {
+	env := func(v map[string]string) func(string) string {
+		return func(k string) string { return v[k] }
+	}
+	if got := (Config{Shell: "/bin/fish"}).ResolveShell(env(nil)); got != "/bin/fish" {
+		t.Fatalf("got %q", got)
+	}
+	if got := (Config{}).ResolveShell(env(map[string]string{"SHELL": "/bin/zsh"})); got != "/bin/zsh" {
+		t.Fatalf("got %q", got)
+	}
+	if got := (Config{}).ResolveShell(env(nil)); got != "/bin/bash" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestDefaultPaths(t *testing.T) {
+	p := DefaultPaths(func(k string) string {
+		return map[string]string{"HOME": "/home/demo", "XDG_RUNTIME_DIR": "/run/user/1000"}[k]
+	})
+	want := Paths{
+		ConfigFile:    "/home/demo/.config/skye/config.toml",
+		TmuxConf:      "/home/demo/.config/skye/tmux.conf",
+		StateDir:      "/home/demo/.local/state/skye",
+		LaunchDir:     "/home/demo/.local/state/skye/launch",
+		Conversations: "/home/demo/.local/state/skye/conversations.json",
+		Socket:        "/run/user/1000/skye.sock",
+	}
+	if p != want {
+		t.Fatalf("got %+v\nwant %+v", p, want)
+	}
+}
+
+func TestDefaultPathsHonorsXDGAndMissingRuntimeDir(t *testing.T) {
+	p := DefaultPaths(func(k string) string {
+		return map[string]string{
+			"HOME":            "/home/demo",
+			"XDG_CONFIG_HOME": "/cfg",
+			"XDG_STATE_HOME":  "/state",
+		}[k]
+	})
+	if p.ConfigFile != "/cfg/skye/config.toml" || p.StateDir != "/state/skye" || p.Socket != "/state/skye/skye.sock" {
+		t.Fatalf("got %+v", p)
+	}
+}
