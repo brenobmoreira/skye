@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -113,6 +114,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/ws" {
 		s.serveSocket(w, r)
 		return
+	}
+	if strings.HasSuffix(r.URL.Path, ".webmanifest") {
+		w.Header().Set("Content-Type", "application/manifest+json")
 	}
 	s.files.ServeHTTP(w, r)
 }

@@ -87,7 +87,7 @@ func start(t *testing.T) harness {
 	t.Helper()
 	s, err := Listen(0, Options{
 		Token:    testToken,
-		Assets:   fstest.MapFS{"index.html": {Data: []byte("<html>skye</html>")}, "app.js": {Data: []byte("x")}},
+		Assets:   fstest.MapFS{"index.html": {Data: []byte("<html>skye</html>")}, "app.js": {Data: []byte("x")}, "manifest.webmanifest": {Data: []byte(`{"name":"skye"}`)}},
 		Dispatch: echoDispatch,
 		Logf:     t.Logf,
 	})
@@ -354,5 +354,13 @@ func TestClosedClientIsUnregistered(t *testing.T) {
 			t.Fatalf("clients = %d after close", h.srv.Clients())
 		}
 		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+func TestManifestIsServedAsManifest(t *testing.T) {
+	h := start(t)
+	resp := get(t, h.base+"/manifest.webmanifest", true)
+	if resp.StatusCode != http.StatusOK || resp.Header.Get("Content-Type") != "application/manifest+json" {
+		t.Fatalf("status %d content-type %q", resp.StatusCode, resp.Header.Get("Content-Type"))
 	}
 }
