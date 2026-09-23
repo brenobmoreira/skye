@@ -23,6 +23,15 @@ const TitleLimit = 80
 
 var rank = map[State]int{Waiting: 0, Idle: 1, Running: 2, Shell: 3}
 
+var validEvents = map[string]bool{
+	"SessionStart":     true,
+	"UserPromptSubmit": true,
+	"PostToolUse":      true,
+	"Notification":     true,
+	"Stop":             true,
+	"SessionEnd":       true,
+}
+
 type Terminal struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
@@ -155,12 +164,12 @@ func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
 	if !ok {
 		return Change{}, false
 	}
+	if !validEvents[ev.Name] {
+		return Change{}, false
+	}
 	prev := t.State
 	ch := Change{Prev: prev}
 	now := r.now()
-	if ev.Cwd != "" {
-		t.Cwd = ev.Cwd
-	}
 	switch ev.Name {
 	case "SessionStart":
 		if t.SessionID != "" && ev.SessionID != "" && t.SessionID != ev.SessionID {
@@ -169,31 +178,47 @@ func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
 			}
 			t.Title = ""
 		}
+		if ev.Cwd != "" {
+			t.Cwd = ev.Cwd
+		}
 		t.State = Idle
 	case "UserPromptSubmit":
 		if t.Title == "" {
 			t.Title = titleFrom(ev.Prompt)
 		}
+		if ev.Cwd != "" {
+			t.Cwd = ev.Cwd
+		}
 		t.State = Running
 	case "PostToolUse":
+		if ev.Cwd != "" {
+			t.Cwd = ev.Cwd
+		}
 		t.State = Running
 	case "Notification":
+		if ev.Cwd != "" {
+			t.Cwd = ev.Cwd
+		}
 		if prev == Running {
 			t.State = Waiting
 			ch.Attention = true
 		}
 	case "Stop":
+		if ev.Cwd != "" {
+			t.Cwd = ev.Cwd
+		}
 		t.State = Idle
 		ch.Attention = prev != Idle
 	case "SessionEnd":
+		if ev.Cwd != "" {
+			t.Cwd = ev.Cwd
+		}
 		if c, ok := t.Conversation(now); ok {
 			ch.Ended = &c
 		}
 		t.SessionID, t.Title, t.State = "", "", Shell
 		ch.Terminal = *t
 		return ch, true
-	default:
-		return Change{}, false
 	}
 	if ev.SessionID != "" {
 		t.SessionID = ev.SessionID

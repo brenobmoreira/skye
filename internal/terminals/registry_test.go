@@ -97,13 +97,29 @@ func TestSessionStartWithNewIDEndsPrevious(t *testing.T) {
 	}
 }
 
+func TestSessionStartPreservesOldCwdInEndedConversation(t *testing.T) {
+	r := newReg()
+	apply(t, r, "UserPromptSubmit", func(e *hooks.Event) { e.Prompt = "first"; e.Cwd = "/home/demo/old" })
+	ch := apply(t, r, "SessionStart", func(e *hooks.Event) { e.SessionID = "s2"; e.Cwd = "/home/demo/new" })
+	if ch.Ended == nil || ch.Ended.Cwd != "/home/demo/old" {
+		t.Fatalf("ended.cwd = %q, want /home/demo/old", ch.Ended.Cwd)
+	}
+	if ch.Terminal.Cwd != "/home/demo/new" {
+		t.Fatalf("terminal.cwd = %q, want /home/demo/new", ch.Terminal.Cwd)
+	}
+}
+
 func TestUnknownTerminalOrEventIsIgnored(t *testing.T) {
 	r := newReg()
 	if _, ok := r.Apply(hooks.Event{Terminal: "zzz", Name: "Stop"}); ok {
 		t.Fatal("unknown terminal applied")
 	}
-	if _, ok := r.Apply(hooks.Event{Terminal: "a", Name: "PreCompact"}); ok {
+	if _, ok := r.Apply(hooks.Event{Terminal: "a", Name: "PreCompact", Cwd: "/elsewhere"}); ok {
 		t.Fatal("unknown event applied")
+	}
+	term, _ := r.Get("a")
+	if term.Cwd != "" {
+		t.Fatalf("unknown event mutated cwd to %q", term.Cwd)
 	}
 }
 
