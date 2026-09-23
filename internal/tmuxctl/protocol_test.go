@@ -60,6 +60,13 @@ func TestParseWindowCloseAndExit(t *testing.T) {
 			t.Errorf("ParseLine(%q) = %+v", in, l)
 		}
 	}
+	// Edge case: window-close without window ID should not panic
+	for _, in := range []string{"%window-close ", "%unlinked-window-close "} {
+		l := ParseLine(in)
+		if l.Kind != KindWindowClose || l.Window != "" {
+			t.Errorf("ParseLine(%q) = %+v, want Kind=KindWindowClose, Window=\"\"", in, l)
+		}
+	}
 	for _, in := range []string{"%exit", "%exit server exited"} {
 		if ParseLine(in).Kind != KindExit {
 			t.Errorf("%q is not exit", in)

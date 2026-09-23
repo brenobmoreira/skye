@@ -36,7 +36,11 @@ func ParseLine(s string) Line {
 		return block(KindError, s)
 	case strings.HasPrefix(s, "%window-close "), strings.HasPrefix(s, "%unlinked-window-close "):
 		fields := strings.Fields(s)
-		return Line{Kind: KindWindowClose, Window: fields[1]}
+		l := Line{Kind: KindWindowClose}
+		if len(fields) >= 2 {
+			l.Window = fields[1]
+		}
+		return l
 	case s == "%exit" || strings.HasPrefix(s, "%exit "):
 		return Line{Kind: KindExit}
 	}
