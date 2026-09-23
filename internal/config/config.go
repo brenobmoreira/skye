@@ -19,10 +19,13 @@ type Config struct {
 	Shell   string   `toml:"shell"`
 	Sound   bool     `toml:"sound"`
 	Presets []Preset `toml:"preset"`
+	WebPort int      `toml:"web_port"`
 }
 
+const DefaultWebPort = 7810
+
 func Default() Config {
-	return Config{Sound: true}
+	return Config{Sound: true, WebPort: DefaultWebPort}
 }
 
 func Load(path string) (Config, error) {
@@ -44,6 +47,9 @@ func Load(path string) (Config, error) {
 }
 
 func (c Config) validate() error {
+	if c.WebPort < 1024 || c.WebPort > 65535 {
+		return fmt.Errorf("web_port %d is outside 1024-65535", c.WebPort)
+	}
 	seen := map[string]bool{}
 	for i, p := range c.Presets {
 		if p.Name == "" {
@@ -83,6 +89,7 @@ type Paths struct {
 	LaunchDir     string
 	Conversations string
 	Socket        string
+	WebToken      string
 }
 
 func DefaultPaths(getenv func(string) string) Paths {
@@ -108,5 +115,6 @@ func DefaultPaths(getenv func(string) string) Paths {
 		LaunchDir:     filepath.Join(stateDir, "launch"),
 		Conversations: filepath.Join(stateDir, "conversations.json"),
 		Socket:        filepath.Join(runtimeDir, "skye.sock"),
+		WebToken:      filepath.Join(configDir, "web-token"),
 	}
 }

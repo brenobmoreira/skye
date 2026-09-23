@@ -103,6 +103,7 @@ func TestDefaultPaths(t *testing.T) {
 		LaunchDir:     "/home/demo/.local/state/skye/launch",
 		Conversations: "/home/demo/.local/state/skye/conversations.json",
 		Socket:        "/run/user/1000/skye.sock",
+		WebToken:      "/home/demo/.config/skye/web-token",
 	}
 	if p != want {
 		t.Fatalf("got %+v\nwant %+v", p, want)
@@ -117,7 +118,38 @@ func TestDefaultPathsHonorsXDGAndMissingRuntimeDir(t *testing.T) {
 			"XDG_STATE_HOME":  "/state",
 		}[k]
 	})
+	if p.WebToken != "/cfg/skye/web-token" {
+		t.Fatalf("web token = %q", p.WebToken)
+	}
 	if p.ConfigFile != "/cfg/skye/config.toml" || p.StateDir != "/state/skye" || p.Socket != "/state/skye/skye.sock" {
 		t.Fatalf("got %+v", p)
+	}
+}
+
+func TestLoadWebPortDefaultAndOverride(t *testing.T) {
+	cfg, err := Load(filepath.Join(t.TempDir(), "nope.toml"))
+	if err != nil || cfg.WebPort != 7810 {
+		t.Fatalf("default web port = %d, err=%v", cfg.WebPort, err)
+	}
+	cfg, err = Load(write(t, "web_port = 9000\n"))
+	if err != nil || cfg.WebPort != 9000 {
+		t.Fatalf("web port = %d, err=%v", cfg.WebPort, err)
+	}
+}
+
+func TestLoadRejectsWebPortOutOfRange(t *testing.T) {
+	for _, body := range []string{"web_port = 80\n", "web_port = 70000\n", "web_port = 1023\n"} {
+		cfg, err := Load(write(t, body))
+		if err == nil {
+			t.Fatalf("expected error for %q", body)
+		}
+		if cfg.WebPort != 7810 {
+			t.Fatalf("fallback web port = %d", cfg.WebPort)
+		}
+	}
+	for _, body := range []string{"web_port = 1024\n", "web_port = 65535\n"} {
+		if _, err := Load(write(t, body)); err != nil {
+			t.Fatalf("unexpected error for %q: %v", body, err)
+		}
 	}
 }
