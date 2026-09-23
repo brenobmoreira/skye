@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"crypto/rand"
 	_ "embed"
 	"encoding/hex"
@@ -12,8 +11,6 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/brenobmoreira/skye/internal/app"
 	"github.com/brenobmoreira/skye/internal/config"
@@ -29,10 +26,13 @@ var defaultTmuxConf []byte
 
 const tmuxSocket = "skye"
 
-var errNotReady = errors.New("a skye não conseguiu iniciar; veja o aviso no topo da janela")
+var (
+	errNotReady  = errors.New("a skye não conseguiu iniciar; veja o aviso no topo da janela")
+	errOtherSkye = errors.New("outra skye já está rodando")
+)
 
 type Bridge struct {
-	ctx      context.Context
+	host     host
 	mu       sync.Mutex
 	app      *app.App
 	client   *tmuxctl.Client
@@ -40,8 +40,8 @@ type Bridge struct {
 	problems []string
 }
 
-func newBridge() *Bridge {
-	return &Bridge{problems: []string{}}
+func newBridge(h host) *Bridge {
+	return &Bridge{host: h, problems: []string{}}
 }
 
 func (b *Bridge) problem(format string, args ...any) {
@@ -50,12 +50,11 @@ func (b *Bridge) problem(format string, args ...any) {
 	b.problems = append(b.problems, msg)
 	list := append([]string{}, b.problems...)
 	b.mu.Unlock()
-	runtime.LogError(b.ctx, msg)
-	runtime.EventsEmit(b.ctx, "problems", list)
+	b.host.logError(msg)
+	b.host.emit("problems", list)
 }
 
-func (b *Bridge) startup(ctx context.Context) {
-	b.ctx = ctx
+func (b *Bridge) startup() {
 	if err := b.boot(); err != nil {
 		b.problem("%v", err)
 	}
@@ -85,9 +84,9 @@ func (b *Bridge) boot() error {
 	if err != nil {
 		b.problem("config inválida, usando padrões: %v", err)
 	}
-	server, err := hooks.Listen(paths.Socket, b.handleHook, b.show, func(format string, args ...any) { runtime.LogInfof(b.ctx, format, args...) })
+	server, err := hooks.Listen(paths.Socket, b.handleHook, b.host.show, b.host.logf)
 	if errors.Is(err, hooks.ErrInUse) {
-		return errors.New("outra skye já está rodando")
+		return errOtherSkye
 	}
 	if err != nil {
 		return err
@@ -129,8 +128,8 @@ func (b *Bridge) boot() error {
 		Tmux:     client,
 		Store:    store,
 		Notifier: notify.NewToaster(),
-		Emit:     func(event string, data any) { runtime.EventsEmit(b.ctx, event, data) },
-		Logf:     func(format string, args ...any) { runtime.LogInfof(b.ctx, format, args...) },
+		Emit:     b.host.emit,
+		Logf:     b.host.logf,
 		SelfPath: self,
 		Home:     home,
 		NewID:    newID,
@@ -167,7 +166,7 @@ func (b *Bridge) pump(c *tmuxctl.Client, a *app.App) {
 	}
 }
 
-func (b *Bridge) shutdown(context.Context) {
+func (b *Bridge) shutdown() {
 	b.mu.Lock()
 	server, client := b.server, b.client
 	b.mu.Unlock()
@@ -177,11 +176,6 @@ func (b *Bridge) shutdown(context.Context) {
 	if client != nil {
 		_ = client.Close()
 	}
-}
-
-func (b *Bridge) show() {
-	runtime.WindowUnminimise(b.ctx)
-	runtime.WindowShow(b.ctx)
 }
 
 func (b *Bridge) ready() (*app.App, error) {
@@ -313,29 +307,19 @@ func (b *Bridge) SetFocused(focused bool) {
 
 func (b *Bridge) Hide() {
 	b.SetFocused(false)
-	runtime.WindowHide(b.ctx)
+	b.host.hide()
 }
 
 func (b *Bridge) ToggleMaximise() {
-	if runtime.WindowIsFullscreen(b.ctx) {
-		runtime.WindowUnfullscreen(b.ctx)
-		return
-	}
-	if !runtime.WindowIsMaximised(b.ctx) {
-		runtime.WindowMaximise(b.ctx)
-		return
-	}
-	runtime.WindowUnmaximise(b.ctx)
-	runtime.WindowSetSize(b.ctx, windowWidth, windowHeight)
-	runtime.WindowCenter(b.ctx)
+	b.host.toggleMaximise()
 }
 
 func (b *Bridge) Quit() error {
 	if a, err := b.ready(); err == nil {
 		if err := a.Quit(); err != nil {
-			runtime.LogError(b.ctx, err.Error())
+			b.host.logError(err.Error())
 		}
 	}
-	runtime.Quit(b.ctx)
+	b.host.quit()
 	return nil
 }

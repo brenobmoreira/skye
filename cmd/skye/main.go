@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"os"
@@ -84,7 +85,8 @@ func runApp() {
 		fmt.Println("a skye já está aberta")
 		return
 	}
-	bridge := newBridge()
+	wh := &wailsHost{}
+	bridge := newBridge(wh)
 	assets, err := fs.Sub(frontend.Dist, "dist")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -102,10 +104,13 @@ func runApp() {
 		AssetServer:       &assetserver.Options{Assets: assets},
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId:               "io.github.brenobmoreira.skye",
-			OnSecondInstanceLaunch: func(options.SecondInstanceData) { bridge.show() },
+			OnSecondInstanceLaunch: func(options.SecondInstanceData) { wh.show() },
 		},
-		OnStartup:  bridge.startup,
-		OnShutdown: bridge.shutdown,
+		OnStartup: func(ctx context.Context) {
+			wh.ctx = ctx
+			bridge.startup()
+		},
+		OnShutdown: func(context.Context) { bridge.shutdown() },
 		Bind:       []interface{}{bridge},
 	})
 	if err != nil {
