@@ -41,6 +41,27 @@ O latido é `frontend/public/bark.ogg`; sem o arquivo, a skye toca um bipe.
 - **×** esconde a janela (os terminais continuam); rodar `skye` de novo traz a janela.
 - **sair** encerra todos os terminais; as conversas vão para *Encerradas*, com *retomar*.
 
+## Abrir pelo navegador
+
+    skye web              # ou: skye web --no-open
+
+A skye sobe um servidor só em `127.0.0.1` (porta `web_port` do `config.toml`, padrão
+`7810`), imprime o endereço com o token — `http://localhost:7810/?token=...` — e abre no
+navegador padrão do Windows. O endereço grava um cookie e some da barra; depois disso,
+`http://localhost:7810/` basta.
+
+Para instalar como aplicativo: no Edge, menu → *Aplicativos* → *Instalar skye*; no
+Chrome, menu → *Transmitir, salvar e compartilhar* → *Instalar página como app* (ou
+"Instalar este site como aplicativo"). O app instalado abre numa janela própria.
+
+- A janela (`skye`) e o navegador (`skye web`) não rodam ao mesmo tempo: quem abre
+  primeiro fica com os hooks; o segundo avisa e sai.
+- `Ctrl+C` no `skye web` para o servidor; os terminais continuam no tmux. **sair** encerra
+  os terminais e o `skye web`.
+- No navegador não há minimizar, maximizar nem ×.
+- O token fica em `~/.config/skye/web-token`. Apague o arquivo para revogar o app
+  instalado; o próximo `skye web` cria outro e imprime o endereço novo.
+
 ## Testes
 
     make test
