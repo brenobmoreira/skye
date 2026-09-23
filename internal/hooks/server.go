@@ -1,7 +1,9 @@
 package hooks
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -17,7 +19,7 @@ type Server struct {
 	path string
 }
 
-func Listen(path string, handle func(Event), logf func(string, ...any)) (*Server, error) {
+func Listen(path string, handle func(Event), onShow func(), logf func(string, ...any)) (*Server, error) {
 	if conn, err := net.DialTimeout("unix", path, 500*time.Millisecond); err == nil {
 		conn.Close()
 		return nil, ErrInUse
@@ -48,6 +50,12 @@ func Listen(path string, handle func(Event), logf func(string, ...any)) (*Server
 		}
 		handle(ev)
 	})
+	mux.HandleFunc("POST /show", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+		if onShow != nil {
+			onShow()
+		}
+	})
 	s := &Server{srv: &http.Server{Handler: mux, ReadHeaderTimeout: 2 * time.Second}, path: path}
 	go func() {
 		err := s.srv.Serve(ln)
@@ -62,4 +70,24 @@ func (s *Server) Close() error {
 	err := s.srv.Close()
 	_ = os.Remove(s.path)
 	return err
+}
+
+func RequestShow(path string) error {
+	c := &http.Client{
+		Timeout: time.Second,
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				return (&net.Dialer{}).DialContext(ctx, "unix", path)
+			},
+		},
+	}
+	resp, err := c.Post("http://skye/show", "text/plain", nil)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("show: status %d", resp.StatusCode)
+	}
+	return nil
 }

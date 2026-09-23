@@ -85,6 +85,16 @@ func (b *Bridge) boot() error {
 	if err != nil {
 		b.problem("config inválida, usando padrões: %v", err)
 	}
+	server, err := hooks.Listen(paths.Socket, b.handleHook, b.show, func(format string, args ...any) { runtime.LogInfof(b.ctx, format, args...) })
+	if errors.Is(err, hooks.ErrInUse) {
+		return errors.New("outra skye já está rodando")
+	}
+	if err != nil {
+		return err
+	}
+	b.mu.Lock()
+	b.server = server
+	b.mu.Unlock()
 	if err := tmuxctl.CheckVersion(); err != nil {
 		return err
 	}
@@ -126,15 +136,8 @@ func (b *Bridge) boot() error {
 		NewID:    newID,
 		Now:      time.Now,
 	})
-	server, err := hooks.Listen(paths.Socket, a.HandleHook, func(format string, args ...any) { runtime.LogInfof(b.ctx, format, args...) })
-	if errors.Is(err, hooks.ErrInUse) {
-		return errors.New("outra skye já está rodando")
-	}
-	if err != nil {
-		return err
-	}
 	b.mu.Lock()
-	b.app, b.client, b.server = a, client, server
+	b.app, b.client = a, client
 	b.mu.Unlock()
 	go b.pump(client, a)
 	if err := a.Recover(); err != nil {
@@ -142,6 +145,12 @@ func (b *Bridge) boot() error {
 	}
 	ok = true
 	return nil
+}
+
+func (b *Bridge) handleHook(ev hooks.Event) {
+	if a, err := b.ready(); err == nil {
+		a.HandleHook(ev)
+	}
 }
 
 func (b *Bridge) pump(c *tmuxctl.Client, a *app.App) {

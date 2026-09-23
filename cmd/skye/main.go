@@ -75,6 +75,10 @@ func runInstallHooks() int {
 }
 
 func runApp() {
+	if hooks.RequestShow(config.DefaultPaths(os.Getenv).Socket) == nil {
+		fmt.Println("a skye já está aberta")
+		return
+	}
 	bridge := newBridge()
 	assets, err := fs.Sub(frontend.Dist, "dist")
 	if err != nil {
