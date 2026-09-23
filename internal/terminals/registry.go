@@ -1,0 +1,218 @@
+package terminals
+
+import (
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/brenobmoreira/skye/internal/hooks"
+	"github.com/brenobmoreira/skye/internal/resume"
+)
+
+type State string
+
+const (
+	Shell   State = "shell"
+	Running State = "running"
+	Waiting State = "waiting"
+	Idle    State = "idle"
+)
+
+const TitleLimit = 80
+
+var rank = map[State]int{Waiting: 0, Idle: 1, Running: 2, Shell: 3}
+
+type Terminal struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Preset    string    `json:"preset"`
+	Cwd       string    `json:"cwd"`
+	Window    string    `json:"-"`
+	Pane      string    `json:"-"`
+	State     State     `json:"state"`
+	SessionID string    `json:"sessionId"`
+	Title     string    `json:"title"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+func (t Terminal) Conversation(now time.Time) (resume.Conversation, bool) {
+	if t.SessionID == "" {
+		return resume.Conversation{}, false
+	}
+	title := t.Title
+	if title == "" {
+		title = t.Name
+	}
+	return resume.Conversation{SessionID: t.SessionID, Cwd: t.Cwd, Title: title, Preset: t.Preset, EndedAt: now}, true
+}
+
+type Change struct {
+	Terminal  Terminal
+	Prev      State
+	Attention bool
+	Ended     *resume.Conversation
+}
+
+type Registry struct {
+	mu    sync.Mutex
+	items map[string]*Terminal
+	now   func() time.Time
+}
+
+func NewRegistry(now func() time.Time) *Registry {
+	return &Registry{items: map[string]*Terminal{}, now: now}
+}
+
+func (r *Registry) Add(t Terminal) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if t.CreatedAt.IsZero() {
+		t.CreatedAt = r.now()
+	}
+	if t.State == "" {
+		t.State = Shell
+	}
+	r.items[t.ID] = &t
+}
+
+func (r *Registry) Get(id string) (Terminal, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	t, ok := r.items[id]
+	if !ok {
+		return Terminal{}, false
+	}
+	return *t, true
+}
+
+func (r *Registry) find(match func(*Terminal) bool) (Terminal, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, t := range r.items {
+		if match(t) {
+			return *t, true
+		}
+	}
+	return Terminal{}, false
+}
+
+func (r *Registry) ByPane(pane string) (Terminal, bool) {
+	return r.find(func(t *Terminal) bool { return t.Pane == pane })
+}
+
+func (r *Registry) ByWindow(window string) (Terminal, bool) {
+	return r.find(func(t *Terminal) bool { return t.Window == window })
+}
+
+func (r *Registry) Remove(id string) (Terminal, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	t, ok := r.items[id]
+	if !ok {
+		return Terminal{}, false
+	}
+	delete(r.items, id)
+	return *t, true
+}
+
+func (r *Registry) Rename(id, name string) (Terminal, bool) {
+	name = strings.TrimSpace(name)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	t, ok := r.items[id]
+	if !ok || name == "" {
+		return Terminal{}, false
+	}
+	t.Name = name
+	return *t, true
+}
+
+func (r *Registry) List() []Terminal {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	list := make([]Terminal, 0, len(r.items))
+	for _, t := range r.items {
+		list = append(list, *t)
+	}
+	sort.Slice(list, func(i, j int) bool {
+		a, b := list[i], list[j]
+		if rank[a.State] != rank[b.State] {
+			return rank[a.State] < rank[b.State]
+		}
+		if !a.CreatedAt.Equal(b.CreatedAt) {
+			return a.CreatedAt.Before(b.CreatedAt)
+		}
+		return a.ID < b.ID
+	})
+	return list
+}
+
+func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	t, ok := r.items[ev.Terminal]
+	if !ok {
+		return Change{}, false
+	}
+	prev := t.State
+	ch := Change{Prev: prev}
+	now := r.now()
+	if ev.Cwd != "" {
+		t.Cwd = ev.Cwd
+	}
+	switch ev.Name {
+	case "SessionStart":
+		if t.SessionID != "" && ev.SessionID != "" && t.SessionID != ev.SessionID {
+			if c, ok := t.Conversation(now); ok {
+				ch.Ended = &c
+			}
+			t.Title = ""
+		}
+		t.State = Idle
+	case "UserPromptSubmit":
+		if t.Title == "" {
+			t.Title = titleFrom(ev.Prompt)
+		}
+		t.State = Running
+	case "PostToolUse":
+		t.State = Running
+	case "Notification":
+		if prev == Running {
+			t.State = Waiting
+			ch.Attention = true
+		}
+	case "Stop":
+		t.State = Idle
+		ch.Attention = prev != Idle
+	case "SessionEnd":
+		if c, ok := t.Conversation(now); ok {
+			ch.Ended = &c
+		}
+		t.SessionID, t.Title, t.State = "", "", Shell
+		ch.Terminal = *t
+		return ch, true
+	default:
+		return Change{}, false
+	}
+	if ev.SessionID != "" {
+		t.SessionID = ev.SessionID
+	}
+	ch.Terminal = *t
+	return ch, true
+}
+
+func titleFrom(prompt string) string {
+	for _, line := range strings.Split(prompt, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		runes := []rune(line)
+		if len(runes) > TitleLimit {
+			return string(runes[:TitleLimit-1]) + "…"
+		}
+		return line
+	}
+	return ""
+}
