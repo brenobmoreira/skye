@@ -98,6 +98,12 @@ func (b *Bridge) boot() error {
 	if err != nil {
 		return err
 	}
+	ok := false
+	defer func() {
+		if !ok {
+			_ = client.Close()
+		}
+	}()
 	store, err := resume.Open(paths.Conversations)
 	if err != nil {
 		b.problem("conversas encerradas ilegíveis, começando vazio: %v", err)
@@ -127,13 +133,14 @@ func (b *Bridge) boot() error {
 	if err != nil {
 		return err
 	}
-	if err := a.Recover(); err != nil {
-		b.problem("não consegui reencontrar os terminais: %v", err)
-	}
 	b.mu.Lock()
 	b.app, b.client, b.server = a, client, server
 	b.mu.Unlock()
 	go b.pump(client, a)
+	if err := a.Recover(); err != nil {
+		b.problem("não consegui reencontrar os terminais: %v", err)
+	}
+	ok = true
 	return nil
 }
 
