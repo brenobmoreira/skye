@@ -6,6 +6,7 @@ import { Sidebar } from './components/Sidebar';
 import { TerminalView } from './components/TerminalView';
 import type { Conversation, Preset, State, Terminal, Usage } from './lib/types';
 import { nextUnread } from './lib/unread';
+import { shortcut } from './lib/shortcuts';
 import type { ConnectionState } from './windowsTransport';
 import { applyZoom, parseFontSize, zoomKey, type ZoomAction } from './lib/zoom';
 import { parseFont, type TerminalFont } from './lib/fonts';
@@ -62,6 +63,8 @@ export function App() {
   const [usage, setUsage] = useState<Usage | null>(null);
   const [unread, setUnread] = useState<Set<string>>(() => new Set());
   const lastStates = useRef<Record<string, State>>({});
+  const jump = useRef({ terminals, activeId, unread });
+  jump.current = { terminals, activeId, unread };
 
   const load = () => {
     api().List().then(setTerminals).catch(() => {});
@@ -93,6 +96,14 @@ export function App() {
         return next;
       });
     const onKey = (e: KeyboardEvent) => {
+      const { terminals, activeId, unread } = jump.current;
+      const target = shortcut(e, terminals, activeId, unread);
+      if (target) {
+        e.preventDefault();
+        e.stopPropagation();
+        setActiveId(target);
+        return;
+      }
       const action = zoomKey(e);
       if (!action) return;
       e.preventDefault();
