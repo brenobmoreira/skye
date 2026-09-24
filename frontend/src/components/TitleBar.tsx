@@ -3,6 +3,7 @@ import { api, connection, isWindow, mode, runtime } from '../bridge';
 import { windowControls } from '../windowControls';
 import type { Preset, Usage } from '../lib/types';
 import { usageBadge } from '../lib/usage';
+import { Logo } from './DogIcon';
 import { FONTS, type TerminalFont } from '../lib/fonts';
 
 const controls = windowControls(mode, api, runtime, () => connection().kind === 'ready');
@@ -43,6 +44,7 @@ export function TitleBar(props: {
 
   return (
     <header className={windowed ? 'titlebar windowed' : 'titlebar'} onDoubleClick={windowed ? onDoubleClick : undefined}>
+      <Logo />
       <span className="brand">skye</span>
       <div className="menu">
         <button className="flat" disabled={!props.ready} onClick={() => setOpen(!open)} title="novo terminal">+</button>

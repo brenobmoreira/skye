@@ -54,6 +54,7 @@ button:hover { background: var(--line); }
 .item { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: center; padding: 6px; border-radius: 6px; cursor: pointer; }
 .item:hover { background: var(--panel); }
 .item.active { background: var(--line); }
+.titlebar .logo { width: 18px; height: 18px; flex: none; }
 .item .dog { width: 18px; height: 18px; display: block; }
 .item .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item .sub { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
