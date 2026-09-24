@@ -175,9 +175,9 @@ export function App() {
   return (
     <div className={isWindow() ? 'app windowed' : 'app'}>
       {link.kind !== 'ready' && <ConnectionScreen state={link} />}
-      <TitleBar presets={presets} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} onPickFont={pickFont} usage={usage} />
+      <TitleBar presets={presets} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} onPickFont={pickFont} />
       <div className="body">
-        <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={unread} onSelect={setActiveId} onReorder={reorder} onResume={resume} />
+        <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={unread} onSelect={setActiveId} onReorder={reorder} onResume={resume} usage={usage} />
         <main className="main">
           <div className="terminals">
             {problems.length > 0 && <div className="problems">{problems.join('\n')}</div>}
