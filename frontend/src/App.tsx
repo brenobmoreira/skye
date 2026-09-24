@@ -4,7 +4,6 @@ import { bark } from './sound';
 import { TitleBar } from './components/TitleBar';
 import { Sidebar } from './components/Sidebar';
 import { TerminalView } from './components/TerminalView';
-import { Composer } from './components/Composer';
 import type { Conversation, Preset, State, Terminal } from './lib/types';
 import { nextUnread } from './lib/unread';
 import type { ConnectionState } from './windowsTransport';
@@ -182,7 +181,6 @@ export function App() {
             {terminals.length === 0 && <div className="empty">Nenhum terminal. Abra um no +.</div>}
             {views.map((t) => <TerminalView key={`${t.id}:${epoch}`} id={t.id} active={t.id === activeId} fontSize={fontSize} fontFamily={font.family} />)}
           </div>
-          {activeId && <Composer key={activeId} id={activeId} />}
         </main>
       </div>
     </div>

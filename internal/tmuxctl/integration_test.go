@@ -64,7 +64,7 @@ func TestNewWindowRunsArgvWithEnv(t *testing.T) {
 	}
 }
 
-func TestSendKeysPasteCaptureResize(t *testing.T) {
+func TestSendKeysCaptureResize(t *testing.T) {
 	c, _ := startTest(t)
 	w, err := c.NewWindow("t2", nil, []string{"sh"})
 	if err != nil {
@@ -74,10 +74,6 @@ func TestSendKeysPasteCaptureResize(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitOutput(t, c, w.Pane, "typed-2")
-	if err := c.Paste(w.Pane, "echo pasted-ok"); err != nil {
-		t.Fatal(err)
-	}
-	waitOutput(t, c, w.Pane, "pasted-ok")
 	snap, err := c.Capture(w.Pane)
 	if err != nil {
 		t.Fatal(err)

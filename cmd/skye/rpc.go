@@ -17,7 +17,6 @@ type rpcTarget interface {
 	NewTerminal(preset string) (terminals.Terminal, error)
 	Resume(sessionID string) (terminals.Terminal, error)
 	Write(id, data string) error
-	Paste(id, text string) error
 	Resize(id string, cols, rows int) error
 	Snapshot(id string) (string, error)
 	Rename(id, name string) error
@@ -113,11 +112,6 @@ func dispatcher(t rpcTarget) web.Dispatch {
 				return nil, err
 			}
 			return nil, t.Write(a, b)
-		case "Paste":
-			if err := decode(&a, &b); err != nil {
-				return nil, err
-			}
-			return nil, t.Paste(a, b)
 		case "Rename":
 			if err := decode(&a, &b); err != nil {
 				return nil, err

@@ -23,7 +23,3 @@ export function keyHandler(write: (data: string) => void, paste: () => void) {
     return false;
   };
 }
-
-export function composerSubmits(e: Pick<KeyboardEvent, 'key' | 'ctrlKey'>): boolean {
-  return e.key === 'Enter' && e.ctrlKey;
-}

@@ -12,7 +12,6 @@ interface GoBridge {
   NewTerminal(preset: string): Promise<Terminal>;
   Resume(sessionId: string): Promise<Terminal>;
   Write(id: string, data: string): Promise<void>;
-  Paste(id: string, text: string): Promise<void>;
   Resize(id: string, cols: number, rows: number): Promise<void>;
   Snapshot(id: string): Promise<string>;
   Rename(id: string, name: string): Promise<void>;
@@ -105,7 +104,6 @@ function remoteBridge(connect: () => SocketLike): { bridge: GoBridge; on: (name:
     NewTerminal: (preset) => call('NewTerminal', preset),
     Resume: (sessionId) => call('Resume', sessionId),
     Write: (id, data) => call('Write', id, data),
-    Paste: (id, text) => call('Paste', id, text),
     Resize: (id, cols, rows) => call('Resize', id, cols, rows),
     Snapshot: (id) => call('Snapshot', id),
     Rename: (id, name) => call('Rename', id, name),
@@ -134,7 +132,7 @@ const queues = new Map<string, ReturnType<typeof createSendQueue>>();
 export const input = (id: string) => {
   let queue = queues.get(id);
   if (!queue) {
-    queue = createSendQueue((op) => (op.kind === 'write' ? api().Write(id, op.data) : api().Paste(id, op.data)));
+    queue = createSendQueue((data) => api().Write(id, data));
     queues.set(id, queue);
   }
   return queue;

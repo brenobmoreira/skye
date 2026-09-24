@@ -1,28 +1,24 @@
-export type SendOp = { kind: 'write' | 'paste'; data: string };
-
-export function createSendQueue(send: (op: SendOp) => Promise<unknown>) {
-  const queue: SendOp[] = [];
+// Sends one call at a time, merging writes queued while one is in flight, so keystrokes keep
+// their order.
+export function createSendQueue(send: (data: string) => Promise<unknown>) {
+  const queue: string[] = [];
   let busy = false;
 
   const next = () => {
-    const op = queue.shift();
-    if (!op) {
+    const data = queue.shift();
+    if (data === undefined) {
       busy = false;
       return;
     }
     busy = true;
-    send(op).catch(() => {}).then(next);
-  };
-
-  const push = (op: SendOp) => {
-    const last = queue[queue.length - 1];
-    if (op.kind === 'write' && last?.kind === 'write') last.data += op.data;
-    else queue.push(op);
-    if (!busy) next();
+    send(data).catch(() => {}).then(next);
   };
 
   return {
-    write: (data: string) => push({ kind: 'write', data }),
-    paste: (data: string) => push({ kind: 'paste', data }),
+    write: (data: string) => {
+      if (queue.length > 0) queue[queue.length - 1] += data;
+      else queue.push(data);
+      if (!busy) next();
+    },
   };
 }

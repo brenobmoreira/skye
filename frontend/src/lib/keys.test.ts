@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { META_ENTER, composerSubmits, keyHandler, terminalKey } from './keys';
+import { META_ENTER, keyHandler, terminalKey } from './keys';
 
 const key = (over: Partial<KeyboardEvent>) =>
   ({ type: 'keydown', key: 'a', altKey: false, ctrlKey: false, shiftKey: false, ...over }) as KeyboardEvent;
@@ -49,12 +49,5 @@ describe('keyHandler', () => {
     expect(handle(e)).toBe(true);
     expect(calls).toEqual({ write: [], paste: 0 });
     expect(e.prevented).toBe(false);
-  });
-});
-
-describe('composerSubmits', () => {
-  it('submits only on Ctrl+Enter', () => {
-    expect(composerSubmits(key({ key: 'Enter', ctrlKey: true }))).toBe(true);
-    expect(composerSubmits(key({ key: 'Enter' }))).toBe(false);
   });
 });

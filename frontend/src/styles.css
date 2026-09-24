@@ -66,12 +66,10 @@ button:hover { background: var(--line); }
 .item.dragging { opacity: 0.5; }
 .item .badge { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 
-.main { display: grid; grid-template-rows: 1fr auto; min-height: 0; }
+.main { display: grid; grid-template-rows: 1fr; min-height: 0; }
 .terminals { position: relative; min-height: 0; background: var(--term-bg); padding: 6px; }
 .terminal { position: absolute; inset: 6px; }
 .empty { display: grid; place-items: center; height: 100%; color: var(--muted); }
-.composer { display: flex; gap: 6px; padding: 6px; border-top: 1px solid var(--line); background: var(--panel); }
-.composer textarea { flex: 1; height: 64px; resize: vertical; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px; }
 .problems { background: #3b2a12; color: var(--waiting); padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: pre-wrap; }
 
 .connection { position: fixed; inset: 30px 0 0 0; z-index: 20; display: grid; place-content: center; justify-items: center; gap: 12px; padding: 24px; background: var(--bg); color: var(--muted); }
