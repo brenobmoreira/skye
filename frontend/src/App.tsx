@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { api, isWindow, on } from './bridge';
+import { api, connection, isWindow, on, onConnection, retryConnection } from './bridge';
 import { bark } from './sound';
 import { TitleBar } from './components/TitleBar';
 import { Sidebar } from './components/Sidebar';
 import { TerminalView } from './components/TerminalView';
 import { Composer } from './components/Composer';
 import type { Conversation, Preset, Terminal } from './lib/types';
+import type { ConnectionState } from './windowsTransport';
 import { applyZoom, parseFontSize, zoomKey, type ZoomAction } from './lib/zoom';
 
 const FONT_KEY = 'skye:fontSize';
@@ -16,6 +17,19 @@ function storedFontSize(): number {
   } catch {
     return parseFontSize(null);
   }
+}
+
+function ConnectionScreen({ state }: { state: ConnectionState }) {
+  if (state.kind === 'error') {
+    return (
+      <div className="connection error">
+        <h2>não consegui abrir a skye</h2>
+        <pre>{state.message}</pre>
+        <button onClick={retryConnection}>tentar de novo</button>
+      </div>
+    );
+  }
+  return <div className="connection">iniciando a skye no WSL…</div>;
 }
 
 const byCreation = (a: Terminal, b: Terminal) =>
@@ -30,6 +44,13 @@ export function App() {
   const [problems, setProblems] = useState<string[]>([]);
   const [fontSize, setFontSize] = useState(storedFontSize);
   const [epoch, setEpoch] = useState(0);
+  const [link, setLink] = useState(connection);
+
+  useEffect(() => {
+    const off = onConnection(setLink);
+    setLink(connection());
+    return off;
+  }, []);
 
   useEffect(() => {
     const zoom = (action: ZoomAction) =>
@@ -110,6 +131,7 @@ export function App() {
 
   return (
     <div className="app">
+      {link.kind !== 'ready' && <ConnectionScreen state={link} />}
       <TitleBar presets={presets} sound={sound} onNew={open} onToggleSound={toggleSound} />
       <div className="body">
         <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} onSelect={setActiveId} onResume={resume} />

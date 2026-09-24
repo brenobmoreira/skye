@@ -2,6 +2,8 @@ import type { Conversation, OutputEvent, Preset, Terminal } from './lib/types';
 import { createOutputHub } from './output';
 import { createSendQueue } from './sendQueue';
 import { createWsClient, type SocketLike } from './wsClient';
+import { detectMode } from './mode';
+import { createWindowsTransport, type ConnectionState, type Endpoint } from './windowsTransport';
 
 interface GoBridge {
   List(): Promise<Terminal[]>;
@@ -25,26 +27,31 @@ interface GoBridge {
   Problems(): Promise<string[]>;
 }
 
+interface GoShell {
+  Connect(): Promise<Endpoint>;
+}
+
 interface WailsRuntime {
   EventsOn(name: string, cb: (...data: any[]) => void): () => void;
   WindowMinimise(): void;
   WindowToggleMaximise(): void;
+  WindowIsMaximised?(): Promise<boolean>;
+  Quit(): void;
 }
 
 declare global {
   interface Window {
-    go?: { main?: { Bridge?: GoBridge } };
+    go?: { main?: { Bridge?: GoBridge; Shell?: GoShell } };
     runtime: WailsRuntime;
   }
 }
 
-const inWindow = typeof window !== 'undefined' && !!window.go?.main?.Bridge;
+export const mode = typeof window === 'undefined' ? 'browser' : detectMode(window);
 
-export const isWindow = () => inWindow;
+export const isWindow = () => mode !== 'browser';
 
-function browserSocket(): SocketLike {
-  const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
-  const ws = new WebSocket(`${scheme}://${location.host}/ws`);
+function socketAt(url: string): SocketLike {
+  const ws = new WebSocket(url);
   const s: SocketLike = {
     send: (data) => ws.send(data),
     close: () => ws.close(),
@@ -60,8 +67,35 @@ function browserSocket(): SocketLike {
   return s;
 }
 
-function remoteBridge(): { bridge: GoBridge; on: (name: string, cb: (...data: any[]) => void) => () => void } {
-  const client = createWsClient({ connect: browserSocket });
+function browserSocket(): SocketLike {
+  const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
+  return socketAt(`${scheme}://${location.host}/ws`);
+}
+
+let connectionState: ConnectionState = mode === 'windows-app' ? { kind: 'connecting' } : { kind: 'ready' };
+const connectionListeners = new Set<(state: ConnectionState) => void>();
+
+const windowsTransport =
+  mode === 'windows-app'
+    ? createWindowsTransport({
+        connect: () => window.go!.main!.Shell!.Connect(),
+        open: socketAt,
+        onState: (state) => {
+          connectionState = state;
+          connectionListeners.forEach((cb) => cb(state));
+        },
+      })
+    : null;
+
+export const connection = () => connectionState;
+export const onConnection = (cb: (state: ConnectionState) => void) => {
+  connectionListeners.add(cb);
+  return () => { connectionListeners.delete(cb); };
+};
+export const retryConnection = () => windowsTransport?.retry();
+
+function remoteBridge(connect: () => SocketLike): { bridge: GoBridge; on: (name: string, cb: (...data: any[]) => void) => () => void } {
+  const client = createWsClient({ connect });
   const call = <T>(method: string, ...args: unknown[]) => client.call<T>(method, ...args);
   const bridge: GoBridge = {
     List: () => call('List'),
@@ -87,7 +121,7 @@ function remoteBridge(): { bridge: GoBridge; on: (name: string, cb: (...data: an
   return { bridge, on: (name, cb) => client.on(name, cb) };
 }
 
-const remote = inWindow ? null : remoteBridge();
+const remote = mode === 'linux-window' ? null : remoteBridge(windowsTransport ? windowsTransport.dial : browserSocket);
 
 export const api = (): GoBridge => remote?.bridge ?? window.go!.main!.Bridge!;
 export const runtime = (): WailsRuntime => window.runtime;
