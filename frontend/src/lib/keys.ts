@@ -11,6 +11,19 @@ export function terminalKey(e: Keyish): KeyAction {
   return { kind: 'pass' };
 }
 
+// Keys we handle ourselves must also skip the browser default: xterm stops at a false return
+// without cancelling, and in WebView2 Ctrl+Shift+V is a native paste that xterm would paste again.
+export function keyHandler(write: (data: string) => void, paste: () => void) {
+  return (e: KeyboardEvent): boolean => {
+    const action = terminalKey(e);
+    if (action.kind === 'pass') return true;
+    e.preventDefault();
+    if (action.kind === 'send') write(action.data);
+    else paste();
+    return false;
+  };
+}
+
 export function composerSubmits(e: Pick<KeyboardEvent, 'key' | 'ctrlKey'>): boolean {
   return e.key === 'Enter' && e.ctrlKey;
 }

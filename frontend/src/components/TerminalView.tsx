@@ -3,7 +3,7 @@ import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { api, input, output } from '../bridge';
-import { terminalKey } from '../lib/keys';
+import { keyHandler } from '../lib/keys';
 
 export function TerminalView({ id, active, fontSize, fontFamily }: { id: string; active: boolean; fontSize: number; fontFamily: string }) {
   const host = useRef<HTMLDivElement>(null);
@@ -30,18 +30,10 @@ export function TerminalView({ id, active, fontSize, fontFamily }: { id: string;
     term.current = t;
     fit.current = f;
 
-    t.attachCustomKeyEventHandler((e) => {
-      const action = terminalKey(e);
-      if (action.kind === 'send') {
-        input(id).write(action.data);
-        return false;
-      }
-      if (action.kind === 'paste') {
-        navigator.clipboard.readText().then((text) => text && t.paste(text)).catch(() => {});
-        return false;
-      }
-      return true;
-    });
+    t.attachCustomKeyEventHandler(keyHandler(
+      (data) => input(id).write(data),
+      () => { navigator.clipboard.readText().then((text) => text && t.paste(text)).catch(() => {}); },
+    ));
     t.onData((data) => input(id).write(data));
     t.onSelectionChange(() => {
       const selected = t.getSelection();
