@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-var Events = []string{"SessionStart", "UserPromptSubmit", "PostToolUse", "Notification", "Stop", "SessionEnd"}
+var Events = []string{"SessionStart", "UserPromptSubmit", "PostToolUse", "Notification", "PermissionRequest", "Stop", "SessionEnd"}
 
 const marker = "http://skye/event"
 

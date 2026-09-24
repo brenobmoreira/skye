@@ -8,6 +8,7 @@ export interface Terminal {
   state: State;
   sessionId: string;
   title: string;
+  ask?: string;
   createdAt: string;
   order: number;
 }

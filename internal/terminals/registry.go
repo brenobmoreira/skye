@@ -19,29 +19,35 @@ const (
 	Idle    State = "idle"
 )
 
-const TitleLimit = 80
+const (
+	TitleLimit = 80
+	AskLimit   = 120
+)
 
 var rank = map[State]int{Waiting: 0, Idle: 1, Running: 2, Shell: 3}
 
 var validEvents = map[string]bool{
-	"SessionStart":     true,
-	"UserPromptSubmit": true,
-	"PostToolUse":      true,
-	"Notification":     true,
-	"Stop":             true,
-	"SessionEnd":       true,
+	"SessionStart":      true,
+	"UserPromptSubmit":  true,
+	"PostToolUse":       true,
+	"Notification":      true,
+	"PermissionRequest": true,
+	"Stop":              true,
+	"SessionEnd":        true,
 }
 
 type Terminal struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Preset    string    `json:"preset"`
-	Cwd       string    `json:"cwd"`
-	Window    string    `json:"-"`
-	Pane      string    `json:"-"`
-	State     State     `json:"state"`
-	SessionID string    `json:"sessionId"`
-	Title     string    `json:"title"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Preset    string `json:"preset"`
+	Cwd       string `json:"cwd"`
+	Window    string `json:"-"`
+	Pane      string `json:"-"`
+	State     State  `json:"state"`
+	SessionID string `json:"sessionId"`
+	Title     string `json:"title"`
+	// Ask is what claude said it needs while the terminal waits for the user.
+	Ask       string    `json:"ask"`
 	CreatedAt time.Time `json:"createdAt"`
 	// Order sorts terminals inside the same state group; 0 means not placed yet.
 	Order int `json:"order"`
@@ -223,6 +229,8 @@ func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
 	prev := t.State
 	ch := Change{Prev: prev}
 	now := r.now()
+	ask := t.Ask
+	t.Ask = ""
 	switch ev.Name {
 	case "SessionStart":
 		if t.SessionID != "" && ev.SessionID != "" && t.SessionID != ev.SessionID {
@@ -238,7 +246,7 @@ func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
 		t.State = Idle
 	case "UserPromptSubmit":
 		if t.Title == "" {
-			t.Title = titleFrom(ev.Prompt)
+			t.Title = firstLine(ev.Prompt, TitleLimit)
 		}
 		if ev.Cwd != "" {
 			t.Cwd = ev.Cwd
@@ -253,9 +261,22 @@ func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
 		if ev.Cwd != "" {
 			t.Cwd = ev.Cwd
 		}
-		if prev == Running {
+		switch prev {
+		case Running:
 			t.State = Waiting
+			t.Ask = ask
+			if t.Ask == "" {
+				t.Ask = firstLine(ev.Message, AskLimit)
+			}
 			ch.Attention = true
+		case Waiting:
+			t.Ask = ask
+		}
+	case "PermissionRequest":
+		// The dialog shows before the Notification that moves the terminal to waiting; keep
+		// what it asks so the Notification can show it.
+		if prev == Running || prev == Waiting {
+			t.Ask = firstLine(ev.Tool, AskLimit)
 		}
 	case "Stop":
 		if ev.Cwd != "" {
@@ -289,15 +310,15 @@ func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
 	return ch, true
 }
 
-func titleFrom(prompt string) string {
-	for _, line := range strings.Split(prompt, "\n") {
+func firstLine(text string, limit int) string {
+	for _, line := range strings.Split(text, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 		runes := []rune(line)
-		if len(runes) > TitleLimit {
-			return string(runes[:TitleLimit-1]) + "…"
+		if len(runes) > limit {
+			return string(runes[:limit-1]) + "…"
 		}
 		return line
 	}
