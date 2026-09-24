@@ -8,6 +8,7 @@ import (
 	"io"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -27,9 +28,10 @@ type Output struct {
 }
 
 type Window struct {
-	ID     string
-	Pane   string
-	SkyeID string
+	ID      string
+	Pane    string
+	SkyeID  string
+	PanePID int
 }
 
 type reply struct {
@@ -214,17 +216,19 @@ func (c *Client) NewWindow(skyeID string, env map[string]string, argv []string) 
 }
 
 func (c *Client) ListWindows() ([]Window, error) {
-	lines, err := c.Command("list-windows -t " + Session + " -F '#{window_id} #{pane_id} #{@skye_id}'")
+	// @skye_id goes last: the placeholder window has none, so its line is one field short.
+	lines, err := c.Command("list-windows -t " + Session + " -F '#{window_id} #{pane_id} #{pane_pid} #{@skye_id}'")
 	if err != nil {
 		return nil, err
 	}
 	windows := []Window{}
 	for _, line := range lines {
 		f := strings.Fields(line)
-		if len(f) < 3 {
+		if len(f) < 4 {
 			continue
 		}
-		windows = append(windows, Window{ID: f[0], Pane: f[1], SkyeID: f[2]})
+		pid, _ := strconv.Atoi(f[2])
+		windows = append(windows, Window{ID: f[0], Pane: f[1], PanePID: pid, SkyeID: f[3]})
 	}
 	return windows, nil
 }

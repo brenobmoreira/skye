@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -15,7 +16,10 @@ func startTest(t *testing.T) (*Client, string) {
 		t.Skip("tmux not installed")
 	}
 	socket := fmt.Sprintf("skye-test-%d-%d", os.Getpid(), time.Now().UnixNano())
-	t.Cleanup(func() { _ = exec.Command("tmux", "-L", socket, "kill-server").Run() })
+	t.Cleanup(func() {
+		_ = exec.Command("tmux", "-L", socket, "kill-server").Run()
+		_ = os.Remove(filepath.Join(SocketDir(os.Getenv, os.Getuid()), socket))
+	})
 	if err := EnsureServer(socket, "/dev/null"); err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +63,7 @@ func TestNewWindowRunsArgvWithEnv(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(ws) != 1 || ws[0].SkyeID != "t1" || ws[0].ID != w.ID {
+	if len(ws) != 1 || ws[0].SkyeID != "t1" || ws[0].ID != w.ID || ws[0].PanePID <= 0 {
 		t.Fatalf("ListWindows = %+v (placeholder must be filtered)", ws)
 	}
 }
@@ -117,5 +121,13 @@ func TestErrorsAndWindowClose(t *testing.T) {
 	case <-c.Exited:
 	case <-time.After(5 * time.Second):
 		t.Fatal("client did not exit after kill-server")
+	}
+}
+
+func TestTestServerLeavesNoSocketBehind(t *testing.T) {
+	var socket string
+	t.Run("server", func(t *testing.T) { _, socket = startTest(t) })
+	if _, err := os.Stat(filepath.Join(SocketDir(os.Getenv, os.Getuid()), socket)); !os.IsNotExist(err) {
+		t.Fatalf("socket %s left behind: %v", socket, err)
 	}
 }

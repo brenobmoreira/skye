@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/brenobmoreira/skye/internal/app"
 	"github.com/brenobmoreira/skye/internal/config"
 	"github.com/brenobmoreira/skye/internal/hooks"
 	"github.com/brenobmoreira/skye/internal/resume"
@@ -30,6 +31,7 @@ type rpcTarget interface {
 	Quit() error
 	Problems() []string
 	Usage() hooks.Usage
+	Monitor() (app.MonitorReport, error)
 }
 
 func decodeArgs(method string, args []json.RawMessage, dst ...any) error {
@@ -84,6 +86,11 @@ func dispatcher(t rpcTarget) web.Dispatch {
 				return nil, err
 			}
 			return t.Usage(), nil
+		case "Monitor":
+			if err := decode(); err != nil {
+				return nil, err
+			}
+			return t.Monitor()
 		case "Quit":
 			if err := decode(); err != nil {
 				return nil, err

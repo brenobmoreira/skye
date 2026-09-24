@@ -10,6 +10,7 @@ import (
 	"github.com/brenobmoreira/skye/internal/config"
 	"github.com/brenobmoreira/skye/internal/hooks"
 	"github.com/brenobmoreira/skye/internal/launch"
+	"github.com/brenobmoreira/skye/internal/procs"
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
 	"github.com/brenobmoreira/skye/internal/tmuxctl"
@@ -41,6 +42,18 @@ type Options struct {
 	Home     string
 	NewID    func() string
 	Now      func() time.Time
+	// For the monitor: this process, the user's processes, the tmux sockets and the memory
+	// history. Monitor fails without Procs.
+	PID        int
+	Procs      ProcSource
+	Servers    func() []tmuxctl.Server
+	History    func() []procs.Point
+	TmuxSocket string
+}
+
+type ProcSource interface {
+	Machine() (procs.Machine, error)
+	List() ([]procs.Proc, error)
 }
 
 type OutputEvent struct {

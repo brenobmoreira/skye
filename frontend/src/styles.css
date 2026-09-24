@@ -83,7 +83,7 @@ button:hover { background: var(--line); }
 .item.dragging { opacity: 0.5; }
 .item .badge { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 
-.main { display: grid; grid-template-rows: 1fr; min-height: 0; }
+.main { display: grid; grid-template-rows: 1fr; grid-template-columns: minmax(0, 1fr); min-height: 0; min-width: 0; }
 .terminals { position: relative; min-height: 0; background: var(--term-bg); padding: 6px; }
 .terminal { position: absolute; inset: 6px; }
 .empty { display: grid; place-items: center; height: 100%; color: var(--muted); }
@@ -94,3 +94,44 @@ button:hover { background: var(--line); }
 .connection pre { max-width: min(900px, 90vw); max-height: 60vh; overflow: auto; margin: 0; padding: 10px 12px; white-space: pre-wrap; word-break: break-word; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--waiting); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; user-select: text; }
 .titlebar button:disabled { opacity: 0.4; cursor: default; }
 .titlebar button:disabled:hover { background: transparent; }
+
+.titlebar .flat.on { color: var(--accent); }
+.monitor { min-height: 0; min-width: 0; overflow: auto; padding: 16px 20px 24px; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 18px; background: var(--bg); }
+.monitor h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; }
+.monitor .hint { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
+.monitor .warn { color: var(--waiting); }
+.monitor code { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.mon-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.mon-tiles .tile { display: grid; gap: 4px; padding: 10px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+.mon-tiles .label { font-size: 11px; color: var(--muted); }
+.mon-tiles .value { font-size: 22px; font-variant-numeric: tabular-nums; }
+.mon-tiles .note { font-size: 11px; color: var(--muted); }
+.monitor .meter { display: block; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.monitor .meter span { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+.monitor .meter span.warn { background: var(--waiting); }
+.mon-chart { margin: 0; padding: 10px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+.mon-chart figcaption { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+.mon-chart .plot { position: relative; height: 64px; cursor: crosshair; }
+.mon-chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.mon-chart .series { fill: none; stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.mon-chart .axis { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.mon-chart .crosshair { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--muted); pointer-events: none; }
+.mon-chart .tip { position: absolute; top: -4px; margin-left: 8px; padding: 2px 6px; font-size: 11px; white-space: nowrap; color: var(--text); background: var(--titlebar); border: 1px solid var(--line); border-radius: 4px; pointer-events: none; }
+.mon-chart .tip.left { transform: translateX(calc(-100% - 16px)); }
+.mon-chart .ends { display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; color: var(--muted); }
+.mon-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.mon-table th { text-align: left; font-weight: 500; color: var(--muted); padding: 4px 8px; border-bottom: 1px solid var(--line); }
+.mon-table td { padding: 5px 8px; border-bottom: 1px solid var(--line); }
+.mon-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mon-scroll { overflow-x: auto; }
+.mon-table .name { display: flex; align-items: center; gap: 6px; }
+.mon-table .name svg { width: 16px; height: 16px; flex: none; }
+.mon-table .cmd { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', monospace; }
+.mon-table .bar-col { width: 22%; min-width: 60px; }
+.mon-table tr.link { cursor: pointer; }
+.mon-table tr.link:hover td { background: var(--panel); }
+.mon-table tr.muted td { color: var(--muted); }
+.mon-table tfoot td { font-weight: 600; border-bottom: 0; }
+.mon-servers { margin: 0; padding-left: 18px; font-size: 12px; color: var(--muted); }
+.mon-servers summary { cursor: pointer; }
+.mon-servers details div { padding-left: 14px; }

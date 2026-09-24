@@ -17,6 +17,7 @@ import (
 	"github.com/brenobmoreira/skye/internal/hooks"
 	"github.com/brenobmoreira/skye/internal/notify"
 	"github.com/brenobmoreira/skye/internal/opener"
+	"github.com/brenobmoreira/skye/internal/procs"
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
 	"github.com/brenobmoreira/skye/internal/tmuxctl"
@@ -135,6 +136,13 @@ func (b *Bridge) boot() error {
 		Home:     home,
 		NewID:    newID,
 		Now:      time.Now,
+		PID:      os.Getpid(),
+		Procs:    procs.Reader{Root: "/proc", UID: os.Getuid()},
+		Servers: func() []tmuxctl.Server {
+			return tmuxctl.Servers(tmuxctl.SocketDir(os.Getenv, os.Getuid()))
+		},
+		History:    func() []procs.Point { return procs.History(sysagentHistory(home), time.Now(), 3*time.Hour) },
+		TmuxSocket: tmuxSocket,
 	})
 	b.mu.Lock()
 	b.app, b.client = a, client
@@ -157,6 +165,22 @@ func (b *Bridge) handleStatus(terminal string, s hooks.Status) {
 	if a, err := b.ready(); err == nil {
 		a.HandleStatus(terminal, s)
 	}
+}
+
+// sysagentHistory is where mcp-sysagent keeps its minute-by-minute memory samples.
+func sysagentHistory(home string) string {
+	if dir := os.Getenv("SYSAGENT_HISTORY_DIR"); dir != "" {
+		return dir
+	}
+	return filepath.Join(home, ".local", "share", "mcp-sysagent", "history")
+}
+
+func (b *Bridge) Monitor() (app.MonitorReport, error) {
+	a, err := b.ready()
+	if err != nil {
+		return app.MonitorReport{}, err
+	}
+	return a.Monitor()
 }
 
 func (b *Bridge) Usage() hooks.Usage {

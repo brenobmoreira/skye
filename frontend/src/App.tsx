@@ -4,6 +4,7 @@ import { bark } from './sound';
 import { TitleBar } from './components/TitleBar';
 import { Sidebar } from './components/Sidebar';
 import { TerminalView } from './components/TerminalView';
+import { Monitor } from './components/Monitor';
 import type { Conversation, Preset, State, Terminal, Usage } from './lib/types';
 import { nextUnread } from './lib/unread';
 import { shortcut } from './lib/shortcuts';
@@ -62,6 +63,7 @@ export function App() {
   const [focused, setFocused] = useState(windowFocused);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [unread, setUnread] = useState<Set<string>>(() => new Set());
+  const [monitor, setMonitor] = useState(false);
   const lastStates = useRef<Record<string, State>>({});
   const jump = useRef({ terminals, activeId, unread });
   jump.current = { terminals, activeId, unread };
@@ -102,6 +104,7 @@ export function App() {
         e.preventDefault();
         e.stopPropagation();
         setActiveId(target);
+        setMonitor(false);
         return;
       }
       const action = zoomKey(e);
@@ -169,8 +172,9 @@ export function App() {
 
   const views = [...terminals].sort(byCreation);
 
-  const open = async (preset: string) => setActiveId((await api().NewTerminal(preset)).id);
-  const resume = async (sessionId: string) => setActiveId((await api().Resume(sessionId)).id);
+  const show = (id: string) => { setActiveId(id); setMonitor(false); };
+  const open = async (preset: string) => show((await api().NewTerminal(preset)).id);
+  const resume = async (sessionId: string) => show((await api().Resume(sessionId)).id);
   const reorder = (list: Terminal[]) => {
     setTerminals(list);
     api().Reorder(list.map((t) => t.id)).catch(() => {});
@@ -186,14 +190,15 @@ export function App() {
   return (
     <div className={isWindow() ? 'app windowed' : 'app'}>
       {link.kind !== 'ready' && <ConnectionScreen state={link} />}
-      <TitleBar presets={presets} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} onPickFont={pickFont} />
+      <TitleBar presets={presets} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} onPickFont={pickFont} monitor={monitor} onToggleMonitor={() => setMonitor(!monitor)} />
       <div className="body">
-        <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={unread} onSelect={setActiveId} onReorder={reorder} onResume={resume} usage={usage} />
+        <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={unread} onSelect={show} onReorder={reorder} onResume={resume} usage={usage} />
         <main className="main">
-          <div className="terminals">
+          {monitor && <Monitor terminals={terminals} onOpen={show} />}
+          <div className="terminals" hidden={monitor}>
             {problems.length > 0 && <div className="problems">{problems.join('\n')}</div>}
             {terminals.length === 0 && <div className="empty">Nenhum terminal. Abra um no +.</div>}
-            {views.map((t) => <TerminalView key={`${t.id}:${epoch}`} id={t.id} active={t.id === activeId} fontSize={fontSize} fontFamily={font.family} />)}
+            {views.map((t) => <TerminalView key={`${t.id}:${epoch}`} id={t.id} active={!monitor && t.id === activeId} fontSize={fontSize} fontFamily={font.family} />)}
           </div>
         </main>
       </div>
