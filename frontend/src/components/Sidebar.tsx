@@ -22,7 +22,7 @@ function storedEndedOpen(): boolean {
 
 type Drag = { dragging: string | null; start: (id: string) => void; over: (id: string) => boolean; drop: (id: string) => void; end: () => void };
 
-function TerminalItem({ t, active, unread, now, onSelect, drag }: { t: Terminal; active: boolean; unread: boolean; now: number; onSelect: () => void; drag: Drag }) {
+function TerminalItem({ t, active, shown, unread, now, onSelect, drag }: { t: Terminal; active: boolean; shown: boolean; unread: boolean; now: number; onSelect: (side: boolean) => void; drag: Drag }) {
   const label = itemLabel(t);
   const time = elapsed(t.since, t.state, now);
   const bar = contextBar(t.context);
@@ -38,8 +38,8 @@ function TerminalItem({ t, active, unread, now, onSelect, drag }: { t: Terminal;
   };
   return (
     <div
-      className={`item${active ? ' active' : ''}${unread ? ' unread' : ''}${drag.dragging === t.id ? ' dragging' : ''}`}
-      onClick={onSelect}
+      className={`item${active ? ' active' : shown ? ' shown' : ''}${unread ? ' unread' : ''}${drag.dragging === t.id ? ' dragging' : ''}`}
+      onClick={(e) => onSelect(e.ctrlKey || e.metaKey)}
       title={hover}
       draggable={!editing}
       onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; drag.start(t.id); }}
@@ -101,7 +101,8 @@ export function Sidebar(props: {
   conversations: Conversation[];
   activeId: string | null;
   unread: Set<string>;
-  onSelect: (id: string) => void;
+  shown: string[];
+  onSelect: (id: string, side: boolean) => void;
   onReorder: (list: Terminal[]) => void;
   onResume: (sessionId: string) => void;
   usage: Usage | null;
@@ -137,7 +138,7 @@ export function Sidebar(props: {
       <div className="list">
       <h3>Terminais</h3>
       {props.terminals.map((t) => (
-        <TerminalItem key={t.id} t={t} active={t.id === props.activeId} unread={props.unread.has(t.id)} now={now} onSelect={() => props.onSelect(t.id)} drag={drag} />
+        <TerminalItem key={t.id} t={t} active={t.id === props.activeId} shown={props.shown.includes(t.id)} unread={props.unread.has(t.id)} now={now} onSelect={(side) => props.onSelect(t.id, side)} drag={drag} />
       ))}
       {props.conversations.length > 0 && (
         <h3 className="toggle" onClick={toggleEnded} title={endedOpen ? 'recolher' : 'mostrar'}>

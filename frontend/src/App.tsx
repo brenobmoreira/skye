@@ -8,6 +8,7 @@ import { Monitor } from './components/Monitor';
 import type { Conversation, Preset, Repo, State, Terminal, Usage } from './lib/types';
 import { nextUnread } from './lib/unread';
 import { shortcut } from './lib/shortcuts';
+import { active, closeSplit, prune, select, selectSide, slotOf, visible, type Panes } from './lib/panes';
 import type { ConnectionState } from './windowsTransport';
 import { applyZoom, parseFontSize, zoomKey, type ZoomAction } from './lib/zoom';
 import { parseFont, type TerminalFont } from './lib/fonts';
@@ -46,6 +47,11 @@ function storedFont(): TerminalFont {
 
 const windowFocused = () => document.visibilityState === 'visible' && document.hasFocus();
 
+// Two terminals side by side need room for both next to the sidebar; narrower, only the focused
+// one shows.
+const SPLIT_QUERY = '(min-width: 1100px)';
+const splitRoom = () => typeof window.matchMedia === 'function' && window.matchMedia(SPLIT_QUERY).matches;
+
 const byCreation = (a: Terminal, b: Terminal) =>
   Date.parse(a.createdAt) - Date.parse(b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
@@ -54,7 +60,9 @@ export function App() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [presets, setPresets] = useState<Preset[]>([]);
   const [repos, setRepos] = useState<Repo[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [panes, setPanes] = useState<Panes>({ left: null, right: null, focus: 'left' });
+  const [room, setRoom] = useState(splitRoom);
+  const activeId = active(panes);
   const [sound, setSound] = useState(true);
   const [problems, setProblems] = useState<string[]>([]);
   const [fontSize, setFontSize] = useState(storedFontSize);
@@ -105,7 +113,7 @@ export function App() {
       if (target) {
         e.preventDefault();
         e.stopPropagation();
-        setActiveId(target);
+        setPanes((p) => select(p, target));
         setMonitor(false);
         return;
       }
@@ -162,19 +170,29 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (activeId && terminals.some((t) => t.id === activeId)) return;
-    setActiveId(terminals[0]?.id ?? null);
-  }, [terminals, activeId]);
+    setPanes((p) => prune(p, terminals.map((t) => t.id)));
+  }, [terminals]);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const query = window.matchMedia(SPLIT_QUERY);
+    const change = () => setRoom(query.matches);
+    query.addEventListener('change', change);
+    return () => query.removeEventListener('change', change);
+  }, []);
 
   useEffect(() => {
     const prev = lastStates.current;
-    setUnread((current) => nextUnread(prev, terminals, current, focused ? activeId : null));
+    const seen = focused && !monitor ? visible(panes, room) : [];
+    setUnread((current) => nextUnread(prev, terminals, current, seen));
     lastStates.current = Object.fromEntries(terminals.map((t) => [t.id, t.state]));
-  }, [terminals, activeId, focused]);
+  }, [terminals, panes, room, focused, monitor]);
 
   const views = [...terminals].sort(byCreation);
 
-  const show = (id: string) => { setActiveId(id); setMonitor(false); };
+  const show = (id: string) => { setPanes((p) => select(p, id)); setMonitor(false); };
+  const pickFromList = (id: string, side: boolean) => { setPanes((p) => (side ? selectSide(p, id) : select(p, id))); setMonitor(false); };
+  const split = !monitor && panes.right !== null && room;
   const open = async (preset: string) => show((await api().NewTerminal(preset)).id);
   const newWorktree = async (repo: string, branch: string) => show((await api().NewWorktree(repo, branch)).id);
   const resume = async (sessionId: string) => show((await api().Resume(sessionId)).id);
@@ -195,13 +213,24 @@ export function App() {
       {link.kind !== 'ready' && <ConnectionScreen state={link} />}
       <TitleBar presets={presets} repos={repos} onNewWorktree={newWorktree} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} onPickFont={pickFont} monitor={monitor} onToggleMonitor={() => setMonitor(!monitor)} />
       <div className="body">
-        <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={unread} onSelect={show} onReorder={reorder} onResume={resume} usage={usage} />
+        <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={unread} shown={visible(panes, room)} onSelect={pickFromList} onReorder={reorder} onResume={resume} usage={usage} />
         <main className="main">
           {monitor && <Monitor terminals={terminals} onOpen={show} />}
           <div className="terminals" hidden={monitor}>
             {problems.length > 0 && <div className="problems">{problems.join('\n')}</div>}
             {terminals.length === 0 && <div className="empty">Nenhum terminal. Abra um no +.</div>}
-            {views.map((t) => <TerminalView key={`${t.id}:${epoch}`} id={t.id} active={!monitor && t.id === activeId} fontSize={fontSize} fontFamily={font.family} />)}
+            {split && <button className="unsplit" onClick={() => setPanes(closeSplit)} title="voltar a um terminal só">×</button>}
+            {views.map((t) => (
+              <TerminalView
+                key={`${t.id}:${epoch}`}
+                id={t.id}
+                slot={monitor ? null : slotOf(panes, t.id, room)}
+                focused={!monitor && t.id === activeId}
+                onFocus={() => setPanes((p) => select(p, t.id))}
+                fontSize={fontSize}
+                fontFamily={font.family}
+              />
+            ))}
           </div>
         </main>
       </div>

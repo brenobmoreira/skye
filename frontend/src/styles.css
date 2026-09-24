@@ -69,6 +69,7 @@ button:hover { background: var(--line); }
 .item .ctx.full span { background: var(--waiting); opacity: 1; }
 .item:hover { background: var(--panel); }
 .item.active { background: var(--line); }
+.item.shown { background: rgba(255, 255, 255, 0.04); box-shadow: inset 2px 0 var(--line); }
 .titlebar .logo { width: 18px; height: 18px; flex: none; }
 .item .dog { width: 18px; height: 18px; display: block; }
 .item .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -89,6 +90,12 @@ button:hover { background: var(--line); }
 .main { display: grid; grid-template-rows: 1fr; grid-template-columns: minmax(0, 1fr); min-height: 0; min-width: 0; }
 .terminals { position: relative; min-height: 0; background: var(--term-bg); padding: 6px; }
 .terminal { position: absolute; inset: 6px; }
+.terminal.left { right: calc(50% + 3px); }
+.terminal.right { left: calc(50% + 3px); }
+.terminal.left, .terminal.right { outline: 1px solid var(--line); outline-offset: 2px; border-radius: 2px; }
+.terminal.focused { outline-color: var(--accent); }
+.unsplit { position: absolute; top: 2px; right: 4px; z-index: 5; width: 20px; height: 20px; padding: 0; line-height: 18px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; cursor: pointer; }
+.unsplit:hover { color: var(--text); }
 .empty { display: grid; place-items: center; height: 100%; color: var(--muted); }
 .problems { background: #3b2a12; color: var(--waiting); padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: pre-wrap; }
 
