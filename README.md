@@ -47,6 +47,7 @@ O latido é `frontend/public/bark.ogg`; sem o arquivo, a skye toca um bipe.
 - No terminal: `Alt+Enter` quebra linha no claude; selecionar copia; `Ctrl+Shift+V` cola.
 - **×** esconde a janela (os terminais continuam); rodar `skye` de novo traz a janela.
 - **sair** encerra todos os terminais; as conversas vão para *Encerradas*, com *retomar*.
+  *Encerradas* começa recolhida; clique no título para abrir (a escolha fica lembrada).
 
 ## Abrir pelo navegador
 

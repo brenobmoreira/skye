@@ -5,6 +5,16 @@ import { moveWithinGroup } from '../lib/order';
 import { stateLabel } from '../lib/states';
 import type { Conversation, Terminal } from '../lib/types';
 
+const ENDED_KEY = 'skye:endedOpen';
+
+function storedEndedOpen(): boolean {
+  try {
+    return localStorage.getItem(ENDED_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
 type Drag = { dragging: string | null; start: (id: string) => void; over: (id: string) => boolean; drop: (id: string) => void; end: () => void };
 
 function TerminalItem({ t, active, unread, onSelect, drag }: { t: Terminal; active: boolean; unread: boolean; onSelect: () => void; drag: Drag }) {
@@ -63,6 +73,13 @@ export function Sidebar(props: {
   onResume: (sessionId: string) => void;
 }) {
   const [dragging, setDragging] = useState<string | null>(null);
+  const [endedOpen, setEndedOpen] = useState(storedEndedOpen);
+  const toggleEnded = () => {
+    setEndedOpen(!endedOpen);
+    try {
+      localStorage.setItem(ENDED_KEY, String(!endedOpen));
+    } catch {}
+  };
   const drag: Drag = {
     dragging,
     start: setDragging,
@@ -80,15 +97,21 @@ export function Sidebar(props: {
       {props.terminals.map((t) => (
         <TerminalItem key={t.id} t={t} active={t.id === props.activeId} unread={props.unread.has(t.id)} onSelect={() => props.onSelect(t.id)} drag={drag} />
       ))}
-      {props.conversations.length > 0 && <h3>Encerradas</h3>}
-      {props.conversations.map((c) => (
+      {props.conversations.length > 0 && (
+        <h3 className="toggle" onClick={toggleEnded} title={endedOpen ? 'recolher' : 'mostrar'}>
+          {endedOpen ? '▾' : '▸'} Encerradas ({props.conversations.length})
+        </h3>
+      )}
+      {endedOpen && props.conversations.map((c) => (
         <div className="item" key={c.sessionId} onClick={() => props.onResume(c.sessionId)} title="retomar">
           <span className="dot" style={{ background: 'var(--shell)' }} />
           <div>
-            <div className="name">{c.title}</div>
+            <div className="row">
+              <div className="name">{c.title}</div>
+              <button className="x" title="esquecer" onClick={(e) => { e.stopPropagation(); api().Forget(c.sessionId); }}>×</button>
+            </div>
             <div className="sub">{base(c.cwd)} · retomar</div>
           </div>
-          <button className="x" title="esquecer" onClick={(e) => { e.stopPropagation(); api().Forget(c.sessionId); }}>×</button>
         </div>
       ))}
     </aside>
