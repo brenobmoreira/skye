@@ -50,3 +50,51 @@ export interface OutputEvent {
   id: string;
   data: string;
 }
+
+export interface Machine {
+  memTotalMb: number;
+  memAvailMb: number;
+  swapTotalMb: number;
+  swapUsedMb: number;
+  psiSome60: number;
+  load1: number;
+}
+
+export interface MemoryPoint {
+  t: string;
+  availMb: number;
+}
+
+export interface TerminalLoad {
+  id: string;
+  pid: number;
+  procs: number;
+  rssMb: number;
+}
+
+export type StrayKind = 'solto' | 'claude' | 'skye' | 'janela';
+
+export interface Stray {
+  kind: StrayKind;
+  pid: number;
+  name: string;
+  args: string;
+  cwd: string;
+  terminal?: string;
+  procs: number;
+  rssMb: number;
+}
+
+export interface TmuxServer {
+  name: string;
+  alive: boolean;
+}
+
+export interface MonitorReport {
+  machine: Machine;
+  history: MemoryPoint[] | null;
+  selfMb: number;
+  terminals: TerminalLoad[] | null;
+  strays: Stray[] | null;
+  servers: TmuxServer[] | null;
+}

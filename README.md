@@ -58,6 +58,12 @@ O latido é `frontend/public/bark.ogg`; sem o arquivo, a skye toca um bipe.
   do navegador, `Ctrl+1..9` fica com o navegador; no `skye.exe` e no app instalado funciona.
 - No terminal: `Alt+Enter` quebra linha no claude; selecionar copia; `Ctrl+Shift+V` cola;
   `Ctrl+clique` num link abre no seu navegador (no WSL, o navegador padrão do Windows).
+- **monitor** (na barra de cima) troca os terminais por uma aba com a memória da máquina, quanto
+  cada terminal usa (a árvore de processos inteira) e o que ficou para trás: processo que saiu de
+  um terminal e continuou vivo, `claude` aberto fora da skye, outra skye, janela do tmux sem item e
+  sockets de tmux mortos. Só mostra; para encerrar, `kill <PID>`. O gráfico das últimas 3 h aparece
+  quando o mcp-sysagent está gravando o histórico (`~/.local/share/mcp-sysagent/history`).
+  Clicar num terminal volta para ele.
 - **×** esconde a janela (os terminais continuam); rodar `skye` de novo traz a janela.
 - **sair** encerra todos os terminais; as conversas vão para *Encerradas*, com *retomar*.
   *Encerradas* começa recolhida; clique no título para abrir (a escolha fica lembrada). Aberta,
@@ -142,3 +148,4 @@ Network Access do Chromium); enquanto isso, use `skye web` no navegador.
 14. Arrastar um terminal para cima de outro do mesmo grupo: troca de lugar; `pkill skye` e reabrir mantém a ordem.
 15. `echo https://example.com` e `Ctrl+clique` no link: abre no navegador do Windows (janela Linux, `skye.exe` e navegador); clique simples não abre.
 16. Depois de `skye install-hooks`, mandar um prompt: a lista de terminais mostra, no rodapé, `5h` e `7d` com barra e horário de renovação; o statusline do terminal continua igual.
+17. **monitor**: os terminais aparecem com processos e memória; rodar `setsid sleep 600 &` num terminal e fechá-lo: o `sleep` aparece em *Fora da lista* como processo solto.

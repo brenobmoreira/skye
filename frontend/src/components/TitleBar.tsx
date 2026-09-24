@@ -15,6 +15,8 @@ export function TitleBar(props: {
   onToggleSound: () => void;
   font: TerminalFont;
   onPickFont: (font: TerminalFont) => void;
+  monitor: boolean;
+  onToggleMonitor: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [maximised, setMaximised] = useState(false);
@@ -59,6 +61,7 @@ export function TitleBar(props: {
       </div>
       {windowed && sound}
       <span className="spacer" />
+      <button className={props.monitor ? 'flat on' : 'flat'} disabled={!props.ready} onClick={props.onToggleMonitor} title="monitor: memória e processos">monitor</button>
       <div className="menu">
         <button className="flat" onClick={() => setSettings(!settings)} title="configurações">⚙</button>
         {settings && (

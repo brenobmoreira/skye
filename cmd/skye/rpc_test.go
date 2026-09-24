@@ -8,8 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/brenobmoreira/skye/internal/app"
 	"github.com/brenobmoreira/skye/internal/config"
 	"github.com/brenobmoreira/skye/internal/hooks"
+	"github.com/brenobmoreira/skye/internal/procs"
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
 )
@@ -54,6 +56,11 @@ func (f *fakeTarget) Snapshot(id string) (string, error) {
 	f.record("Snapshot(%s)", id)
 	return "tela", nil
 }
+func (f *fakeTarget) Monitor() (app.MonitorReport, error) {
+	f.record("Monitor")
+	return app.MonitorReport{Machine: procs.Machine{MemAvailMB: 1234}}, nil
+}
+
 func (f *fakeTarget) Usage() hooks.Usage {
 	f.record("Usage")
 	return hooks.Usage{FiveHour: &hooks.Window{UsedPct: 5}}
@@ -123,6 +130,7 @@ func TestDispatchCallsEachMethodWithDecodedArgs(t *testing.T) {
 		{"Quit", `[]`, "Quit", `null`, false},
 		{"Problems", `[]`, "Problems", `["p"]`, false},
 		{"Usage", `[]`, "Usage", `{"fiveHour":{"usedPct":5`, false},
+		{"Monitor", `[]`, "Monitor", `{"machine":{"memTotalMb":0,"memAvailMb":1234`, false},
 	}
 	for _, c := range cases {
 		f := &fakeTarget{}
