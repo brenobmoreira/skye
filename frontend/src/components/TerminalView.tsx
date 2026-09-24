@@ -6,6 +6,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { api, input, openExternal, output } from '../bridge';
 import { keyHandler } from '../lib/keys';
 import { linkClick } from '../lib/links';
+import { LINE_HEIGHT } from '../lib/fonts';
 
 export function TerminalView({ id, active, fontSize, fontFamily }: { id: string; active: boolean; fontSize: number; fontFamily: string }) {
   const host = useRef<HTMLDivElement>(null);
@@ -20,6 +21,7 @@ export function TerminalView({ id, active, fontSize, fontFamily }: { id: string;
     const t = new XTerm({
       fontFamily,
       fontSize,
+      lineHeight: LINE_HEIGHT,
       cursorBlink: true,
       scrollback: 5000,
       theme: { background: '#0e0e12' },
