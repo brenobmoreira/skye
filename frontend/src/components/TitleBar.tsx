@@ -2,6 +2,7 @@ import { useEffect, useState, type MouseEvent } from 'react';
 import { api, connection, isWindow, mode, runtime } from '../bridge';
 import { windowControls } from '../windowControls';
 import type { Preset } from '../lib/types';
+import { FONTS, type TerminalFont } from '../lib/fonts';
 
 const controls = windowControls(mode, api, runtime, () => connection().kind === 'ready');
 
@@ -11,9 +12,12 @@ export function TitleBar(props: {
   ready: boolean;
   onNew: (preset: string) => void;
   onToggleSound: () => void;
+  font: TerminalFont;
+  onPickFont: (font: TerminalFont) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [maximised, setMaximised] = useState(false);
+  const [settings, setSettings] = useState(false);
   const pick = (preset: string) => { setOpen(false); props.onNew(preset); };
   const windowed = isWindow();
 
@@ -53,6 +57,19 @@ export function TitleBar(props: {
       </div>
       {windowed && sound}
       <span className="spacer" />
+      <div className="menu">
+        <button className="flat" onClick={() => setSettings(!settings)} title="configurações">⚙</button>
+        {settings && (
+          <div className="menu-list right" onMouseLeave={() => setSettings(false)}>
+            <h4>fonte do terminal</h4>
+            {FONTS.map((f) => (
+              <button key={f.id} onClick={() => { setSettings(false); props.onPickFont(f); }} style={{ fontFamily: f.family }}>
+                {f.id === props.font.id ? '✓ ' : ''}{f.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       {!windowed && sound}
       <button className="flat quit" onClick={() => { controls.quitAll().catch(() => {}); }} title="sair e encerrar todos os terminais">sair</button>
       {windowed && (
