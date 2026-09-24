@@ -5,7 +5,7 @@ import { TitleBar } from './components/TitleBar';
 import { Sidebar } from './components/Sidebar';
 import { TerminalView } from './components/TerminalView';
 import { Monitor } from './components/Monitor';
-import type { Conversation, Preset, Repo, State, Terminal, Usage } from './lib/types';
+import type { Conversation, Place, Preset, Repo, State, Terminal, Usage } from './lib/types';
 import { nextUnread } from './lib/unread';
 import { shortcut } from './lib/shortcuts';
 import { active, closeSplit, prune, select, selectSide, slotOf, visible, type Panes } from './lib/panes';
@@ -60,6 +60,7 @@ export function App() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [presets, setPresets] = useState<Preset[]>([]);
   const [repos, setRepos] = useState<Repo[]>([]);
+  const [places, setPlaces] = useState<Place[]>([]);
   const [panes, setPanes] = useState<Panes>({ left: null, right: null, focus: 'left' });
   const [room, setRoom] = useState(splitRoom);
   const activeId = active(panes);
@@ -82,6 +83,7 @@ export function App() {
     api().Conversations().then(setConversations).catch(() => {});
     api().Presets().then(setPresets).catch(() => {});
     api().Repos().then(setRepos).catch(() => {});
+    api().Places().then(setPlaces).catch(() => {});
     api().Sound().then(setSound).catch(() => {});
     api().Problems().then(setProblems).catch(() => {});
     api().Usage().then(setUsage).catch(() => {});
@@ -148,6 +150,7 @@ export function App() {
       on('bark', () => { bark(); }),
       on('problems', (list: string[]) => setProblems(list)),
       on('usage', (u: Usage) => setUsage(u)),
+      on('places', (list: Place[]) => setPlaces(list)),
       on('reconnected', () => {
         load();
         report();
@@ -194,6 +197,9 @@ export function App() {
   const pickFromList = (id: string, side: boolean) => { setPanes((p) => (side ? selectSide(p, id) : select(p, id))); setMonitor(false); };
   const split = !monitor && panes.right !== null && room;
   const open = async (preset: string) => show((await api().NewTerminal(preset)).id);
+  const openPlace = async (name: string) => show((await api().OpenPlace(name)).id);
+  const addPlace = (name: string, path: string) => api().AddPlace(name, path);
+  const removePlace = (name: string) => api().RemovePlace(name);
   const newWorktree = async (repo: string, branch: string) => show((await api().NewWorktree(repo, branch)).id);
   const resume = async (sessionId: string) => show((await api().Resume(sessionId)).id);
   const reorder = (list: Terminal[]) => {
@@ -211,7 +217,7 @@ export function App() {
   return (
     <div className={isWindow() ? 'app windowed' : 'app'}>
       {link.kind !== 'ready' && <ConnectionScreen state={link} />}
-      <TitleBar presets={presets} repos={repos} onNewWorktree={newWorktree} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} onPickFont={pickFont} monitor={monitor} onToggleMonitor={() => setMonitor(!monitor)} />
+      <TitleBar presets={presets} repos={repos} places={places} onOpenPlace={openPlace} onAddPlace={addPlace} onRemovePlace={removePlace} onNewWorktree={newWorktree} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} onPickFont={pickFont} monitor={monitor} onToggleMonitor={() => setMonitor(!monitor)} />
       <div className="body">
         <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={unread} shown={visible(panes, room)} onSelect={pickFromList} onReorder={reorder} onResume={resume} usage={usage} />
         <main className="main">

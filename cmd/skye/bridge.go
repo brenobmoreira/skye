@@ -17,6 +17,7 @@ import (
 	"github.com/brenobmoreira/skye/internal/hooks"
 	"github.com/brenobmoreira/skye/internal/notify"
 	"github.com/brenobmoreira/skye/internal/opener"
+	"github.com/brenobmoreira/skye/internal/places"
 	"github.com/brenobmoreira/skye/internal/procs"
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
@@ -127,6 +128,10 @@ func (b *Bridge) boot() error {
 		return err
 	}
 	home, _ := os.UserHomeDir()
+	saved, err := places.Open(paths.Places, home)
+	if err != nil {
+		b.problem("paths salvos ilegíveis, começando vazio: %v", err)
+	}
 	var hostMemory func() (winmem.Memory, bool)
 	if w := winmem.New(); w != nil {
 		hostMemory = w.Latest
@@ -155,6 +160,7 @@ func (b *Bridge) boot() error {
 		TmuxSocket:     tmuxSocket,
 		CreateWorktree: worktree.Create,
 		Host:           hostMemory,
+		Places:         saved,
 	})
 	b.mu.Lock()
 	b.app, b.client = a, client
@@ -279,6 +285,37 @@ func (b *Bridge) NewTerminal(preset string) (terminals.Terminal, error) {
 		return terminals.Terminal{}, err
 	}
 	return a.NewTerminal(preset)
+}
+
+func (b *Bridge) Places() []places.Place {
+	if a, err := b.ready(); err == nil {
+		return a.Places()
+	}
+	return []places.Place{}
+}
+
+func (b *Bridge) AddPlace(name, path string) error {
+	a, err := b.ready()
+	if err != nil {
+		return err
+	}
+	return a.AddPlace(name, path)
+}
+
+func (b *Bridge) RemovePlace(name string) error {
+	a, err := b.ready()
+	if err != nil {
+		return err
+	}
+	return a.RemovePlace(name)
+}
+
+func (b *Bridge) OpenPlace(name string) (terminals.Terminal, error) {
+	a, err := b.ready()
+	if err != nil {
+		return terminals.Terminal{}, err
+	}
+	return a.OpenPlace(name)
 }
 
 func (b *Bridge) Repos() []config.Repo {

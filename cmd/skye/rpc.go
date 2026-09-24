@@ -7,6 +7,7 @@ import (
 	"github.com/brenobmoreira/skye/internal/app"
 	"github.com/brenobmoreira/skye/internal/config"
 	"github.com/brenobmoreira/skye/internal/hooks"
+	"github.com/brenobmoreira/skye/internal/places"
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
 	"github.com/brenobmoreira/skye/internal/web"
@@ -33,6 +34,10 @@ type rpcTarget interface {
 	Usage() hooks.Usage
 	Monitor() (app.MonitorReport, error)
 	Repos() []config.Repo
+	Places() []places.Place
+	AddPlace(name, path string) error
+	RemovePlace(name string) error
+	OpenPlace(name string) (terminals.Terminal, error)
 	NewWorktree(repo, branch string) (terminals.Terminal, error)
 }
 
@@ -103,6 +108,26 @@ func dispatcher(t rpcTarget) web.Dispatch {
 				return nil, err
 			}
 			return t.NewTerminal(a)
+		case "Places":
+			if err := decode(); err != nil {
+				return nil, err
+			}
+			return t.Places(), nil
+		case "AddPlace":
+			if err := decode(&a, &b); err != nil {
+				return nil, err
+			}
+			return nil, t.AddPlace(a, b)
+		case "RemovePlace":
+			if err := decode(&a); err != nil {
+				return nil, err
+			}
+			return nil, t.RemovePlace(a)
+		case "OpenPlace":
+			if err := decode(&a); err != nil {
+				return nil, err
+			}
+			return t.OpenPlace(a)
 		case "Repos":
 			if err := decode(); err != nil {
 				return nil, err

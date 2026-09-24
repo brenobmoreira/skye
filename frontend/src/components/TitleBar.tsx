@@ -1,7 +1,8 @@
 import { useEffect, useState, type MouseEvent } from 'react';
 import { api, connection, isWindow, mode, runtime } from '../bridge';
 import { windowControls } from '../windowControls';
-import type { Preset, Repo } from '../lib/types';
+import type { Place, Preset, Repo } from '../lib/types';
+import { NewMenu } from './NewMenu';
 import { Logo } from './DogIcon';
 import { FONTS, type TerminalFont } from '../lib/fonts';
 
@@ -10,7 +11,11 @@ const controls = windowControls(mode, api, runtime, () => connection().kind === 
 export function TitleBar(props: {
   presets: Preset[];
   repos: Repo[];
+  places: Place[];
   onNewWorktree: (repo: string, branch: string) => Promise<void>;
+  onOpenPlace: (name: string) => void;
+  onAddPlace: (name: string, path: string) => Promise<void>;
+  onRemovePlace: (name: string) => Promise<void>;
   sound: boolean;
   ready: boolean;
   onNew: (preset: string) => void;
@@ -20,24 +25,8 @@ export function TitleBar(props: {
   monitor: boolean;
   onToggleMonitor: () => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [maximised, setMaximised] = useState(false);
   const [settings, setSettings] = useState(false);
-  const [picking, setPicking] = useState<string | null>(null);
-  const [branch, setBranch] = useState('');
-  const [status, setStatus] = useState('');
-  const close = () => { setOpen(false); setPicking(null); setBranch(''); setStatus(''); };
-  const pick = (preset: string) => { close(); props.onNew(preset); };
-  const createWorktree = async () => {
-    if (!picking || !branch.trim() || status === 'criando…') return;
-    setStatus('criando…');
-    try {
-      await props.onNewWorktree(picking, branch.trim());
-      close();
-    } catch (e) {
-      setStatus(String((e as Error)?.message ?? e));
-    }
-  };
   const windowed = isWindow();
 
   useEffect(() => {
@@ -61,42 +50,17 @@ export function TitleBar(props: {
     <header className={windowed ? 'titlebar windowed' : 'titlebar'} onDoubleClick={windowed ? onDoubleClick : undefined}>
       <Logo />
       <span className="brand">skye</span>
-      <div className="menu">
-        <button className="flat" disabled={!props.ready} onClick={() => (open ? close() : setOpen(true))} title="novo terminal">+</button>
-        {open && props.ready && (
-          <div className="menu-list" onMouseLeave={() => { if (!picking) close(); }}>
-            <button onClick={() => pick('')}>terminal vazio</button>
-            {props.presets.map((p) => (
-              <button key={p.name} onClick={() => pick(p.name)}>
-                {p.name}
-                <small>{p.command}</small>
-              </button>
-            ))}
-            {props.repos.map((r) =>
-              picking === r.name ? (
-                <div key={r.name} className="worktree">
-                  <small>nova worktree de {r.name}</small>
-                  <input
-                    autoFocus
-                    placeholder="nome da branch"
-                    value={branch}
-                    onChange={(e) => { setBranch(e.target.value); if (status !== 'criando…') setStatus(''); }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') createWorktree();
-                      if (e.key === 'Escape') close();
-                    }}
-                  />
-                  {status && <small className={status === 'criando…' ? '' : 'error'}>{status}</small>}
-                </div>
-              ) : (
-                <button key={r.name} onClick={() => { setPicking(r.name); setBranch(''); setStatus(''); }}>
-                  nova worktree de {r.name}…
-                </button>
-              ),
-            )}
-          </div>
-        )}
-      </div>
+      <NewMenu
+        ready={props.ready}
+        places={props.places}
+        presets={props.presets}
+        repos={props.repos}
+        onNew={props.onNew}
+        onOpenPlace={props.onOpenPlace}
+        onAddPlace={props.onAddPlace}
+        onRemovePlace={props.onRemovePlace}
+        onNewWorktree={props.onNewWorktree}
+      />
       {windowed && sound}
       <span className="spacer" />
       <button className={props.monitor ? 'flat on' : 'flat'} disabled={!props.ready} onClick={props.onToggleMonitor} title="monitor: memória e processos">monitor</button>

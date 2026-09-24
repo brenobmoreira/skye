@@ -11,6 +11,7 @@ import (
 	"github.com/brenobmoreira/skye/internal/app"
 	"github.com/brenobmoreira/skye/internal/config"
 	"github.com/brenobmoreira/skye/internal/hooks"
+	"github.com/brenobmoreira/skye/internal/places"
 	"github.com/brenobmoreira/skye/internal/procs"
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
@@ -59,6 +60,26 @@ func (f *fakeTarget) Snapshot(id string) (string, error) {
 func (f *fakeTarget) Monitor() (app.MonitorReport, error) {
 	f.record("Monitor")
 	return app.MonitorReport{Machine: procs.Machine{MemAvailMB: 1234}}, nil
+}
+
+func (f *fakeTarget) Places() []places.Place {
+	f.record("Places")
+	return []places.Place{{Name: "LivIA", Path: "~/projects/ai_livia_copilot"}}
+}
+
+func (f *fakeTarget) AddPlace(name, path string) error {
+	f.record("AddPlace(%s,%s)", name, path)
+	return nil
+}
+
+func (f *fakeTarget) RemovePlace(name string) error {
+	f.record("RemovePlace(%s)", name)
+	return nil
+}
+
+func (f *fakeTarget) OpenPlace(name string) (terminals.Terminal, error) {
+	f.record("OpenPlace(%s)", name)
+	return terminals.Terminal{ID: "t5"}, nil
 }
 
 func (f *fakeTarget) Repos() []config.Repo {
@@ -140,6 +161,10 @@ func TestDispatchCallsEachMethodWithDecodedArgs(t *testing.T) {
 		{"Quit", `[]`, "Quit", `null`, false},
 		{"Problems", `[]`, "Problems", `["p"]`, false},
 		{"Usage", `[]`, "Usage", `{"fiveHour":{"usedPct":5`, false},
+		{"Places", `[]`, "Places", `[{"name":"LivIA","path":"~/projects/ai_livia_copilot"}]`, false},
+		{"AddPlace", `["LivIA","~/x"]`, "AddPlace(LivIA,~/x)", `null`, false},
+		{"RemovePlace", `["LivIA"]`, "RemovePlace(LivIA)", `null`, false},
+		{"OpenPlace", `["LivIA"]`, "OpenPlace(LivIA)", `{"id":"t5"`, false},
 		{"Repos", `[]`, "Repos", `[{"name":"livia"}]`, false},
 		{"NewWorktree", `["livia","feature/x"]`, "NewWorktree(livia,feature/x)", `{"id":"t4"`, false},
 		{"Monitor", `[]`, "Monitor", `{"machine":{"memTotalMb":0,"memAvailMb":1234`, false},
