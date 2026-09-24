@@ -120,8 +120,10 @@ O botão **monitor** na barra de cima troca os terminais por uma aba que atualiz
 - **Gráfico das últimas 3 h** da memória no WSL, quando o mcp-sysagent está gravando o
   histórico (`~/.local/share/mcp-sysagent/history`).
 - **Terminais da skye:** processos e memória de cada um (a árvore inteira: claude, MCPs, o que
-  ele subiu). Clicar abre o terminal.
-- **Fora da lista:** o que ficou para trás — processo que saiu de um terminal e continuou vivo,
+  ele subiu), incluindo o que roda em segundo plano. Clicar abre o terminal.
+- **Em segundo plano:** o que um terminal aberto subiu fora do próprio pane — servidor de dev,
+  containers, tarefas em segundo plano do claude. Não é resto; conta na memória daquele terminal.
+- **Fora da lista:** o que ficou para trás — processo de um terminal que já foi fechado,
   `claude` aberto fora da skye, outra skye, janela do tmux sem item.
 - **Outros servidores tmux:** sockets que não são o da skye; os mortos podem ser apagados.
 
@@ -298,4 +300,5 @@ Janela, reinício e monitor:
 
 20. Fechar a janela no ×, reabrir: mesma janela, terminais intactos. Com a skye escondida, um pedido de permissão ainda mostra o aviso.
 21. `pkill -x skye` e reabrir: terminais reencontrados com os nomes.
-22. **monitor**: a caixa do Windows bate com o Gerenciador de Tarefas; os terminais aparecem com processos e memória; `setsid sleep 600 &` num terminal e fechá-lo: o `sleep` aparece em *Fora da lista*.
+22. **monitor**: a caixa do Windows bate com o Gerenciador de Tarefas; os terminais aparecem com processos e memória; `setsid sleep 600 &` num terminal aparece em *Em segundo plano* desse terminal; fechar o terminal o move para *Fora da lista*.
+23. Um prompt que começa com texto colado: o nome do item é a primeira linha escrita por você, não `<pasted_content …>`.

@@ -69,9 +69,14 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
   const m = report.machine;
   const level = memoryLevel(m);
   const byId = new Map(terminals.map((t) => [t.id, t]));
-  const loads = [...(report.terminals ?? [])].sort((a, b) => b.rssMb - a.rssMb);
-  const biggest = Math.max(1, ...loads.map((l) => l.rssMb));
-  const total = loads.reduce((sum, l) => sum + l.rssMb, report.selfMb);
+  const loads = [...(report.terminals ?? [])].sort((a, b) => b.rssMb + b.bgMb - (a.rssMb + a.bgMb));
+  const biggest = Math.max(1, ...loads.map((l) => l.rssMb + l.bgMb));
+  const total = loads.reduce((sum, l) => sum + l.rssMb + l.bgMb, report.selfMb);
+  const background = report.background ?? [];
+  const terminalName = (id?: string) => {
+    const t = id ? byId.get(id) : undefined;
+    return t ? itemLabel(t).name : id ?? '';
+  };
   const strays = report.strays ?? [];
   const servers = report.servers ?? [];
   const live = servers.filter((s) => s.alive);
@@ -143,9 +148,12 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
                     </span>
                   </td>
                   <td>{t ? stateLabel[t.state] : ''}</td>
-                  <td className="num">{l.procs}</td>
-                  <td className="num">{size(l.rssMb)}</td>
-                  <td className="bar-col"><span className="meter"><span style={{ width: `${(l.rssMb / biggest) * 100}%` }} /></span></td>
+                  <td className="num">{l.procs + l.bgProcs}</td>
+                  <td className="num" title={l.bgMb ? `${size(l.rssMb)} no terminal + ${size(l.bgMb)} em segundo plano` : undefined}>
+                    {size(l.rssMb + l.bgMb)}
+                    {l.bgMb > 0 && <small className="bg">{size(l.bgMb)} em 2º plano</small>}
+                  </td>
+                  <td className="bar-col"><span className="meter"><span style={{ width: `${((l.rssMb + l.bgMb) / biggest) * 100}%` }} /></span></td>
                 </tr>
               );
             })}
@@ -160,10 +168,36 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
         </div>
       </section>
 
+      {background.length > 0 && (
+        <section>
+          <h3>Em segundo plano ({background.length})</h3>
+          <div className="mon-scroll">
+            <table className="mon-table">
+              <thead>
+                <tr><th>terminal</th><th className="num">PID</th><th>comando</th><th>pasta</th><th className="num">processos</th><th className="num">memória</th></tr>
+              </thead>
+              <tbody>
+                {background.map((s) => (
+                  <tr key={s.pid} className="link" onClick={() => s.terminal && onOpen(s.terminal)} title="abrir o terminal que subiu este processo">
+                    <td className="cmd">{terminalName(s.terminal)}</td>
+                    <td className="num">{s.pid}</td>
+                    <td className="cmd" title={s.args}>{s.args || s.name}</td>
+                    <td className="cmd" title={s.cwd}>{s.cwd}</td>
+                    <td className="num">{s.procs}</td>
+                    <td className="num">{size(s.rssMb)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="hint">Processos que um terminal aberto subiu fora do próprio pane (servidor de dev, containers, tarefas do claude). Contam na memória do terminal.</p>
+        </section>
+      )}
+
       <section>
         <h3>Fora da lista ({strays.length})</h3>
         {strays.length === 0 ? (
-          <p className="hint">Nada fora da lista: todo processo com a marca da skye está num terminal aberto.</p>
+          <p className="hint">Nada fora da lista: todo processo com a marca da skye é de um terminal aberto.</p>
         ) : (
           <>
             <div className="mon-scroll">

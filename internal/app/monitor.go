@@ -11,20 +11,24 @@ import (
 
 // Kinds of things the monitor finds outside the list of terminals.
 const (
-	StrayLoose  = "solto"  // inherited SKYE_TERMINAL_ID but lives under no pane
-	StrayClaude = "claude" // claude started outside skye
-	StraySkye   = "skye"   // another skye process
-	StrayWindow = "janela" // tmux window the list does not know
+	StrayLoose = "solto" // came from a terminal that is gone
+	// StrayBackground came from a terminal that is still open but left its pane, like a dev
+	// server claude started in the background. Not a leftover: it counts in that terminal.
+	StrayBackground = "fundo"
+	StrayClaude     = "claude" // claude started outside skye
+	StraySkye       = "skye"   // another skye process
+	StrayWindow     = "janela" // tmux window the list does not know
 )
 
 type MonitorReport struct {
-	Host      *winmem.Memory   `json:"host,omitempty"`
-	Machine   procs.Machine    `json:"machine"`
-	History   []procs.Point    `json:"history"`
-	SelfMB    int              `json:"selfMb"`
-	Terminals []TerminalLoad   `json:"terminals"`
-	Strays    []Stray          `json:"strays"`
-	Servers   []tmuxctl.Server `json:"servers"`
+	Host       *winmem.Memory   `json:"host,omitempty"`
+	Machine    procs.Machine    `json:"machine"`
+	History    []procs.Point    `json:"history"`
+	SelfMB     int              `json:"selfMb"`
+	Terminals  []TerminalLoad   `json:"terminals"`
+	Strays     []Stray          `json:"strays"`
+	Background []Stray          `json:"background"`
+	Servers    []tmuxctl.Server `json:"servers"`
 }
 
 type TerminalLoad struct {
@@ -32,6 +36,9 @@ type TerminalLoad struct {
 	PID   int    `json:"pid"`
 	Procs int    `json:"procs"`
 	RSSMB int    `json:"rssMb"`
+	// What the terminal runs in the background, outside its pane.
+	BgProcs int `json:"bgProcs"`
+	BgMB    int `json:"bgMb"`
 }
 
 type Stray struct {
@@ -79,10 +86,12 @@ func (a *App) Monitor() (MonitorReport, error) {
 	for _, t := range a.reg.List() {
 		known[t.ID] = true
 	}
+	load := map[string]int{}
 	for _, w := range windows {
 		tree := table.Tree(w.PanePID)
 		claim(tree)
 		if known[w.SkyeID] {
+			load[w.SkyeID] = len(r.Terminals)
 			r.Terminals = append(r.Terminals, TerminalLoad{ID: w.SkyeID, PID: w.PanePID, Procs: len(tree), RSSMB: table.RSSKB(tree) / 1024})
 			continue
 		}
@@ -107,6 +116,13 @@ func (a *App) Monitor() (MonitorReport, error) {
 		case loose[pid] && !loose[p.PPID]:
 			tree := table.Tree(pid)
 			claim(tree)
+			if i, ok := load[p.Terminal]; ok {
+				s := stray(table, StrayBackground, pid, tree, p.Terminal)
+				r.Background = append(r.Background, s)
+				r.Terminals[i].BgProcs += s.Procs
+				r.Terminals[i].BgMB += s.RSSMB
+				continue
+			}
 			r.Strays = append(r.Strays, stray(table, StrayLoose, pid, tree, p.Terminal))
 		case p.Terminal == "" && p.Name == "claude":
 			tree := table.Tree(pid)

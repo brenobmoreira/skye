@@ -40,6 +40,9 @@ func TestMonitorMeasuresTerminalsAndFindsWhatWasLeftBehind(t *testing.T) {
 		// a dev server that escaped a closed terminal, with a child
 		{PID: 300, PPID: 1, Name: "node", Args: "node server.js", Cwd: "/home/demo/app", RSSKB: 200 * mb, Terminal: "tgone"},
 		{PID: 301, PPID: 300, Name: "esbuild", RSSKB: 20 * mb, Terminal: "tgone"},
+		// the dev stack claude in terminal a started in the background, out of its pane
+		{PID: 600, PPID: 1, Name: "npm", Args: "npm run dev", Cwd: "/home/demo/app", RSSKB: 100 * mb, Terminal: a.ID},
+		{PID: 601, PPID: 600, Name: "node", RSSKB: 2900 * mb, Terminal: a.ID},
 		// claude in some other terminal
 		{PID: 400, PPID: 1, Name: "claude", Args: "claude", Cwd: "/home/demo/x", RSSKB: 350 * mb},
 		// another skye
@@ -66,7 +69,7 @@ func TestMonitorMeasuresTerminalsAndFindsWhatWasLeftBehind(t *testing.T) {
 	for _, l := range r.Terminals {
 		loads[l.ID] = l
 	}
-	if l := loads[a.ID]; l.RSSMB != 320 || l.Procs != 3 || l.PID != 100 {
+	if l := loads[a.ID]; l.RSSMB != 320 || l.Procs != 3 || l.PID != 100 || l.BgMB != 3000 || l.BgProcs != 2 {
 		t.Fatalf("terminal a = %+v", l)
 	}
 	if l := loads[b.ID]; l.RSSMB != 8 || l.Procs != 1 {
@@ -90,6 +93,9 @@ func TestMonitorMeasuresTerminalsAndFindsWhatWasLeftBehind(t *testing.T) {
 	}
 	if s := kinds[StrayWindow]; s.PID != 900 || s.Terminal != "tstranger" || s.RSSMB != 8 {
 		t.Fatalf("window = %+v", s)
+	}
+	if len(r.Background) != 1 || r.Background[0].PID != 600 || r.Background[0].Terminal != a.ID || r.Background[0].RSSMB != 3000 || r.Background[0].Kind != StrayBackground {
+		t.Fatalf("background = %+v", r.Background)
 	}
 	if len(r.Servers) != 2 || r.Servers[0].Name != "skye-test-1" || r.Servers[1].Name != "default" {
 		t.Fatalf("servers = %+v", r.Servers)
