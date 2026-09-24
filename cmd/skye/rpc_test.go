@@ -45,10 +45,6 @@ func (f *fakeTarget) Write(id, data string) error {
 	f.record("Write(%s,%s)", id, data)
 	return nil
 }
-func (f *fakeTarget) Paste(id, text string) error {
-	f.record("Paste(%s,%s)", id, text)
-	return nil
-}
 func (f *fakeTarget) Resize(id string, cols, rows int) error {
 	f.record("Resize(%s,%d,%d)", id, cols, rows)
 	return nil
@@ -110,7 +106,6 @@ func TestDispatchCallsEachMethodWithDecodedArgs(t *testing.T) {
 		{"NewTerminal", `["blog"]`, "NewTerminal(blog)", `{"id":"t2"`, false},
 		{"Resume", `["s9"]`, "Resume(s9)", `{"id":"t3"`, false},
 		{"Write", `["t1","ls\r"]`, "Write(t1,ls\r)", `null`, false},
-		{"Paste", `["t1","texto"]`, "Paste(t1,texto)", `null`, false},
 		{"Resize", `["t1",120,40]`, "Resize(t1,120,40)", `null`, false},
 		{"Snapshot", `["t1"]`, "Snapshot(t1)", `"tela"`, false},
 		{"Rename", `["t1","demo"]`, "Rename(t1,demo)", `null`, false},

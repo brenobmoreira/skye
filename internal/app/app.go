@@ -19,7 +19,6 @@ type Tmux interface {
 	NewWindow(skyeID string, env map[string]string, argv []string) (tmuxctl.Window, error)
 	ListWindows() ([]tmuxctl.Window, error)
 	SendKeys(pane string, data []byte) error
-	Paste(pane, text string) error
 	Capture(pane string) (string, error)
 	Resize(window string, cols, rows int) error
 	KillWindow(window string) error
@@ -155,17 +154,6 @@ func (a *App) Write(id, data string) error {
 		return err
 	}
 	return a.o.Tmux.SendKeys(t.Pane, []byte(data))
-}
-
-func (a *App) Paste(id, text string) error {
-	t, err := a.get(id)
-	if err != nil {
-		return err
-	}
-	if strings.TrimSpace(text) == "" {
-		return nil
-	}
-	return a.o.Tmux.Paste(t.Pane, text)
 }
 
 func (a *App) Resize(id string, cols, rows int) error {

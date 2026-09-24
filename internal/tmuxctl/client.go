@@ -16,7 +16,6 @@ import (
 const (
 	Session     = "skye"
 	Placeholder = "_skye"
-	composerBuf = "skye-composer"
 	keysChunk   = 512
 )
 
@@ -43,7 +42,6 @@ type Client struct {
 	cmd     *exec.Cmd
 	stdin   io.WriteCloser
 	mu      sync.Mutex
-	pasteMu sync.Mutex
 	waiters []chan reply
 	Output  chan Output
 	Closed  chan string
@@ -245,21 +243,6 @@ func (c *Client) SendKeys(pane string, data []byte) error {
 		data = data[n:]
 	}
 	return nil
-}
-
-func (c *Client) Paste(pane, text string) error {
-	c.pasteMu.Lock()
-	defer c.pasteMu.Unlock()
-	load := tmux(c.socket, "load-buffer", "-b", composerBuf, "-")
-	load.Stdin = strings.NewReader(text)
-	if out, err := load.CombinedOutput(); err != nil {
-		return fmt.Errorf("tmux load-buffer: %v: %s", err, out)
-	}
-	if _, err := c.Command(fmt.Sprintf("paste-buffer -p -d -b %s -t %s", composerBuf, pane)); err != nil {
-		return err
-	}
-	_, err := c.Command(fmt.Sprintf("send-keys -t %s Enter", pane))
-	return err
 }
 
 func (c *Client) Capture(pane string) (string, error) {

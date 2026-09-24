@@ -238,14 +238,6 @@ func (b *Bridge) Write(id, data string) error {
 	return a.Write(id, data)
 }
 
-func (b *Bridge) Paste(id, text string) error {
-	a, err := b.ready()
-	if err != nil {
-		return err
-	}
-	return a.Paste(id, text)
-}
-
 func (b *Bridge) Resize(id string, cols, rows int) error {
 	a, err := b.ready()
 	if err != nil {

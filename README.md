@@ -43,7 +43,6 @@ O latido é `frontend/public/bark.ogg`; sem o arquivo, a skye toca um bipe.
 - A lista agrupa por estado: esperando você, terminou, trabalhando, terminal. Quem acaba de
   terminar ou pedir algo sobe para o topo do seu grupo. Arraste um item para mudar a ordem dentro
   do grupo; a ordem fica salva.
-- O composer embaixo do terminal: `Enter` quebra linha, `Ctrl+Enter` envia.
 - No terminal: `Alt+Enter` quebra linha no claude; selecionar copia; `Ctrl+Shift+V` cola.
 - **×** esconde a janela (os terminais continuam); rodar `skye` de novo traz a janela.
 - **sair** encerra todos os terminais; as conversas vão para *Encerradas*, com *retomar*.
@@ -107,7 +106,7 @@ Network Access do Chromium); enquanto isso, use `skye web` no navegador.
 ## Conferência manual antes de uma release
 
 1. Abrir terminal vazio e preset; `ls --color`, `git log` desenham certo.
-2. `claude` no terminal: `Alt+Enter` quebra linha; composer com 3 linhas chega como um prompt.
+2. `claude` no terminal: `Alt+Enter` quebra linha; colar 3 linhas com `Ctrl+Shift+V` chega como um prompt.
 3. Pedir algo que exija permissão: bolinha amarela, latido, toast com a janela fora de foco.
 4. Resposta termina: bolinha verde, latido; um minuto depois, nenhum segundo latido.
 5. `/clear`: o terminal continua o mesmo, sem nada novo em *Encerradas*; o próximo prompt vira o nome. Sair do claude (`/exit`) manda a conversa para *Encerradas*.

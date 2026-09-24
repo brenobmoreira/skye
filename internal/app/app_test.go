@@ -23,7 +23,6 @@ type fakeTmux struct {
 	created  [][]string
 	envs     []map[string]string
 	keys     map[string]string
-	pastes   map[string]string
 	killed   []string
 	serverKO bool
 }
@@ -43,7 +42,6 @@ func (f *fakeTmux) SendKeys(pane string, data []byte) error {
 	f.keys[pane] += string(data)
 	return nil
 }
-func (f *fakeTmux) Paste(pane, text string) error       { f.pastes[pane] = text; return nil }
 func (f *fakeTmux) Capture(pane string) (string, error) { return "screen of " + pane, nil }
 func (f *fakeTmux) Resize(string, int, int) error       { return nil }
 func (f *fakeTmux) KillWindow(w string) error           { f.killed = append(f.killed, w); return nil }
@@ -82,7 +80,7 @@ func newHarness(t *testing.T, cfg config.Config) *harness {
 		Socket:        filepath.Join(dir, "skye.sock"),
 	}
 	store, _ := resume.Open(paths.Conversations)
-	h := &harness{tmux: &fakeTmux{keys: map[string]string{}, pastes: map[string]string{}}, notif: &fakeNotifier{}, store: store, paths: paths}
+	h := &harness{tmux: &fakeTmux{keys: map[string]string{}}, notif: &fakeNotifier{}, store: store, paths: paths}
 	ids := 0
 	h.app = New(Options{
 		Config:   cfg,
@@ -163,14 +161,8 @@ func TestInputRouting(t *testing.T) {
 	if err := h.app.Write(term.ID, "ls\r"); err != nil {
 		t.Fatal(err)
 	}
-	if err := h.app.Paste(term.ID, "line 1\nline 2"); err != nil {
-		t.Fatal(err)
-	}
-	if err := h.app.Paste(term.ID, "   "); err != nil {
-		t.Fatal(err)
-	}
-	if h.tmux.keys["%1"] != "ls\r" || h.tmux.pastes["%1"] != "line 1\nline 2" {
-		t.Fatalf("keys=%q pastes=%q", h.tmux.keys, h.tmux.pastes)
+	if h.tmux.keys["%1"] != "ls\r" {
+		t.Fatalf("keys=%q", h.tmux.keys)
 	}
 	if snap, _ := h.app.Snapshot(term.ID); snap != "screen of %1" {
 		t.Fatalf("snapshot = %q", snap)
