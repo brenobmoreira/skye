@@ -104,6 +104,7 @@ func TestDefaultPaths(t *testing.T) {
 		Conversations: "/home/demo/.local/state/skye/conversations.json",
 		Socket:        "/run/user/1000/skye.sock",
 		WebToken:      "/home/demo/.config/skye/web-token",
+		Places:        "/home/demo/.config/skye/paths.json",
 	}
 	if p != want {
 		t.Fatalf("got %+v\nwant %+v", p, want)

@@ -143,6 +143,7 @@ type Paths struct {
 	Conversations string
 	Socket        string
 	WebToken      string
+	Places        string
 }
 
 func DefaultPaths(getenv func(string) string) Paths {
@@ -169,5 +170,6 @@ func DefaultPaths(getenv func(string) string) Paths {
 		Conversations: filepath.Join(stateDir, "conversations.json"),
 		Socket:        filepath.Join(runtimeDir, "skye.sock"),
 		WebToken:      filepath.Join(configDir, "web-token"),
+		Places:        filepath.Join(configDir, "paths.json"),
 	}
 }

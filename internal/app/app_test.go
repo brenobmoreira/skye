@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -11,6 +12,7 @@ import (
 	"github.com/brenobmoreira/skye/internal/config"
 	"github.com/brenobmoreira/skye/internal/hooks"
 	"github.com/brenobmoreira/skye/internal/launch"
+	"github.com/brenobmoreira/skye/internal/places"
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
 	"github.com/brenobmoreira/skye/internal/tmuxctl"
@@ -460,5 +462,48 @@ func TestNewWorktreeFailsWithoutOpeningATerminal(t *testing.T) {
 	h.app.o.CreateWorktree = func(string, string, string, string) (string, error) { return "", fmt.Errorf("git worktree add: boom") }
 	if _, err := h.app.NewWorktree("a", "x"); err == nil || len(h.app.List()) != 0 {
 		t.Fatalf("err = %v, list = %v", err, h.app.List())
+	}
+}
+
+func TestSavedPlacesOpenClaudeInTheirFolder(t *testing.T) {
+	h := newHarness(t, config.Default())
+	dir := t.TempDir()
+	store, _ := places.Open(filepath.Join(t.TempDir(), "paths.json"), dir)
+	h.app.o.Places = store
+	if err := os.MkdirAll(filepath.Join(dir, "projects", "livia"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	before := len(h.events)
+	if err := h.app.AddPlace("LivIA", "~/projects/livia"); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.app.AddPlace("LivIA", "~/projects/livia"); err == nil {
+		t.Fatal("duplicate accepted")
+	}
+	if got := h.app.Places(); len(got) != 1 || got[0].Name != "LivIA" {
+		t.Fatalf("places = %+v", got)
+	}
+	term, err := h.app.OpenPlace("LivIA")
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec, _ := launch.Read(h.paths.LaunchDir, term.ID)
+	if spec.Cwd != filepath.Join(dir, "projects", "livia") || spec.Command != "claude" || term.Name != "shell" || term.Preset != "" {
+		t.Fatalf("term = %+v spec = %+v", term, spec)
+	}
+	if err := h.app.RemovePlace("LivIA"); err != nil || len(h.app.Places()) != 0 {
+		t.Fatalf("remove: %v %+v", err, h.app.Places())
+	}
+	count := 0
+	for _, e := range h.events[before:] {
+		if e == "places" {
+			count++
+		}
+	}
+	if count != 2 {
+		t.Fatalf("places events = %d", count)
+	}
+	if _, err := h.app.OpenPlace("LivIA"); err == nil {
+		t.Fatal("opened a removed place")
 	}
 }

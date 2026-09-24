@@ -1,4 +1,4 @@
-import type { Conversation, MonitorReport, OutputEvent, Preset, Repo, Terminal, Usage } from './lib/types';
+import type { Conversation, MonitorReport, OutputEvent, Place, Preset, Repo, Terminal, Usage } from './lib/types';
 import { createOutputHub } from './output';
 import { createSendQueue } from './sendQueue';
 import { createWsClient, type SocketLike } from './wsClient';
@@ -11,6 +11,10 @@ interface GoBridge {
   Presets(): Promise<Preset[]>;
   NewTerminal(preset: string): Promise<Terminal>;
   Repos(): Promise<Repo[]>;
+  Places(): Promise<Place[]>;
+  AddPlace(name: string, path: string): Promise<void>;
+  RemovePlace(name: string): Promise<void>;
+  OpenPlace(name: string): Promise<Terminal>;
   NewWorktree(repo: string, branch: string): Promise<Terminal>;
   Resume(sessionId: string): Promise<Terminal>;
   Write(id: string, data: string): Promise<void>;
@@ -109,6 +113,10 @@ function remoteBridge(connect: () => SocketLike): { bridge: GoBridge; on: (name:
     Presets: () => call('Presets'),
     NewTerminal: (preset) => call('NewTerminal', preset),
     Repos: () => call('Repos'),
+    Places: () => call('Places'),
+    AddPlace: (name, path) => call('AddPlace', name, path),
+    RemovePlace: (name) => call('RemovePlace', name),
+    OpenPlace: (name) => call('OpenPlace', name),
     NewWorktree: (repo, branch) => call('NewWorktree', repo, branch),
     Resume: (sessionId) => call('Resume', sessionId),
     Write: (id, data) => call('Write', id, data),

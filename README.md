@@ -52,7 +52,10 @@ O latido é `frontend/public/bark.ogg`; sem o arquivo, a skye toca um bipe.
 
 ## Uso
 
-- **+** abre um terminal vazio ou um preset.
+- **+** abre um *Novo terminal*, um preset ou um path salvo. *+ Adicionar path* pede um nome
+  (ex.: `LivIA`) e uma pasta (ex.: `~/projects/ai_livia_copilot`); o nome passa a ficar no topo do
+  menu e abre o `claude` naquela pasta. O × ao passar o mouse remove (clique de novo para
+  confirmar). Os paths ficam em `~/.config/skye/paths.json`.
 - Na lista, um terminal vazio leva o nome da sessão do claude (a 1ª linha do 1º prompt) ou,
   sem sessão, o da pasta. Duplo clique no nome renomeia; o × ao lado do nome fecha o terminal.
   Um ponto azul marca o terminal que terminou ou pediu algo enquanto você olhava outro.

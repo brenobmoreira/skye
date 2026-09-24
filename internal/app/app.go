@@ -10,6 +10,7 @@ import (
 	"github.com/brenobmoreira/skye/internal/config"
 	"github.com/brenobmoreira/skye/internal/hooks"
 	"github.com/brenobmoreira/skye/internal/launch"
+	"github.com/brenobmoreira/skye/internal/places"
 	"github.com/brenobmoreira/skye/internal/procs"
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
@@ -52,6 +53,8 @@ type Options struct {
 	// Host is the Windows memory when skye runs in WSL; nil or not ok leaves it out.
 	Host       func() (winmem.Memory, bool)
 	TmuxSocket string
+	// Places are the folders the + menu opens claude in.
+	Places *places.Store
 	// CreateWorktree adds a git worktree and returns its path (worktree.Create outside tests).
 	CreateWorktree func(repo, base, dir, branch string) (string, error)
 }
@@ -152,6 +155,48 @@ func (a *App) NewWorktree(repo, branch string) (terminals.Terminal, error) {
 		return terminals.Terminal{}, err
 	}
 	return a.open(launch.Spec{Name: branch, Cwd: path, Command: r.Command})
+}
+
+func (a *App) Places() []places.Place {
+	if a.o.Places == nil {
+		return []places.Place{}
+	}
+	return a.o.Places.List()
+}
+
+func (a *App) AddPlace(name, path string) error {
+	if a.o.Places == nil {
+		return fmt.Errorf("paths indisponíveis")
+	}
+	if err := a.o.Places.Add(name, path); err != nil {
+		return err
+	}
+	a.o.Emit("places", a.Places())
+	return nil
+}
+
+func (a *App) RemovePlace(name string) error {
+	if a.o.Places == nil {
+		return fmt.Errorf("paths indisponíveis")
+	}
+	if err := a.o.Places.Remove(name); err != nil {
+		return err
+	}
+	a.o.Emit("places", a.Places())
+	return nil
+}
+
+// OpenPlace opens a terminal in a saved folder running claude. It is named like a plain shell,
+// so the list shows the session's first prompt, or the folder.
+func (a *App) OpenPlace(name string) (terminals.Terminal, error) {
+	if a.o.Places == nil {
+		return terminals.Terminal{}, fmt.Errorf("paths indisponíveis")
+	}
+	p, ok := a.o.Places.Get(name)
+	if !ok {
+		return terminals.Terminal{}, fmt.Errorf("path desconhecido: %q", name)
+	}
+	return a.open(launch.Spec{Name: "shell", Cwd: a.o.Places.Expand(p.Path), Command: "claude"})
 }
 
 func (a *App) Repos() []config.Repo {

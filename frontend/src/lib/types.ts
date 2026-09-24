@@ -41,6 +41,11 @@ export interface Usage {
   updatedAt: string;
 }
 
+export interface Place {
+  name: string;
+  path: string;
+}
+
 export interface Repo {
   name: string;
 }
