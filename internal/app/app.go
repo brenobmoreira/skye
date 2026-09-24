@@ -49,6 +49,8 @@ type Options struct {
 	Servers    func() []tmuxctl.Server
 	History    func() []procs.Point
 	TmuxSocket string
+	// CreateWorktree adds a git worktree and returns its path (worktree.Create outside tests).
+	CreateWorktree func(repo, base, dir, branch string) (string, error)
 }
 
 type ProcSource interface {
@@ -128,6 +130,29 @@ func (a *App) NewTerminal(preset string) (terminals.Terminal, error) {
 		return terminals.Terminal{}, fmt.Errorf("preset desconhecido: %q", preset)
 	}
 	return a.open(launch.Spec{Name: p.Name, Preset: p.Name, Cwd: a.o.Home, Command: p.Command})
+}
+
+// NewWorktree cuts a new branch of a configured repo into its own worktree and opens a terminal
+// there running the repo's command.
+func (a *App) NewWorktree(repo, branch string) (terminals.Terminal, error) {
+	r, ok := a.o.Config.Repo(repo)
+	if !ok {
+		return terminals.Terminal{}, fmt.Errorf("repo desconhecido: %q", repo)
+	}
+	if a.o.CreateWorktree == nil {
+		return terminals.Terminal{}, fmt.Errorf("worktree indisponível")
+	}
+	r = r.Resolved(a.o.Home)
+	branch = strings.TrimSpace(branch)
+	path, err := a.o.CreateWorktree(r.Path, r.Base, r.Dir, branch)
+	if err != nil {
+		return terminals.Terminal{}, err
+	}
+	return a.open(launch.Spec{Name: branch, Cwd: path, Command: r.Command})
+}
+
+func (a *App) Repos() []config.Repo {
+	return append([]config.Repo{}, a.o.Config.Repos...)
 }
 
 func (a *App) Resume(sessionID string) (terminals.Terminal, error) {

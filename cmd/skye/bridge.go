@@ -21,6 +21,7 @@ import (
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
 	"github.com/brenobmoreira/skye/internal/tmuxctl"
+	"github.com/brenobmoreira/skye/internal/worktree"
 )
 
 //go:embed tmux.conf
@@ -141,8 +142,9 @@ func (b *Bridge) boot() error {
 		Servers: func() []tmuxctl.Server {
 			return tmuxctl.Servers(tmuxctl.SocketDir(os.Getenv, os.Getuid()))
 		},
-		History:    func() []procs.Point { return procs.History(sysagentHistory(home), time.Now(), 3*time.Hour) },
-		TmuxSocket: tmuxSocket,
+		History:        func() []procs.Point { return procs.History(sysagentHistory(home), time.Now(), 3*time.Hour) },
+		TmuxSocket:     tmuxSocket,
+		CreateWorktree: worktree.Create,
 	})
 	b.mu.Lock()
 	b.app, b.client = a, client
@@ -264,6 +266,21 @@ func (b *Bridge) NewTerminal(preset string) (terminals.Terminal, error) {
 		return terminals.Terminal{}, err
 	}
 	return a.NewTerminal(preset)
+}
+
+func (b *Bridge) Repos() []config.Repo {
+	if a, err := b.ready(); err == nil {
+		return a.Repos()
+	}
+	return []config.Repo{}
+}
+
+func (b *Bridge) NewWorktree(repo, branch string) (terminals.Terminal, error) {
+	a, err := b.ready()
+	if err != nil {
+		return terminals.Terminal{}, err
+	}
+	return a.NewWorktree(repo, branch)
 }
 
 func (b *Bridge) Resume(sessionID string) (terminals.Terminal, error) {

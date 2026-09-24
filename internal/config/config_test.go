@@ -153,3 +153,49 @@ func TestLoadRejectsWebPortOutOfRange(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadRepos(t *testing.T) {
+	cfg, err := Load(write(t, `
+[[repo]]
+name = "livia"
+path = "~/projects/ai_livia_copilot"
+base = "origin/develop"
+
+[[repo]]
+name = "skye"
+path = "/home/demo/skye"
+dir = "~/wt"
+command = "claude --model opus"
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	livia, ok := cfg.Repo("livia")
+	if !ok || livia.Path != "~/projects/ai_livia_copilot" || livia.Base != "origin/develop" {
+		t.Fatalf("livia = %+v %v", livia, ok)
+	}
+	if _, ok := cfg.Repo("nope"); ok {
+		t.Fatal("unknown repo found")
+	}
+	got := livia.Resolved("/home/demo")
+	if got.Path != "/home/demo/projects/ai_livia_copilot" || got.Dir != "/home/demo/projects" || got.Command != "claude" {
+		t.Fatalf("resolved livia = %+v", got)
+	}
+	skye, _ := cfg.Repo("skye")
+	got = skye.Resolved("/home/demo")
+	if got.Base != "HEAD" || got.Dir != "/home/demo/wt" || got.Command != "claude --model opus" {
+		t.Fatalf("resolved skye = %+v", got)
+	}
+}
+
+func TestLoadRejectsBadRepos(t *testing.T) {
+	for _, body := range []string{
+		"[[repo]]\npath = \"/x\"\n",
+		"[[repo]]\nname = \"a\"\n",
+		"[[repo]]\nname = \"a\"\npath = \"/x\"\n[[repo]]\nname = \"a\"\npath = \"/y\"\n",
+	} {
+		if _, err := Load(write(t, body)); err == nil {
+			t.Errorf("accepted %q", body)
+		}
+	}
+}

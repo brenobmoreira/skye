@@ -61,6 +61,16 @@ func (f *fakeTarget) Monitor() (app.MonitorReport, error) {
 	return app.MonitorReport{Machine: procs.Machine{MemAvailMB: 1234}}, nil
 }
 
+func (f *fakeTarget) Repos() []config.Repo {
+	f.record("Repos")
+	return []config.Repo{{Name: "livia", Path: "/secret"}}
+}
+
+func (f *fakeTarget) NewWorktree(repo, branch string) (terminals.Terminal, error) {
+	f.record("NewWorktree(%s,%s)", repo, branch)
+	return terminals.Terminal{ID: "t4"}, nil
+}
+
 func (f *fakeTarget) Usage() hooks.Usage {
 	f.record("Usage")
 	return hooks.Usage{FiveHour: &hooks.Window{UsedPct: 5}}
@@ -130,6 +140,8 @@ func TestDispatchCallsEachMethodWithDecodedArgs(t *testing.T) {
 		{"Quit", `[]`, "Quit", `null`, false},
 		{"Problems", `[]`, "Problems", `["p"]`, false},
 		{"Usage", `[]`, "Usage", `{"fiveHour":{"usedPct":5`, false},
+		{"Repos", `[]`, "Repos", `[{"name":"livia"}]`, false},
+		{"NewWorktree", `["livia","feature/x"]`, "NewWorktree(livia,feature/x)", `{"id":"t4"`, false},
 		{"Monitor", `[]`, "Monitor", `{"machine":{"memTotalMb":0,"memAvailMb":1234`, false},
 	}
 	for _, c := range cases {

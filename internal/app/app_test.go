@@ -423,3 +423,42 @@ func TestStatusLineFeedsUsageAndTheTerminalContext(t *testing.T) {
 		t.Fatalf("context = %+v", got)
 	}
 }
+
+func TestNewWorktreeOpensATerminalInIt(t *testing.T) {
+	cfg := config.Default()
+	cfg.Repos = []config.Repo{{Name: "livia", Path: "~/projects/livia", Base: "origin/develop"}}
+	h := newHarness(t, cfg)
+	var got []string
+	h.app.o.CreateWorktree = func(repo, base, dir, branch string) (string, error) {
+		got = []string{repo, base, dir, branch}
+		return dir + "/feature-x", nil
+	}
+	term, err := h.app.NewWorktree("livia", "feature/x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"/home/demo/projects/livia", "origin/develop", "/home/demo/projects", "feature/x"}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("create = %v", got)
+	}
+	spec, _ := launch.Read(h.paths.LaunchDir, term.ID)
+	if term.Name != "feature/x" || spec.Cwd != "/home/demo/projects/feature-x" || spec.Command != "claude" {
+		t.Fatalf("term = %+v spec = %+v", term, spec)
+	}
+	if repos := h.app.Repos(); len(repos) != 1 || repos[0].Name != "livia" {
+		t.Fatalf("repos = %+v", repos)
+	}
+}
+
+func TestNewWorktreeFailsWithoutOpeningATerminal(t *testing.T) {
+	h := newHarness(t, config.Default())
+	if _, err := h.app.NewWorktree("nope", "x"); err == nil {
+		t.Fatal("unknown repo accepted")
+	}
+	cfg := config.Default()
+	cfg.Repos = []config.Repo{{Name: "a", Path: "/a"}}
+	h = newHarness(t, cfg)
+	h.app.o.CreateWorktree = func(string, string, string, string) (string, error) { return "", fmt.Errorf("git worktree add: boom") }
+	if _, err := h.app.NewWorktree("a", "x"); err == nil || len(h.app.List()) != 0 {
+		t.Fatalf("err = %v, list = %v", err, h.app.List())
+	}
+}

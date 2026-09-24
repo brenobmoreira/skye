@@ -41,6 +41,10 @@ export interface Usage {
   updatedAt: string;
 }
 
+export interface Repo {
+  name: string;
+}
+
 export interface Preset {
   name: string;
   command: string;
