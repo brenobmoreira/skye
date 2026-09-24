@@ -46,8 +46,21 @@ export function App() {
   const [epoch, setEpoch] = useState(0);
   const [link, setLink] = useState(connection);
 
+  const load = () => {
+    api().List().then(setTerminals).catch(() => {});
+    api().Conversations().then(setConversations).catch(() => {});
+    api().Presets().then(setPresets).catch(() => {});
+    api().Sound().then(setSound).catch(() => {});
+    api().Problems().then(setProblems).catch(() => {});
+  };
+
   useEffect(() => {
-    const off = onConnection(setLink);
+    let previous = connection().kind;
+    const off = onConnection((state) => {
+      if (previous === 'error' && state.kind !== 'error') load();
+      previous = state.kind;
+      setLink(state);
+    });
     setLink(connection());
     return off;
   }, []);
@@ -82,13 +95,6 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const load = () => {
-      api().List().then(setTerminals).catch(() => {});
-      api().Conversations().then(setConversations).catch(() => {});
-      api().Presets().then(setPresets).catch(() => {});
-      api().Sound().then(setSound).catch(() => {});
-      api().Problems().then(setProblems).catch(() => {});
-    };
     const focused = () => document.visibilityState === 'visible' && document.hasFocus();
     const report = () => { api().SetFocused(focused()).catch(() => {}); };
     load();
@@ -132,7 +138,7 @@ export function App() {
   return (
     <div className={isWindow() ? 'app windowed' : 'app'}>
       {link.kind !== 'ready' && <ConnectionScreen state={link} />}
-      <TitleBar presets={presets} sound={sound} onNew={open} onToggleSound={toggleSound} />
+      <TitleBar presets={presets} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} />
       <div className="body">
         <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} onSelect={setActiveId} onResume={resume} />
         <main className="main">

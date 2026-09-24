@@ -65,3 +65,5 @@ button:hover { background: var(--line); }
 .connection { position: fixed; inset: 30px 0 0 0; z-index: 20; display: grid; place-content: center; justify-items: center; gap: 12px; padding: 24px; background: var(--bg); color: var(--muted); }
 .connection h2 { margin: 0; font-size: 15px; color: var(--text); }
 .connection pre { max-width: min(900px, 90vw); max-height: 60vh; overflow: auto; margin: 0; padding: 10px 12px; white-space: pre-wrap; word-break: break-word; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--waiting); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; user-select: text; }
+.titlebar button:disabled { opacity: 0.4; cursor: default; }
+.titlebar button:disabled:hover { background: transparent; }

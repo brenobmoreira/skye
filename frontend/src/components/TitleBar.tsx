@@ -1,13 +1,14 @@
 import { useEffect, useState, type MouseEvent } from 'react';
-import { api, isWindow, mode, runtime } from '../bridge';
+import { api, connection, isWindow, mode, runtime } from '../bridge';
 import { windowControls } from '../windowControls';
 import type { Preset } from '../lib/types';
 
-const controls = windowControls(mode, api, runtime);
+const controls = windowControls(mode, api, runtime, () => connection().kind === 'ready');
 
 export function TitleBar(props: {
   presets: Preset[];
   sound: boolean;
+  ready: boolean;
   onNew: (preset: string) => void;
   onToggleSound: () => void;
 }) {
@@ -24,6 +25,10 @@ export function TitleBar(props: {
     return () => window.removeEventListener('resize', check);
   }, [windowed]);
 
+  const sound = (
+    <button className="flat" disabled={!props.ready} onClick={props.onToggleSound} title="latido">{props.sound ? '🔔' : '🔕'}</button>
+  );
+
   const onDoubleClick = (e: MouseEvent) => {
     if ((e.target as HTMLElement).closest('button, .menu')) return;
     controls.toggleMaximise();
@@ -33,8 +38,8 @@ export function TitleBar(props: {
     <header className={windowed ? 'titlebar windowed' : 'titlebar'} onDoubleClick={windowed ? onDoubleClick : undefined}>
       <span className="brand">skye</span>
       <div className="menu">
-        <button className="flat" onClick={() => setOpen(!open)} title="novo terminal">+</button>
-        {open && (
+        <button className="flat" disabled={!props.ready} onClick={() => setOpen(!open)} title="novo terminal">+</button>
+        {open && props.ready && (
           <div className="menu-list" onMouseLeave={() => setOpen(false)}>
             <button onClick={() => pick('')}>terminal vazio</button>
             {props.presets.map((p) => (
@@ -46,8 +51,9 @@ export function TitleBar(props: {
           </div>
         )}
       </div>
-      <button className="flat" onClick={props.onToggleSound} title="latido">{props.sound ? '🔔' : '🔕'}</button>
+      {windowed && sound}
       <span className="spacer" />
+      {!windowed && sound}
       <button className="flat quit" onClick={() => { controls.quitAll().catch(() => {}); }} title="sair e encerrar todos os terminais">sair</button>
       {windowed && (
         <div className="window-controls">

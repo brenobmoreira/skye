@@ -7,6 +7,7 @@ function fakes(maximised?: boolean) {
     Hide: async () => { calls.push('api.Hide'); },
     ToggleMaximise: async () => { calls.push('api.ToggleMaximise'); },
     Quit: async () => { calls.push('api.Quit'); },
+    SetFocused: async (focused: boolean) => { calls.push(`api.SetFocused(${focused})`); },
   };
   const runtime = {
     WindowMinimise: () => { calls.push('runtime.WindowMinimise'); },
@@ -33,8 +34,8 @@ it('the windows app closes only its own window and maximises through the runtime
   const c = windowControls('windows-app', f.api, f.runtime);
   c.minimise();
   c.toggleMaximise();
-  c.close();
-  expect(f.calls).toEqual(['runtime.WindowMinimise', 'runtime.WindowToggleMaximise', 'runtime.Quit']);
+  await c.close();
+  expect(f.calls).toEqual(['runtime.WindowMinimise', 'runtime.WindowToggleMaximise', 'api.SetFocused(false)', 'runtime.Quit']);
   await expect(c.isMaximised()).resolves.toBe(false);
 });
 
@@ -61,4 +62,22 @@ it('the browser only quits', async () => {
   const f = fakes(true);
   await windowControls('browser', f.api, f.runtime).quitAll();
   expect(f.calls).toEqual(['api.Quit']);
+});
+
+it('the windows app closes after 300 ms when the unfocus report hangs', async () => {
+  const f = fakes();
+  const waits: number[] = [];
+  const api = () => ({ ...f.api(), SetFocused: () => new Promise<void>(() => {}) });
+  const c = windowControls('windows-app', api, f.runtime, () => true, (ms) => { waits.push(ms); return Promise.resolve(); });
+  await c.close();
+  expect(waits).toEqual([300]);
+  expect(f.calls).toEqual(['runtime.Quit']);
+});
+
+it('while not connected the windows app closes and quits without calling the server', async () => {
+  const f = fakes();
+  const c = windowControls('windows-app', f.api, f.runtime, () => false);
+  await c.close();
+  await c.quitAll();
+  expect(f.calls).toEqual(['runtime.Quit', 'runtime.Quit']);
 });
