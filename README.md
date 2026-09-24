@@ -77,7 +77,7 @@ de rodar `make install-windows` de novo (o Windows não deixa sobrescrever o arq
 
 - Precisa da skye instalada no WSL (`~/.local/bin/skye`, ver *Build e instalação*).
 - Se o `skye web` não estiver de pé, o `skye.exe` sobe ele sozinho e escondido
-  (`wsl.exe -- bash -lc "skye web --no-open"`); não é preciso deixar terminal aberto.
+  (`wsl.exe -e bash -lc 'skye web --no-open'`); não é preciso deixar terminal aberto.
 - Fechar a janela no ✕ fecha só o `skye.exe`: o `skye web` e os terminais continuam no WSL,
   e reabrir mostra tudo como estava. **sair** encerra os terminais, o `skye web` e a janela.
 - Se algo falhar, a janela mostra o comando que falhou e a saída dele, com *tentar de novo*.
@@ -86,6 +86,12 @@ de rodar `make install-windows` de novo (o Windows não deixa sobrescrever o arq
   com o `web_port` do `config.toml`.
 - A janela Linux (`skye`) e o `skye web` não rodam ao mesmo tempo: com a janela Linux aberta,
   o `skye.exe` mostra o erro do `skye web` que não subiu.
+
+Se a janela mostrar "o servidor respondeu na porta N, mas o WebSocket … não abriu":
+confira se a porta bate com o `web_port`, se não há uma janela Linux da skye aberta e se o
+`skye web` do WSL é desta versão (ele precisa aceitar a origem `http://wails.localhost`).
+Se nada disso resolver, o WebView2 pode estar bloqueando o acesso a `127.0.0.1` (Local
+Network Access do Chromium); enquanto isso, use `skye web` no navegador.
 
 ## Testes
 
