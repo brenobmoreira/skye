@@ -1,6 +1,6 @@
 TAGS := desktop,production,webkit2_41
 
-.PHONY: frontend build test windows install-windows
+.PHONY: frontend build test windows windows-icon install-windows
 
 frontend:
 	cd frontend && npm ci && npm run build
@@ -10,6 +10,11 @@ build: frontend
 
 windows: frontend
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -tags desktop,production -ldflags "-H windowsgui" -o skye.exe ./cmd/skye-win
+
+# Regenerates the icon resource go build embeds in skye.exe (id 3 is the one Wails loads) from
+# cmd/skye-win/winres/icon.png; the .syso is committed, so a plain build does not need this.
+windows-icon:
+	cd cmd/skye-win && go run github.com/tc-hib/go-winres@v0.3.3 make --in winres/winres.json --out rsrc --arch amd64
 
 install-windows: windows
 	@appdata="$$(cmd.exe /c 'echo %LOCALAPPDATA%' 2>/dev/null | tr -d '\r')"; \

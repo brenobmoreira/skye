@@ -82,6 +82,10 @@ Uma janela nativa do Windows (WebView2) com a mesma interface. O motor continua 
     make windows              # gera ./skye.exe
     make install-windows      # copia para %LOCALAPPDATA%\skye\skye.exe e imprime o caminho
 
+O ícone do `skye.exe` (janela e barra de tarefas) é o logo em `cmd/skye-win/winres/icon.png`;
+depois de trocar a imagem, rode `make windows-icon`. Se a barra de tarefas mostrar o ícone antigo,
+desafixe e fixe de novo: o Windows guarda o ícone em cache.
+
 Abra o caminho impresso no Explorer, rode o `skye.exe` e, com ele aberto, clique com o botão
 direito no ícone da barra de tarefas → *Fixar na barra de tarefas*. Feche o `skye.exe` antes
 de rodar `make install-windows` de novo (o Windows não deixa sobrescrever o arquivo aberto).
