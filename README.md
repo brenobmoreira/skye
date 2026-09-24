@@ -47,7 +47,8 @@ O latido é `frontend/public/bark.ogg`; sem o arquivo, a skye toca um bipe.
   Quem está esperando você mostra, embaixo do nome e no aviso do Windows, o que o claude pede
   (ex.: `Bash: git push`); quem está trabalhando mostra se está compactando ou quantos
   subagentes tem rodando. Depois de atualizar a skye, rode `skye install-hooks` de novo.
-  À direita, há quanto tempo o terminal está no estado ("12 min"); depois de reiniciar a skye,
+  Uma barra fina no pé do item mostra quanto do contexto a sessão já usou (amarela a partir de
+  80%); passar o mouse mostra contexto, modelo e custo. À direita, há quanto tempo o terminal está no estado ("12 min"); depois de reiniciar a skye,
   o tempo volta no próximo evento do claude.
 - A lista agrupa por estado: esperando você, terminou, trabalhando, terminal. Quem acaba de
   terminar ou pedir algo sobe para o topo do seu grupo. Arraste um item para mudar a ordem dentro

@@ -390,3 +390,35 @@ func TestActivityDoesNotOutliveTheTurnOrSession(t *testing.T) {
 		t.Fatalf("subagents kept after the session: %q", ch.Terminal.Activity)
 	}
 }
+
+func TestSetContextReportsOnlyVisibleChanges(t *testing.T) {
+	r := newReg()
+	pct := func(v float64) *float64 { return &v }
+	steps := []struct {
+		s       hooks.Session
+		changed bool
+	}{
+		{hooks.Session{ContextPct: pct(42.2), Model: "Opus 5.5", CostUSD: pct(1.231)}, true},
+		{hooks.Session{ContextPct: pct(41.8), Model: "Opus 5.5", CostUSD: pct(1.234)}, false},
+		{hooks.Session{ContextPct: pct(43), Model: "Opus 5.5", CostUSD: pct(1.234)}, true},
+		{hooks.Session{ContextPct: pct(43), Model: "Sonnet 5", CostUSD: pct(1.234)}, true},
+		{hooks.Session{ContextPct: pct(43), Model: "Sonnet 5", CostUSD: pct(1.25)}, true},
+		{hooks.Session{}, false},
+	}
+	for i, s := range steps {
+		if _, changed := r.SetContext("a", s.s); changed != s.changed {
+			t.Fatalf("step %d: changed = %v", i, changed)
+		}
+	}
+	if _, changed := r.SetContext("nobody", steps[0].s); changed {
+		t.Fatal("unknown terminal changed")
+	}
+	got, _ := r.Get("a")
+	if got.Context == nil || got.Context.Model != "Sonnet 5" {
+		t.Fatalf("context = %+v", got.Context)
+	}
+	apply(t, r, "SessionEnd")
+	if got, _ := r.Get("a"); got.Context != nil {
+		t.Fatalf("context kept after the session: %+v", got.Context)
+	}
+}

@@ -123,21 +123,25 @@ func TestRequestShow(t *testing.T) {
 
 func TestServerDeliversStatusLineUsage(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "s.sock")
-	got := make(chan Usage, 1)
-	srv, err := Listen(path, func(Event) {}, nil, func(u Usage) { got <- u }, t.Logf)
+	type delivery struct {
+		terminal string
+		status   Status
+	}
+	got := make(chan delivery, 1)
+	srv, err := Listen(path, func(Event) {}, nil, func(terminal string, s Status) { got <- delivery{terminal, s} }, t.Logf)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer srv.Close()
-	body := `{"rate_limits":{"five_hour":{"used_percentage":10,"resets_at":1790000000}}}`
+	body := `{"model":{"display_name":"Opus 5.5"},"rate_limits":{"five_hour":{"used_percentage":10,"resets_at":1790000000}}}`
 	resp, err := client(path).Post("http://skye/statusline?t=t1", "application/json", strings.NewReader(body))
 	if err != nil || resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("post: %v %v", resp, err)
 	}
 	select {
-	case u := <-got:
-		if u.FiveHour == nil || u.FiveHour.UsedPct != 10 {
-			t.Fatalf("got %+v", u)
+	case d := <-got:
+		if d.terminal != "t1" || !d.status.HasUsage || d.status.Usage.FiveHour.UsedPct != 10 || d.status.Session.Model != "Opus 5.5" {
+			t.Fatalf("got %+v", d)
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("usage handler not called")

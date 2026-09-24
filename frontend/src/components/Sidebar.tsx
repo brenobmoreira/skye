@@ -3,6 +3,7 @@ import { api } from '../bridge';
 import { base, itemLabel } from '../lib/label';
 import { filterConversations } from '../lib/filter';
 import { elapsed } from '../lib/duration';
+import { contextBar, contextText } from '../lib/context';
 import { moveWithinGroup } from '../lib/order';
 import { DogIcon } from './DogIcon';
 import { stateLabel } from '../lib/states';
@@ -24,6 +25,10 @@ type Drag = { dragging: string | null; start: (id: string) => void; over: (id: s
 function TerminalItem({ t, active, unread, now, onSelect, drag }: { t: Terminal; active: boolean; unread: boolean; now: number; onSelect: () => void; drag: Drag }) {
   const label = itemLabel(t);
   const time = elapsed(t.since, t.state, now);
+  const bar = contextBar(t.context);
+  const hover = [t.state === 'waiting' && t.ask ? `${stateLabel[t.state]}: ${t.ask}` : stateLabel[t.state], contextText(t.context)]
+    .filter(Boolean)
+    .join('\n');
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(label.name);
   const confirm = () => {
@@ -35,7 +40,7 @@ function TerminalItem({ t, active, unread, now, onSelect, drag }: { t: Terminal;
     <div
       className={`item${active ? ' active' : ''}${unread ? ' unread' : ''}${drag.dragging === t.id ? ' dragging' : ''}`}
       onClick={onSelect}
-      title={t.state === 'waiting' && t.ask ? `${stateLabel[t.state]}: ${t.ask}` : stateLabel[t.state]}
+      title={hover}
       draggable={!editing}
       onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; drag.start(t.id); }}
       onDragOver={(e) => { if (drag.over(t.id)) e.preventDefault(); }}
@@ -67,6 +72,7 @@ function TerminalItem({ t, active, unread, now, onSelect, drag }: { t: Terminal;
           {time && <span className="time">{time}</span>}
         </div>
       </div>
+      {bar && <span className={bar.full ? 'ctx full' : 'ctx'}><span style={{ width: `${bar.pct}%` }} /></span>}
     </div>
   );
 }

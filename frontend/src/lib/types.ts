@@ -10,9 +10,16 @@ export interface Terminal {
   title: string;
   ask?: string;
   activity?: string;
+  context?: SessionContext;
   createdAt: string;
   since?: string;
   order: number;
+}
+
+export interface SessionContext {
+  contextPct?: number;
+  model?: string;
+  costUsd?: number;
 }
 
 export interface Conversation {
