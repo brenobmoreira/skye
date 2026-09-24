@@ -56,7 +56,8 @@ O latido é `frontend/public/bark.ogg`; sem o arquivo, a skye toca um bipe.
   `Ctrl+clique` num link abre no seu navegador (no WSL, o navegador padrão do Windows).
 - **×** esconde a janela (os terminais continuam); rodar `skye` de novo traz a janela.
 - **sair** encerra todos os terminais; as conversas vão para *Encerradas*, com *retomar*.
-  *Encerradas* começa recolhida; clique no título para abrir (a escolha fica lembrada).
+  *Encerradas* começa recolhida; clique no título para abrir (a escolha fica lembrada). Aberta,
+  o campo *filtrar* acha a conversa por palavras do título ou da pasta (`Esc` limpa).
 
 ## Abrir pelo navegador
 

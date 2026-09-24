@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from '../bridge';
 import { base, itemLabel } from '../lib/label';
+import { filterConversations } from '../lib/filter';
 import { moveWithinGroup } from '../lib/order';
 import { DogIcon } from './DogIcon';
 import { stateLabel } from '../lib/states';
@@ -96,6 +97,8 @@ export function Sidebar(props: {
 }) {
   const [dragging, setDragging] = useState<string | null>(null);
   const [endedOpen, setEndedOpen] = useState(storedEndedOpen);
+  const [query, setQuery] = useState('');
+  const ended = filterConversations(props.conversations, query);
   const toggleEnded = () => {
     setEndedOpen(!endedOpen);
     try {
@@ -125,7 +128,17 @@ export function Sidebar(props: {
           {endedOpen ? '▾' : '▸'} Encerradas ({props.conversations.length})
         </h3>
       )}
-      {endedOpen && props.conversations.map((c) => (
+      {endedOpen && (
+        <input
+          className="filter"
+          placeholder="filtrar por título ou pasta"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Escape') setQuery(''); }}
+        />
+      )}
+      {endedOpen && ended.length === 0 && <div className="none">nenhuma encontrada</div>}
+      {endedOpen && ended.map((c) => (
         <div className="item" key={c.sessionId} onClick={() => props.onResume(c.sessionId)} title="retomar">
           <DogIcon color="var(--shell)" title="encerrada" />
           <div>

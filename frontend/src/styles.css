@@ -57,6 +57,9 @@ button:hover { background: var(--line); }
 .sidebar h3 { font-size: 11px; text-transform: uppercase; color: var(--muted); margin: 14px 4px 6px; }
 .sidebar h3.toggle { cursor: pointer; user-select: none; }
 .sidebar h3.toggle:hover { color: var(--text); }
+.sidebar .filter { width: 100%; box-sizing: border-box; margin: 0 0 6px; padding: 4px 8px; font: inherit; font-size: 12px; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; outline: none; }
+.sidebar .filter:focus { border-color: var(--accent); }
+.sidebar .none { padding: 4px 8px; font-size: 12px; color: var(--muted); }
 .item { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: center; padding: 6px; border-radius: 6px; cursor: pointer; }
 .item:hover { background: var(--panel); }
 .item.active { background: var(--line); }
