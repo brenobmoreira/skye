@@ -25,6 +25,7 @@ interface GoBridge {
   ToggleMaximise(): Promise<void>;
   Quit(): Promise<void>;
   Problems(): Promise<string[]>;
+  OpenURL(url: string): Promise<void>;
 }
 
 interface GoShell {
@@ -36,6 +37,7 @@ interface WailsRuntime {
   WindowMinimise(): void;
   WindowToggleMaximise(): void;
   WindowIsMaximised?(): Promise<boolean>;
+  BrowserOpenURL(url: string): void;
   Quit(): void;
 }
 
@@ -117,6 +119,7 @@ function remoteBridge(connect: () => SocketLike): { bridge: GoBridge; on: (name:
     ToggleMaximise: async () => {},
     Quit: () => call('Quit'),
     Problems: () => call('Problems'),
+    OpenURL: async () => {},
   };
   return { bridge, on: (name, cb) => client.on(name, cb) };
 }
@@ -137,3 +140,10 @@ export const input = (id: string) => {
   }
   return queue;
 };
+
+// Opens a web link in the user's browser instead of inside the app window.
+export function openExternal(url: string) {
+  if (mode === 'linux-window') api().OpenURL(url).catch(() => {});
+  else if (mode === 'windows-app') runtime().BrowserOpenURL(url);
+  else window.open(url, '_blank', 'noopener,noreferrer');
+}

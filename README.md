@@ -43,7 +43,8 @@ O latido é `frontend/public/bark.ogg`; sem o arquivo, a skye toca um bipe.
 - A lista agrupa por estado: esperando você, terminou, trabalhando, terminal. Quem acaba de
   terminar ou pedir algo sobe para o topo do seu grupo. Arraste um item para mudar a ordem dentro
   do grupo; a ordem fica salva.
-- No terminal: `Alt+Enter` quebra linha no claude; selecionar copia; `Ctrl+Shift+V` cola.
+- No terminal: `Alt+Enter` quebra linha no claude; selecionar copia; `Ctrl+Shift+V` cola;
+  `Ctrl+clique` num link abre no seu navegador (no WSL, o navegador padrão do Windows).
 - **×** esconde a janela (os terminais continuam); rodar `skye` de novo traz a janela.
 - **sair** encerra todos os terminais; as conversas vão para *Encerradas*, com *retomar*.
   *Encerradas* começa recolhida; clique no título para abrir (a escolha fica lembrada).
@@ -119,3 +120,4 @@ Network Access do Chromium); enquanto isso, use `skye web` no navegador.
 12. Terminal vazio com `claude`: o nome na lista vira o 1º prompt; ao sair do claude, volta à pasta.
 13. Pedir algo num terminal e trocar para outro: ao terminar, o primeiro ganha o ponto azul; abri-lo tira o ponto.
 14. Arrastar um terminal para cima de outro do mesmo grupo: troca de lugar; `pkill skye` e reabrir mantém a ordem.
+15. `echo https://example.com` e `Ctrl+clique` no link: abre no navegador do Windows (janela Linux, `skye.exe` e navegador); clique simples não abre.

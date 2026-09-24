@@ -16,6 +16,7 @@ import (
 	"github.com/brenobmoreira/skye/internal/config"
 	"github.com/brenobmoreira/skye/internal/hooks"
 	"github.com/brenobmoreira/skye/internal/notify"
+	"github.com/brenobmoreira/skye/internal/opener"
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
 	"github.com/brenobmoreira/skye/internal/tmuxctl"
@@ -185,6 +186,12 @@ func (b *Bridge) ready() (*app.App, error) {
 		return nil, errNotReady
 	}
 	return b.app, nil
+}
+
+// OpenURL is only bound to the Linux window; the web and Windows clients open links themselves,
+// so a remote client can never make this machine open anything.
+func (b *Bridge) OpenURL(url string) error {
+	return opener.Open(url)
 }
 
 func (b *Bridge) Problems() []string {

@@ -2,8 +2,10 @@ import { useEffect, useRef } from 'react';
 import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
-import { api, input, output } from '../bridge';
+import { WebLinksAddon } from '@xterm/addon-web-links';
+import { api, input, openExternal, output } from '../bridge';
 import { keyHandler } from '../lib/keys';
+import { linkClick } from '../lib/links';
 
 export function TerminalView({ id, active, fontSize, fontFamily }: { id: string; active: boolean; fontSize: number; fontFamily: string }) {
   const host = useRef<HTMLDivElement>(null);
@@ -11,15 +13,21 @@ export function TerminalView({ id, active, fontSize, fontFamily }: { id: string;
   const fit = useRef<FitAddon | null>(null);
 
   useEffect(() => {
+    const open = (e: MouseEvent, uri: string) => {
+      const url = linkClick(e, uri);
+      if (url) openExternal(url);
+    };
     const t = new XTerm({
       fontFamily,
       fontSize,
       cursorBlink: true,
       scrollback: 5000,
       theme: { background: '#0e0e12' },
+      linkHandler: { activate: (e, uri) => open(e, uri) },
     });
     const f = new FitAddon();
     t.loadAddon(f);
+    t.loadAddon(new WebLinksAddon(open));
     t.open(host.current!);
     // WebGL draws block and box-drawing characters itself, so they fill the cell instead of coming from a fallback font.
     try {
