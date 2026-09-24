@@ -1,17 +1,23 @@
 import type { Usage, UsageWindow } from './types';
 
-const time = (epoch: number) => new Date(epoch * 1000).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+export type UsageRow = { label: string; pct: number; resets: string };
 
-// The badge in the title bar. The numbers only change while some claude session redraws its
-// status line, so they go stale once the 5h window resets with nobody running.
-export function usageBadge(u: Usage | null, now: number): { text: string; title: string; stale: boolean } | null {
+// Today the reset shows only the hour, like the status line; further out it also names the day.
+const resetLabel = (epoch: number, now: number) => {
+  const d = new Date(epoch * 1000);
+  const hour = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return d.toDateString() === new Date(now).toDateString() ? hour : `${d.toLocaleDateString([], { weekday: 'short' })} ${hour}`;
+};
+
+// The panel at the bottom of the sidebar. The numbers only change while some claude session
+// redraws its status line, so they go stale once the 5h window resets with nobody running.
+export function usagePanel(u: Usage | null, now: number): { rows: UsageRow[]; updated: string; stale: boolean } | null {
   if (!u || (!u.fiveHour && !u.sevenDay)) return null;
-  const part = (label: string, w: UsageWindow | null) => (w ? `${label} ${Math.round(w.usedPct)}%` : '');
-  const reset = (label: string, w: UsageWindow | null) => (w?.resetsAt ? `${label} renova ${time(w.resetsAt)}` : '');
-  const updated = new Date(u.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const row = (label: string, w: UsageWindow | null): UsageRow[] =>
+    w ? [{ label, pct: Math.min(100, Math.max(0, Math.round(w.usedPct))), resets: w.resetsAt ? resetLabel(w.resetsAt, now) : '' }] : [];
   return {
-    text: [part('5h', u.fiveHour), part('7d', u.sevenDay)].filter(Boolean).join(' · '),
-    title: [reset('5h', u.fiveHour), reset('7d', u.sevenDay), `atualizado às ${updated}`].filter(Boolean).join('\n'),
+    rows: [...row('5h', u.fiveHour), ...row('7d', u.sevenDay)],
+    updated: new Date(u.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     stale: !!u.fiveHour?.resetsAt && now > u.fiveHour.resetsAt * 1000,
   };
 }

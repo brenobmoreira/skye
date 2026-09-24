@@ -4,7 +4,8 @@ import { base, itemLabel } from '../lib/label';
 import { moveWithinGroup } from '../lib/order';
 import { DogIcon } from './DogIcon';
 import { stateLabel } from '../lib/states';
-import type { Conversation, Terminal } from '../lib/types';
+import type { Conversation, Terminal, Usage } from '../lib/types';
+import { usagePanel } from '../lib/usage';
 
 const ENDED_KEY = 'skye:endedOpen';
 
@@ -64,6 +65,25 @@ function TerminalItem({ t, active, unread, onSelect, drag }: { t: Terminal; acti
   );
 }
 
+// Plan usage from the claude status line, pinned under the list like the status line under the
+// prompt.
+function UsagePanel({ usage }: { usage: Usage | null }) {
+  const panel = usagePanel(usage, Date.now());
+  if (!panel) return null;
+  return (
+    <div className={panel.stale ? 'usage stale' : 'usage'} title={`atualizado às ${panel.updated}`}>
+      {panel.rows.map((r) => (
+        <div className="usage-row" key={r.label}>
+          <span className="label">{r.label}</span>
+          <span className="bar"><span style={{ width: `${r.pct}%` }} /></span>
+          <span className="pct">{r.pct}%</span>
+          <span className="resets">{r.resets}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function Sidebar(props: {
   terminals: Terminal[];
   conversations: Conversation[];
@@ -72,6 +92,7 @@ export function Sidebar(props: {
   onSelect: (id: string) => void;
   onReorder: (list: Terminal[]) => void;
   onResume: (sessionId: string) => void;
+  usage: Usage | null;
 }) {
   const [dragging, setDragging] = useState<string | null>(null);
   const [endedOpen, setEndedOpen] = useState(storedEndedOpen);
@@ -94,6 +115,7 @@ export function Sidebar(props: {
   };
   return (
     <aside className="sidebar">
+      <div className="list">
       <h3>Terminais</h3>
       {props.terminals.map((t) => (
         <TerminalItem key={t.id} t={t} active={t.id === props.activeId} unread={props.unread.has(t.id)} onSelect={() => props.onSelect(t.id)} drag={drag} />
@@ -115,6 +137,8 @@ export function Sidebar(props: {
           </div>
         </div>
       ))}
+      </div>
+      <UsagePanel usage={props.usage} />
     </aside>
   );
 }
