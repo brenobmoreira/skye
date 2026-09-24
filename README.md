@@ -49,6 +49,9 @@ O latido é `frontend/public/bark.ogg`; sem o arquivo, a skye toca um bipe.
 - A lista agrupa por estado: esperando você, terminou, trabalhando, terminal. Quem acaba de
   terminar ou pedir algo sobe para o topo do seu grupo. Arraste um item para mudar a ordem dentro
   do grupo; a ordem fica salva.
+- Teclado: `Ctrl+1` … `Ctrl+9` abre o 1º … 9º terminal da lista; `Ctrl+Shift+Espaço` pula para o
+  próximo que está esperando você (sem nenhum esperando, para o próximo com ponto azul). Numa aba
+  do navegador, `Ctrl+1..9` fica com o navegador; no `skye.exe` e no app instalado funciona.
 - No terminal: `Alt+Enter` quebra linha no claude; selecionar copia; `Ctrl+Shift+V` cola;
   `Ctrl+clique` num link abre no seu navegador (no WSL, o navegador padrão do Windows).
 - **×** esconde a janela (os terminais continuam); rodar `skye` de novo traz a janela.
