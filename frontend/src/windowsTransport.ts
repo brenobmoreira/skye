@@ -14,14 +14,29 @@ export interface WindowsTransportOptions {
 }
 
 const ESCALATE_AFTER = 3;
+const GIVE_UP_AFTER = 2;
 
 const messageOf = (err: unknown) =>
   typeof err === 'string' ? err : err instanceof Error ? err.message : String(err);
 
+const portOf = (url: string) => {
+  try {
+    return new URL(url).port;
+  } catch {
+    return url;
+  }
+};
+
+const neverOpened = (ep: Endpoint) =>
+  `o servidor respondeu na porta ${portOf(ep.url)}, mas o WebSocket ${ep.url} não abriu (origem/token recusados, outra skye aberta ou bloqueio do WebView2)`;
+
 export function createWindowsTransport({ connect, open, onState }: WindowsTransportOptions) {
   let endpoint: Endpoint | null = null;
   let failures = 0;
-  let waiting: (() => void) | null = null;
+  let fruitless = 0;
+  let openedSinceConnect = false;
+  let halted = false;
+  let parked: (() => void) | null = null;
 
   const dial = (): SocketLike => {
     let inner: SocketLike | null = null;
@@ -39,13 +54,21 @@ export function createWindowsTransport({ connect, open, onState }: WindowsTransp
       onerror: null,
     };
 
+    const halt = (message: string) => {
+      halted = true;
+      onState({ kind: 'error', message });
+      queueMicrotask(() => outer.onclose?.());
+    };
+
     const attach = (ep: Endpoint) => {
       if (closed) return;
       const s = open(`${ep.url}?token=${encodeURIComponent(ep.token)}`);
       inner = s;
       s.onopen = () => {
         opened = true;
+        openedSinceConnect = true;
         failures = 0;
+        fruitless = 0;
         onState({ kind: 'ready' });
         outer.onopen?.();
       };
@@ -63,26 +86,41 @@ export function createWindowsTransport({ connect, open, onState }: WindowsTransp
         (ep) => {
           endpoint = ep;
           failures = 0;
+          openedSinceConnect = false;
           attach(ep);
         },
-        (err) => {
-          waiting = () => {
-            waiting = null;
-            resolve();
-          };
-          onState({ kind: 'error', message: messageOf(err) });
-        },
+        (err) => halt(messageOf(err)),
       );
     };
 
-    if (endpoint && failures < ESCALATE_AFTER) {
-      attach(endpoint);
-    } else {
+    const begin = () => {
+      if (endpoint && failures < ESCALATE_AFTER) {
+        attach(endpoint);
+        return;
+      }
+      if (endpoint && !openedSinceConnect && ++fruitless >= GIVE_UP_AFTER) {
+        halt(neverOpened(endpoint));
+        return;
+      }
       endpoint = null;
       resolve();
-    }
+    };
+
+    if (halted) parked = begin;
+    else begin();
     return outer;
   };
 
-  return { dial, retry: () => waiting?.() };
+  const retry = () => {
+    if (!halted) return;
+    halted = false;
+    endpoint = null;
+    failures = 0;
+    fruitless = 0;
+    const next = parked;
+    parked = null;
+    next?.();
+  };
+
+  return { dial, retry };
 }

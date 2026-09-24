@@ -103,21 +103,54 @@ it('an open in between resets the failure count', async () => {
   expect(t.connects()).toBe(1);
 });
 
-it('shows the Connect error and tries again only when asked', async () => {
-  const t = setup([new Error('wsl.exe -- bash -lc "skye web --no-open" falhou\nsaída'), ep]);
-  const reply = t.client.call('List');
+it('shows the Connect error, rejects queued calls and tries again only when asked', async () => {
+  const t = setup([new Error('wsl.exe -e bash -lc falhou\nsaída'), ep]);
+  const queued = expect(t.client.call('List')).rejects.toThrow();
   await flush();
-  expect(t.states.at(-1)).toEqual({ kind: 'error', message: 'wsl.exe -- bash -lc "skye web --no-open" falhou\nsaída' });
+  expect(t.states.at(-1)).toEqual({ kind: 'error', message: 'wsl.exe -e bash -lc falhou\nsaída' });
+  await queued;
   expect(t.sockets).toHaveLength(0);
+  t.fire();
+  await flush();
   expect(t.connects()).toBe(1);
+  expect(t.sockets).toHaveLength(0);
   t.transport.retry();
   expect(t.states.at(-1)).toEqual({ kind: 'connecting' });
   await flush();
   expect(t.connects()).toBe(2);
+  const reply = t.client.call('List');
   t.last().open();
   const frame = JSON.parse(t.last().sent[0]);
   t.last().receive({ id: frame.id, result: ['t1'] });
   await expect(reply).resolves.toEqual(['t1']);
+});
+
+it('gives up with an error when Connect works but the socket never opens', async () => {
+  const t = setup([ep]);
+  const queued = expect(t.client.call('List')).rejects.toThrow();
+  await flush();
+  for (let i = 0; i < 20 && t.states.at(-1)?.kind !== 'error'; i++) {
+    t.last().drop();
+    t.fire();
+    await flush();
+  }
+  const state = t.states.at(-1);
+  expect(state?.kind).toBe('error');
+  expect(state?.kind === 'error' && state.message).toBe(
+    'o servidor respondeu na porta 7810, mas o WebSocket ws://127.0.0.1:7810/ws não abriu (origem/token recusados, outra skye aberta ou bloqueio do WebView2)',
+  );
+  expect(t.connects()).toBe(2);
+  await queued;
+  const sockets = t.sockets.length;
+  t.fire();
+  await flush();
+  expect(t.connects()).toBe(2);
+  expect(t.sockets).toHaveLength(sockets);
+  t.transport.retry();
+  await flush();
+  expect(t.connects()).toBe(3);
+  t.last().open();
+  expect(t.states.at(-1)).toEqual({ kind: 'ready' });
 });
 
 it('retry does nothing when there is no error waiting', async () => {
