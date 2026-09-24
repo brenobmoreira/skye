@@ -52,7 +52,6 @@ button:hover { background: var(--line); }
 .new-menu { min-width: 260px; }
 .new-menu .place { display: flex; align-items: center; }
 .new-menu .place > button:first-child { flex: 1; min-width: 0; }
-.new-menu .place small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .new-menu .remove { width: auto; flex: none; color: var(--muted); visibility: hidden; }
 .new-menu .place:hover .remove, .new-menu .remove.armed { visibility: visible; }
 .new-menu .remove.armed { color: var(--waiting); }

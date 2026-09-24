@@ -94,7 +94,6 @@ export function NewMenu(props: {
             <div key={p.name} className="place" onMouseLeave={() => { if (armed === p.name) setArmed(null); }}>
               <button onClick={() => run(() => props.onOpenPlace(p.name))} title={`claude em ${p.path}`}>
                 {p.name}
-                <small>{p.path}</small>
               </button>
               <button className={armed === p.name ? 'remove armed' : 'remove'} onClick={() => remove(p.name)} title="remover este path">
                 {armed === p.name ? 'remover?' : '×'}
