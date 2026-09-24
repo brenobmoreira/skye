@@ -82,6 +82,10 @@ Uma janela nativa do Windows (WebView2) com a mesma interface. O motor continua 
     make windows              # gera ./skye.exe
     make install-windows      # copia para %LOCALAPPDATA%\skye\skye.exe e imprime o caminho
 
+O ícone do `skye.exe` (janela e barra de tarefas) é o logo em `cmd/skye-win/winres/icon.png`;
+depois de trocar a imagem, rode `make windows-icon`. Se a barra de tarefas mostrar o ícone antigo,
+desafixe e fixe de novo: o Windows guarda o ícone em cache.
+
 Abra o caminho impresso no Explorer, rode o `skye.exe` e, com ele aberto, clique com o botão
 direito no ícone da barra de tarefas → *Fixar na barra de tarefas*. Feche o `skye.exe` antes
 de rodar `make install-windows` de novo (o Windows não deixa sobrescrever o arquivo aberto).
@@ -112,8 +116,8 @@ Network Access do Chromium); enquanto isso, use `skye web` no navegador.
 
 1. Abrir terminal vazio e preset; `ls --color`, `git log` desenham certo.
 2. `claude` no terminal: `Alt+Enter` quebra linha; colar 3 linhas com `Ctrl+Shift+V` chega como um prompt.
-3. Pedir algo que exija permissão: bolinha amarela, latido, toast com a janela fora de foco.
-4. Resposta termina: bolinha verde, latido; um minuto depois, nenhum segundo latido.
+3. Pedir algo que exija permissão: cachorro amarelo, latido, toast com a janela fora de foco.
+4. Resposta termina: cachorro verde, latido; um minuto depois, nenhum segundo latido.
 5. `/clear`: o terminal continua o mesmo, sem nada novo em *Encerradas*; o próximo prompt vira o nome. Sair do claude (`/exit`) manda a conversa para *Encerradas*.
 6. Fechar a janela no ×, rodar `skye` de novo: mesma janela, terminais intactos.
 7. `pkill skye` e reabrir: terminais reencontrados com os nomes.
