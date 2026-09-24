@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 )
@@ -15,10 +16,43 @@ type Preset struct {
 	Command string `toml:"command" json:"command"`
 }
 
+// Repo is a repository the + menu can open a new worktree of.
+type Repo struct {
+	Name    string `toml:"name" json:"name"`
+	Path    string `toml:"path" json:"-"`
+	Base    string `toml:"base" json:"-"`
+	Dir     string `toml:"dir" json:"-"`
+	Command string `toml:"command" json:"-"`
+}
+
+// Resolved fills the defaults and expands a leading ~: the base is the repo's HEAD, worktrees go
+// next to the repo and run claude.
+func (r Repo) Resolved(home string) Repo {
+	expand := func(p string) string {
+		if p == "~" || strings.HasPrefix(p, "~/") {
+			return filepath.Join(home, p[1:])
+		}
+		return p
+	}
+	r.Path = expand(r.Path)
+	r.Dir = expand(r.Dir)
+	if r.Dir == "" {
+		r.Dir = filepath.Dir(r.Path)
+	}
+	if r.Base == "" {
+		r.Base = "HEAD"
+	}
+	if r.Command == "" {
+		r.Command = "claude"
+	}
+	return r
+}
+
 type Config struct {
 	Shell   string   `toml:"shell"`
 	Sound   bool     `toml:"sound"`
 	Presets []Preset `toml:"preset"`
+	Repos   []Repo   `toml:"repo"`
 	WebPort int      `toml:"web_port"`
 }
 
@@ -60,6 +94,16 @@ func (c Config) validate() error {
 		}
 		seen[p.Name] = true
 	}
+	repos := map[string]bool{}
+	for i, r := range c.Repos {
+		if r.Name == "" || r.Path == "" {
+			return fmt.Errorf("repo #%d needs name and path", i+1)
+		}
+		if repos[r.Name] {
+			return fmt.Errorf("repo %q is duplicated", r.Name)
+		}
+		repos[r.Name] = true
+	}
 	return nil
 }
 
@@ -70,6 +114,15 @@ func (c Config) Preset(name string) (Preset, bool) {
 		}
 	}
 	return Preset{}, false
+}
+
+func (c Config) Repo(name string) (Repo, bool) {
+	for _, r := range c.Repos {
+		if r.Name == name {
+			return r, true
+		}
+	}
+	return Repo{}, false
 }
 
 func (c Config) ResolveShell(getenv func(string) string) string {

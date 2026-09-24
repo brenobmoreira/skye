@@ -32,6 +32,8 @@ type rpcTarget interface {
 	Problems() []string
 	Usage() hooks.Usage
 	Monitor() (app.MonitorReport, error)
+	Repos() []config.Repo
+	NewWorktree(repo, branch string) (terminals.Terminal, error)
 }
 
 func decodeArgs(method string, args []json.RawMessage, dst ...any) error {
@@ -101,6 +103,16 @@ func dispatcher(t rpcTarget) web.Dispatch {
 				return nil, err
 			}
 			return t.NewTerminal(a)
+		case "Repos":
+			if err := decode(); err != nil {
+				return nil, err
+			}
+			return t.Repos(), nil
+		case "NewWorktree":
+			if err := decode(&a, &b); err != nil {
+				return nil, err
+			}
+			return t.NewWorktree(a, b)
 		case "Resume":
 			if err := decode(&a); err != nil {
 				return nil, err

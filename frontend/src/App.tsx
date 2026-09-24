@@ -5,7 +5,7 @@ import { TitleBar } from './components/TitleBar';
 import { Sidebar } from './components/Sidebar';
 import { TerminalView } from './components/TerminalView';
 import { Monitor } from './components/Monitor';
-import type { Conversation, Preset, State, Terminal, Usage } from './lib/types';
+import type { Conversation, Preset, Repo, State, Terminal, Usage } from './lib/types';
 import { nextUnread } from './lib/unread';
 import { shortcut } from './lib/shortcuts';
 import type { ConnectionState } from './windowsTransport';
@@ -53,6 +53,7 @@ export function App() {
   const [terminals, setTerminals] = useState<Terminal[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [presets, setPresets] = useState<Preset[]>([]);
+  const [repos, setRepos] = useState<Repo[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sound, setSound] = useState(true);
   const [problems, setProblems] = useState<string[]>([]);
@@ -72,6 +73,7 @@ export function App() {
     api().List().then(setTerminals).catch(() => {});
     api().Conversations().then(setConversations).catch(() => {});
     api().Presets().then(setPresets).catch(() => {});
+    api().Repos().then(setRepos).catch(() => {});
     api().Sound().then(setSound).catch(() => {});
     api().Problems().then(setProblems).catch(() => {});
     api().Usage().then(setUsage).catch(() => {});
@@ -174,6 +176,7 @@ export function App() {
 
   const show = (id: string) => { setActiveId(id); setMonitor(false); };
   const open = async (preset: string) => show((await api().NewTerminal(preset)).id);
+  const newWorktree = async (repo: string, branch: string) => show((await api().NewWorktree(repo, branch)).id);
   const resume = async (sessionId: string) => show((await api().Resume(sessionId)).id);
   const reorder = (list: Terminal[]) => {
     setTerminals(list);
@@ -190,7 +193,7 @@ export function App() {
   return (
     <div className={isWindow() ? 'app windowed' : 'app'}>
       {link.kind !== 'ready' && <ConnectionScreen state={link} />}
-      <TitleBar presets={presets} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} onPickFont={pickFont} monitor={monitor} onToggleMonitor={() => setMonitor(!monitor)} />
+      <TitleBar presets={presets} repos={repos} onNewWorktree={newWorktree} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} onPickFont={pickFont} monitor={monitor} onToggleMonitor={() => setMonitor(!monitor)} />
       <div className="body">
         <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={unread} onSelect={show} onReorder={reorder} onResume={resume} usage={usage} />
         <main className="main">

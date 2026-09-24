@@ -36,6 +36,18 @@ Build com `make build` (o `go build` puro precisa do `frontend/dist`).
 O comando roda em `$SHELL -lic`, com o seu `.bashrc`/`.zshrc` carregado. Quando ele
 termina, o terminal continua como shell.
 
+Para abrir uma branch nova numa worktree própria, cadastre o repositório:
+
+    [[repo]]
+    name = "livia"
+    path = "~/projects/ai_livia_copilot"
+    base = "origin/develop"   # de onde sai a branch; padrão: o HEAD do repo (sem fetch)
+    dir = "~/projects"        # onde nasce a worktree; padrão: a pasta que contém o repo
+    command = "claude"        # o que roda nela; padrão: claude
+
+No **+**, *nova worktree de livia…* pede o nome da branch, cria `~/projects/<branch>` (com `/`
+trocada por `-`) e abre o terminal lá. A skye nunca apaga worktree, nem ao fechar o terminal.
+
 O latido é `frontend/public/bark.ogg`; sem o arquivo, a skye toca um bipe.
 
 ## Uso

@@ -1,4 +1,4 @@
-import type { Conversation, MonitorReport, OutputEvent, Preset, Terminal, Usage } from './lib/types';
+import type { Conversation, MonitorReport, OutputEvent, Preset, Repo, Terminal, Usage } from './lib/types';
 import { createOutputHub } from './output';
 import { createSendQueue } from './sendQueue';
 import { createWsClient, type SocketLike } from './wsClient';
@@ -10,6 +10,8 @@ interface GoBridge {
   Conversations(): Promise<Conversation[]>;
   Presets(): Promise<Preset[]>;
   NewTerminal(preset: string): Promise<Terminal>;
+  Repos(): Promise<Repo[]>;
+  NewWorktree(repo: string, branch: string): Promise<Terminal>;
   Resume(sessionId: string): Promise<Terminal>;
   Write(id: string, data: string): Promise<void>;
   Resize(id: string, cols: number, rows: number): Promise<void>;
@@ -106,6 +108,8 @@ function remoteBridge(connect: () => SocketLike): { bridge: GoBridge; on: (name:
     Conversations: () => call('Conversations'),
     Presets: () => call('Presets'),
     NewTerminal: (preset) => call('NewTerminal', preset),
+    Repos: () => call('Repos'),
+    NewWorktree: (repo, branch) => call('NewWorktree', repo, branch),
     Resume: (sessionId) => call('Resume', sessionId),
     Write: (id, data) => call('Write', id, data),
     Resize: (id, cols, rows) => call('Resize', id, cols, rows),
