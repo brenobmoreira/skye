@@ -73,7 +73,9 @@ O latido é `frontend/public/bark.ogg`; sem o arquivo, a skye toca um bipe.
   do navegador, `Ctrl+1..9` fica com o navegador; no `skye.exe` e no app instalado funciona.
 - No terminal: `Alt+Enter` quebra linha no claude; selecionar copia; `Ctrl+Shift+V` cola;
   `Ctrl+clique` num link abre no seu navegador (no WSL, o navegador padrão do Windows).
-- **monitor** (na barra de cima) troca os terminais por uma aba com a memória da máquina, quanto
+- **monitor** (na barra de cima) troca os terminais por uma aba com a memória do Windows (a que
+  acaba primeiro: inclui o que a VM do WSL segura; lida por um `powershell.exe` que só roda com a
+  aba aberta), a memória dentro do WSL, quanto
   cada terminal usa (a árvore de processos inteira) e o que ficou para trás: processo que saiu de
   um terminal e continuou vivo, `claude` aberto fora da skye, outra skye, janela do tmux sem item e
   sockets de tmux mortos. Só mostra; para encerrar, `kill <PID>`. O gráfico das últimas 3 h aparece

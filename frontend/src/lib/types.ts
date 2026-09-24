@@ -94,7 +94,14 @@ export interface TmuxServer {
   alive: boolean;
 }
 
+export interface HostMemory {
+  totalMb: number;
+  availMb: number;
+  updatedAt: string;
+}
+
 export interface MonitorReport {
+  host?: HostMemory;
   machine: Machine;
   history: MemoryPoint[] | null;
   selfMb: number;

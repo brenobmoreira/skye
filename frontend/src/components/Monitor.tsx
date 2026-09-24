@@ -24,7 +24,7 @@ function MemoryChart({ points, totalMb }: { points: MemoryPoint[]; totalMb: numb
   const x = hover === null ? 0 : (hover / (points.length - 1)) * 100;
   return (
     <figure className="mon-chart">
-      <figcaption>Memória disponível · últimas 3 h</figcaption>
+      <figcaption>Memória disponível no WSL · últimas 3 h</figcaption>
       <div className="plot" onMouseMove={move} onMouseLeave={() => setHover(null)}>
         <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} preserveAspectRatio="none" role="img" aria-label="memória disponível nas últimas 3 horas">
           <line x1="0" y1={CHART_H} x2={CHART_W} y2={CHART_H} className="axis" />
@@ -77,18 +77,32 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
   const live = servers.filter((s) => s.alive);
   const dead = servers.filter((s) => !s.alive);
   const usedPct = m.memTotalMb > 0 ? Math.round(((m.memTotalMb - m.memAvailMb) / m.memTotalMb) * 100) : 0;
+  const host = report.host;
+  const hostLevel = host ? memoryLevel({ memTotalMb: host.totalMb, memAvailMb: host.availMb }) : 'ok';
+  const hostUsedPct = host && host.totalMb > 0 ? Math.round(((host.totalMb - host.availMb) / host.totalMb) * 100) : 0;
 
   return (
     <div className="monitor">
       {error && <p className="hint warn">falhou a última leitura: {error}</p>}
       <section className="mon-tiles">
-        <div className="tile">
-          <span className="label">RAM disponível</span>
+        {host ? (
+          <div className="tile" title="o que o Gerenciador de Tarefas do Windows mostra como disponível; inclui o que a VM do WSL segura">
+            <span className="label">Windows · disponível</span>
+            <span className="value">{size(host.availMb)}</span>
+            <span className="meter"><span className={hostLevel === 'ok' ? '' : 'warn'} style={{ width: `${hostUsedPct}%` }} /></span>
+            <span className="note">
+              {hostLevel !== 'ok' && <strong className="warn">⚠ memória {hostLevel} · </strong>}
+              {hostUsedPct}% usada de {size(host.totalMb)}
+            </span>
+          </div>
+        ) : null}
+        <div className="tile" title="dentro da VM do WSL, até o teto do .wslconfig">
+          <span className="label">{host ? 'WSL · disponível' : 'RAM disponível'}</span>
           <span className="value">{size(m.memAvailMb)}</span>
           <span className="meter"><span className={level === 'ok' ? '' : 'warn'} style={{ width: `${usedPct}%` }} /></span>
           <span className="note">
             {level !== 'ok' && <strong className="warn">⚠ memória {level} · </strong>}
-            {usedPct}% usada de {size(m.memTotalMb)}
+            {usedPct}% usada de {size(m.memTotalMb)}{host ? ' (teto do WSL)' : ''}
           </span>
         </div>
         <div className="tile">
