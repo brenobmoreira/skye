@@ -11,6 +11,7 @@ const term = (id: string, state: State): Terminal => ({
   sessionId: '',
   title: '',
   createdAt: '2026-09-24T00:00:00Z',
+  order: 0,
 });
 
 describe('nextUnread', () => {

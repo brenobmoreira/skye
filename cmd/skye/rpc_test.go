@@ -57,6 +57,10 @@ func (f *fakeTarget) Snapshot(id string) (string, error) {
 	f.record("Snapshot(%s)", id)
 	return "tela", nil
 }
+func (f *fakeTarget) Reorder(ids []string) error {
+	f.record("Reorder(%s)", strings.Join(ids, ","))
+	return nil
+}
 func (f *fakeTarget) Rename(id, name string) error {
 	f.record("Rename(%s,%s)", id, name)
 	return nil
@@ -110,6 +114,7 @@ func TestDispatchCallsEachMethodWithDecodedArgs(t *testing.T) {
 		{"Resize", `["t1",120,40]`, "Resize(t1,120,40)", `null`, false},
 		{"Snapshot", `["t1"]`, "Snapshot(t1)", `"tela"`, false},
 		{"Rename", `["t1","demo"]`, "Rename(t1,demo)", `null`, false},
+		{"Reorder", `[["t2","t1"]]`, "Reorder(t2,t1)", `null`, false},
 		{"Close", `["t1"]`, "Close(t1)", "", true},
 		{"Forget", `["s1"]`, "Forget(s1)", `null`, false},
 		{"Sound", `[]`, "Sound", `true`, false},

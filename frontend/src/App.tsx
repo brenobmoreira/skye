@@ -158,6 +158,10 @@ export function App() {
 
   const open = async (preset: string) => setActiveId((await api().NewTerminal(preset)).id);
   const resume = async (sessionId: string) => setActiveId((await api().Resume(sessionId)).id);
+  const reorder = (list: Terminal[]) => {
+    setTerminals(list);
+    api().Reorder(list.map((t) => t.id)).catch(() => {});
+  };
   const toggleSound = () => { api().SetSound(!sound); setSound(!sound); };
   const pickFont = (next: TerminalFont) => {
     setFont(next);
@@ -171,7 +175,7 @@ export function App() {
       {link.kind !== 'ready' && <ConnectionScreen state={link} />}
       <TitleBar presets={presets} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} onPickFont={pickFont} />
       <div className="body">
-        <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={unread} onSelect={setActiveId} onResume={resume} />
+        <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={unread} onSelect={setActiveId} onReorder={reorder} onResume={resume} />
         <main className="main">
           <div className="terminals">
             {problems.length > 0 && <div className="problems">{problems.join('\n')}</div>}

@@ -9,6 +9,7 @@ export interface Terminal {
   sessionId: string;
   title: string;
   createdAt: string;
+  order: number;
 }
 
 export interface Conversation {

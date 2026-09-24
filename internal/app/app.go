@@ -74,7 +74,7 @@ func (a *App) Recover() error {
 			a.o.Logf("recover %s: %v", w.SkyeID, err)
 			spec = launch.Spec{Name: "shell"}
 		}
-		a.reg.Add(terminals.Terminal{ID: w.SkyeID, Name: spec.Name, Preset: spec.Preset, Cwd: spec.Cwd, Window: w.ID, Pane: w.Pane})
+		a.reg.Add(terminals.Terminal{ID: w.SkyeID, Name: spec.Name, Preset: spec.Preset, Cwd: spec.Cwd, Window: w.ID, Pane: w.Pane, Order: spec.Order})
 	}
 	ids, err := launch.List(a.o.Paths.LaunchDir)
 	if err != nil {
@@ -182,6 +182,22 @@ func (a *App) Snapshot(id string) (string, error) {
 		return "", err
 	}
 	return a.o.Tmux.Capture(t.Pane)
+}
+
+// Reorder saves the order the user dragged the terminals into.
+func (a *App) Reorder(ids []string) error {
+	for _, t := range a.reg.Reorder(ids) {
+		spec, err := launch.Read(a.o.Paths.LaunchDir, t.ID)
+		if err != nil {
+			continue
+		}
+		spec.Order = t.Order
+		if err := launch.Write(a.o.Paths.LaunchDir, t.ID, spec); err != nil {
+			a.o.Logf("reorder %s: %v", t.ID, err)
+		}
+	}
+	a.emitTerminals()
+	return nil
 }
 
 func (a *App) Rename(id, name string) error {

@@ -61,6 +61,7 @@ button:hover { background: var(--line); }
 .item .row input { flex: 1; min-width: 0; }
 .item .row .x { flex: none; line-height: 1; }
 .item.unread .name { font-weight: 600; }
+.item.dragging { opacity: 0.5; }
 .item .badge { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 
 .main { display: grid; grid-template-rows: 1fr auto; min-height: 0; }

@@ -270,6 +270,14 @@ func (b *Bridge) Rename(id, name string) error {
 	return a.Rename(id, name)
 }
 
+func (b *Bridge) Reorder(ids []string) error {
+	a, err := b.ready()
+	if err != nil {
+		return err
+	}
+	return a.Reorder(ids)
+}
+
 func (b *Bridge) Close(id string) error {
 	a, err := b.ready()
 	if err != nil {

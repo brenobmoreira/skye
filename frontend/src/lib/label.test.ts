@@ -11,6 +11,7 @@ const term = (over: Partial<Terminal>): Terminal => ({
   sessionId: '',
   title: '',
   createdAt: '2026-09-24T00:00:00Z',
+  order: 0,
   ...over,
 });
 

@@ -43,6 +43,8 @@ type Terminal struct {
 	SessionID string    `json:"sessionId"`
 	Title     string    `json:"title"`
 	CreatedAt time.Time `json:"createdAt"`
+	// Order sorts terminals inside the same state group; 0 means not placed yet.
+	Order int `json:"order"`
 }
 
 func (t Terminal) Conversation(now time.Time) (resume.Conversation, bool) {
@@ -82,7 +84,51 @@ func (r *Registry) Add(t Terminal) {
 	if t.State == "" {
 		t.State = Shell
 	}
+	if t.Order == 0 {
+		t.Order = r.edge(1)
+	}
 	r.items[t.ID] = &t
+}
+
+// edge returns the order just past the last terminal (dir 1) or before the first (dir -1).
+func (r *Registry) edge(dir int) int {
+	if len(r.items) == 0 {
+		return 1
+	}
+	limit := 0
+	first := true
+	for _, t := range r.items {
+		if first || t.Order*dir > limit*dir {
+			limit, first = t.Order, false
+		}
+	}
+	return limit + dir
+}
+
+// Reorder places the given terminals first, in that order, and the others after them as they
+// were. The state groups still come first, so a terminal cannot leave its group.
+func (r *Registry) Reorder(ids []string) []Terminal {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	placed := map[string]bool{}
+	var order []*Terminal
+	for _, id := range ids {
+		if t, ok := r.items[id]; ok && !placed[id] {
+			placed[id] = true
+			order = append(order, t)
+		}
+	}
+	for _, t := range r.sorted() {
+		if !placed[t.ID] {
+			order = append(order, r.items[t.ID])
+		}
+	}
+	out := make([]Terminal, 0, len(order))
+	for i, t := range order {
+		t.Order = i + 1
+		out = append(out, *t)
+	}
+	return out
 }
 
 func (r *Registry) Get(id string) (Terminal, bool) {
@@ -140,6 +186,10 @@ func (r *Registry) Rename(id, name string) (Terminal, bool) {
 func (r *Registry) List() []Terminal {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	return r.sorted()
+}
+
+func (r *Registry) sorted() []Terminal {
 	list := make([]Terminal, 0, len(r.items))
 	for _, t := range r.items {
 		list = append(list, *t)
@@ -148,6 +198,9 @@ func (r *Registry) List() []Terminal {
 		a, b := list[i], list[j]
 		if rank[a.State] != rank[b.State] {
 			return rank[a.State] < rank[b.State]
+		}
+		if a.Order != b.Order {
+			return a.Order < b.Order
 		}
 		if !a.CreatedAt.Equal(b.CreatedAt) {
 			return a.CreatedAt.Before(b.CreatedAt)
@@ -222,6 +275,9 @@ func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
 	}
 	if ev.SessionID != "" {
 		t.SessionID = ev.SessionID
+	}
+	if prev == Running && (t.State == Waiting || t.State == Idle) {
+		t.Order = r.edge(-1)
 	}
 	ch.Terminal = *t
 	return ch, true
