@@ -14,6 +14,7 @@ import (
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
 	"github.com/brenobmoreira/skye/internal/tmuxctl"
+	"github.com/brenobmoreira/skye/internal/winmem"
 )
 
 type Tmux interface {
@@ -44,10 +45,12 @@ type Options struct {
 	Now      func() time.Time
 	// For the monitor: this process, the user's processes, the tmux sockets and the memory
 	// history. Monitor fails without Procs.
-	PID        int
-	Procs      ProcSource
-	Servers    func() []tmuxctl.Server
-	History    func() []procs.Point
+	PID     int
+	Procs   ProcSource
+	Servers func() []tmuxctl.Server
+	History func() []procs.Point
+	// Host is the Windows memory when skye runs in WSL; nil or not ok leaves it out.
+	Host       func() (winmem.Memory, bool)
 	TmuxSocket string
 	// CreateWorktree adds a git worktree and returns its path (worktree.Create outside tests).
 	CreateWorktree func(repo, base, dir, branch string) (string, error)

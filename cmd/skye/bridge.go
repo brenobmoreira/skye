@@ -21,6 +21,7 @@ import (
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
 	"github.com/brenobmoreira/skye/internal/tmuxctl"
+	"github.com/brenobmoreira/skye/internal/winmem"
 	"github.com/brenobmoreira/skye/internal/worktree"
 )
 
@@ -40,6 +41,7 @@ type Bridge struct {
 	app      *app.App
 	client   *tmuxctl.Client
 	server   *hooks.Server
+	windows  *winmem.Watcher
 	problems []string
 }
 
@@ -125,6 +127,13 @@ func (b *Bridge) boot() error {
 		return err
 	}
 	home, _ := os.UserHomeDir()
+	var hostMemory func() (winmem.Memory, bool)
+	if w := winmem.New(); w != nil {
+		hostMemory = w.Latest
+		b.mu.Lock()
+		b.windows = w
+		b.mu.Unlock()
+	}
 	a := app.New(app.Options{
 		Config:   cfg,
 		Paths:    paths,
@@ -145,6 +154,7 @@ func (b *Bridge) boot() error {
 		History:        func() []procs.Point { return procs.History(sysagentHistory(home), time.Now(), 3*time.Hour) },
 		TmuxSocket:     tmuxSocket,
 		CreateWorktree: worktree.Create,
+		Host:           hostMemory,
 	})
 	b.mu.Lock()
 	b.app, b.client = a, client
@@ -208,8 +218,11 @@ func (b *Bridge) pump(c *tmuxctl.Client, a *app.App) {
 
 func (b *Bridge) shutdown() {
 	b.mu.Lock()
-	server, client := b.server, b.client
+	server, client, windows := b.server, b.client, b.windows
 	b.mu.Unlock()
+	if windows != nil {
+		windows.Stop()
+	}
 	if server != nil {
 		_ = server.Close()
 	}

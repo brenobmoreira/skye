@@ -6,6 +6,7 @@ import (
 
 	"github.com/brenobmoreira/skye/internal/procs"
 	"github.com/brenobmoreira/skye/internal/tmuxctl"
+	"github.com/brenobmoreira/skye/internal/winmem"
 )
 
 // Kinds of things the monitor finds outside the list of terminals.
@@ -17,6 +18,7 @@ const (
 )
 
 type MonitorReport struct {
+	Host      *winmem.Memory   `json:"host,omitempty"`
 	Machine   procs.Machine    `json:"machine"`
 	History   []procs.Point    `json:"history"`
 	SelfMB    int              `json:"selfMb"`
@@ -126,6 +128,11 @@ func (a *App) Monitor() (MonitorReport, error) {
 	}
 	if a.o.History != nil {
 		r.History = a.o.History()
+	}
+	if a.o.Host != nil {
+		if m, ok := a.o.Host(); ok {
+			r.Host = &m
+		}
 	}
 	return r, nil
 }

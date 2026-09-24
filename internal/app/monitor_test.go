@@ -6,6 +6,7 @@ import (
 	"github.com/brenobmoreira/skye/internal/config"
 	"github.com/brenobmoreira/skye/internal/procs"
 	"github.com/brenobmoreira/skye/internal/tmuxctl"
+	"github.com/brenobmoreira/skye/internal/winmem"
 )
 
 type fakeProcs struct{ list []procs.Proc }
@@ -49,10 +50,14 @@ func TestMonitorMeasuresTerminalsAndFindsWhatWasLeftBehind(t *testing.T) {
 	}
 	h.app.o.TmuxSocket = "skye"
 	h.app.o.History = func() []procs.Point { return []procs.Point{{AvailMB: 7000}} }
+	h.app.o.Host = func() (winmem.Memory, bool) { return winmem.Memory{TotalMB: 16044, AvailMB: 428}, true }
 
 	r, err := h.app.Monitor()
 	if err != nil {
 		t.Fatal(err)
+	}
+	if r.Host == nil || r.Host.AvailMB != 428 {
+		t.Fatalf("host = %+v", r.Host)
 	}
 	if r.Machine.MemAvailMB != 8000 || len(r.History) != 1 || r.SelfMB != 44 {
 		t.Fatalf("machine=%+v history=%d self=%d", r.Machine, len(r.History), r.SelfMB)
@@ -95,5 +100,10 @@ func TestMonitorWithoutAProcessSource(t *testing.T) {
 	h := newHarness(t, config.Default())
 	if _, err := h.app.Monitor(); err == nil {
 		t.Fatal("monitor without /proc")
+	}
+	h.app.o.Procs = fakeProcs{}
+	h.app.o.Host = func() (winmem.Memory, bool) { return winmem.Memory{}, false }
+	if r, err := h.app.Monitor(); err != nil || r.Host != nil {
+		t.Fatalf("host without a reading = %+v %v", r.Host, err)
 	}
 }
