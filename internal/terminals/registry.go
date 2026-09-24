@@ -1,6 +1,7 @@
 package terminals
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"sync"
@@ -32,6 +33,10 @@ var validEvents = map[string]bool{
 	"PostToolUse":       true,
 	"Notification":      true,
 	"PermissionRequest": true,
+	"PreCompact":        true,
+	"PostCompact":       true,
+	"SubagentStart":     true,
+	"SubagentStop":      true,
 	"Stop":              true,
 	"SessionEnd":        true,
 }
@@ -51,6 +56,10 @@ type Terminal struct {
 	CreatedAt time.Time `json:"createdAt"`
 	// Since is when the terminal entered its state; zero until the first hook after a restart.
 	Since time.Time `json:"since,omitzero"`
+	// Activity says what a running terminal is busy with: compacting, subagents.
+	Activity   string `json:"activity,omitempty"`
+	compacting bool
+	agents     map[string]bool
 	// Order sorts terminals inside the same state group; 0 means not placed yet.
 	Order int `json:"order"`
 }
@@ -230,6 +239,10 @@ func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
 	}
 	prev := t.State
 	ch := Change{Prev: prev}
+	if t.track(ev) {
+		ch.Terminal = *t
+		return ch, true
+	}
 	now := r.now()
 	ask := t.Ask
 	t.Ask = ""
@@ -237,7 +250,14 @@ func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
 		if t.State != prev {
 			t.Since = now
 		}
+		t.Activity = t.activity()
 		return *t
+	}
+	switch ev.Name {
+	case "SessionStart", "SessionEnd":
+		t.compacting, t.agents = false, nil
+	case "UserPromptSubmit", "Stop":
+		t.compacting = false
 	}
 	switch ev.Name {
 	case "SessionStart":
@@ -316,6 +336,43 @@ func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
 	}
 	ch.Terminal = settle()
 	return ch, true
+}
+
+// track follows the events that only change what a terminal is busy with, not its state.
+func (t *Terminal) track(ev hooks.Event) bool {
+	switch ev.Name {
+	case "PreCompact":
+		t.compacting = true
+	case "PostCompact":
+		t.compacting = false
+	case "SubagentStart":
+		if ev.AgentID != "" {
+			if t.agents == nil {
+				t.agents = map[string]bool{}
+			}
+			t.agents[ev.AgentID] = true
+		}
+	case "SubagentStop":
+		delete(t.agents, ev.AgentID)
+	default:
+		return false
+	}
+	t.Activity = t.activity()
+	return true
+}
+
+func (t *Terminal) activity() string {
+	var parts []string
+	if t.compacting {
+		parts = append(parts, "compactando")
+	}
+	switch n := len(t.agents); {
+	case n == 1:
+		parts = append(parts, "1 subagente")
+	case n > 1:
+		parts = append(parts, fmt.Sprintf("%d subagentes", n))
+	}
+	return strings.Join(parts, " · ")
 }
 
 func firstLine(text string, limit int) string {

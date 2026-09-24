@@ -114,7 +114,7 @@ func TestUnknownTerminalOrEventIsIgnored(t *testing.T) {
 	if _, ok := r.Apply(hooks.Event{Terminal: "zzz", Name: "Stop"}); ok {
 		t.Fatal("unknown terminal applied")
 	}
-	if _, ok := r.Apply(hooks.Event{Terminal: "a", Name: "PreCompact", Cwd: "/elsewhere"}); ok {
+	if _, ok := r.Apply(hooks.Event{Terminal: "a", Name: "PreToolUse", Cwd: "/elsewhere"}); ok {
 		t.Fatal("unknown event applied")
 	}
 	term, _ := r.Get("a")
@@ -346,5 +346,47 @@ func TestSinceMovesOnlyWhenTheStateChanges(t *testing.T) {
 	}
 	if got := step("SessionEnd"); !got.Since.Equal(t0.Add(4 * time.Minute)) {
 		t.Fatalf("session end since = %v", got.Since)
+	}
+}
+
+func TestActivityTracksCompactionAndSubagents(t *testing.T) {
+	r := newReg()
+	apply(t, r, "UserPromptSubmit")
+	agent := func(id string) func(*hooks.Event) { return func(e *hooks.Event) { e.AgentID = id } }
+	steps := []struct {
+		event    string
+		mod      func(*hooks.Event)
+		activity string
+	}{
+		{"SubagentStart", agent("a1"), "1 subagente"},
+		{"SubagentStart", agent("a2"), "2 subagentes"},
+		{"PreCompact", nil, "compactando · 2 subagentes"},
+		{"SubagentStop", agent("unknown"), "compactando · 2 subagentes"},
+		{"PostCompact", nil, "2 subagentes"},
+		{"SubagentStop", agent("a1"), "1 subagente"},
+		{"SubagentStop", agent("a2"), ""},
+	}
+	for _, s := range steps {
+		mods := []func(*hooks.Event){}
+		if s.mod != nil {
+			mods = append(mods, s.mod)
+		}
+		ch := apply(t, r, s.event, mods...)
+		if ch.Terminal.Activity != s.activity || ch.Terminal.State != Running || ch.Attention {
+			t.Fatalf("%s: activity=%q state=%s attention=%v", s.event, ch.Terminal.Activity, ch.Terminal.State, ch.Attention)
+		}
+	}
+}
+
+func TestActivityDoesNotOutliveTheTurnOrSession(t *testing.T) {
+	r := newReg()
+	apply(t, r, "UserPromptSubmit")
+	apply(t, r, "PreCompact")
+	if ch := apply(t, r, "Stop"); ch.Terminal.Activity != "" {
+		t.Fatalf("compaction kept after stop: %q", ch.Terminal.Activity)
+	}
+	apply(t, r, "SubagentStart", func(e *hooks.Event) { e.AgentID = "a1" })
+	if ch := apply(t, r, "SessionEnd"); ch.Terminal.Activity != "" {
+		t.Fatalf("subagents kept after the session: %q", ch.Terminal.Activity)
 	}
 }

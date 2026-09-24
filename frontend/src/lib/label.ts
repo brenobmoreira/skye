@@ -8,8 +8,9 @@ const defaultName = (t: Terminal) => t.preset === '' && t.name === 'shell';
 
 export function itemLabel(t: Terminal): { name: string; sub: string } {
   const folder = base(t.cwd);
-  const ask = t.state === 'waiting' ? t.ask : '';
-  if (!defaultName(t)) return { name: t.name, sub: ask || t.title || folder || stateLabel[t.state] };
-  if (t.title) return { name: t.title, sub: ask || folder || stateLabel[t.state] };
-  return { name: folder || t.name, sub: ask || stateLabel[t.state] };
+  // What a waiting terminal asks or a running one is busy with takes the line under the name.
+  const live = t.state === 'waiting' ? t.ask : t.state === 'running' ? t.activity : '';
+  if (!defaultName(t)) return { name: t.name, sub: live || t.title || folder || stateLabel[t.state] };
+  if (t.title) return { name: t.title, sub: live || folder || stateLabel[t.state] };
+  return { name: folder || t.name, sub: live || stateLabel[t.state] };
 }
