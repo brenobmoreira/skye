@@ -1,6 +1,6 @@
 TAGS := desktop,production,webkit2_41
 
-.PHONY: frontend build test windows windows-icon install-windows
+.PHONY: frontend build test windows windows-icon install-windows windows-shortcuts
 
 frontend:
 	cd frontend && npm ci && npm run build
@@ -22,6 +22,20 @@ install-windows: windows
 	dir="$$(wslpath "$$appdata")/skye"; \
 	mkdir -p "$$dir" && cp skye.exe "$$dir/skye.exe" && \
 	echo "instalado em $$(wslpath -w "$$dir/skye.exe")"
+	@$(MAKE) --no-print-directory windows-shortcuts
+
+# Points skye.lnk on the desktop and in the Start menu at the installed skye.exe. The shell
+# folders are asked from Windows, so a desktop moved into OneDrive still gets the icon.
+windows-shortcuts:
+	@appdata="$$(cmd.exe /c 'echo %LOCALAPPDATA%' 2>/dev/null | tr -d '\r')"; \
+	exe="$$appdata\\skye\\skye.exe"; \
+	test -f "$$(wslpath "$$exe")" || { echo "skye.exe não instalado; rode make install-windows" >&2; exit 1; }; \
+	powershell.exe -NoProfile -NonInteractive -Command "\
+		\$$exe = '$$exe'; \$$ws = New-Object -ComObject WScript.Shell; \
+		foreach (\$$f in 'Desktop', 'Programs') { \
+			\$$l = \$$ws.CreateShortcut((Join-Path ([Environment]::GetFolderPath(\$$f)) 'skye.lnk')); \
+			\$$l.TargetPath = \$$exe; \$$l.WorkingDirectory = (Split-Path \$$exe); \$$l.IconLocation = \"\$$exe,0\"; \
+			\$$l.Save(); 'atalho em ' + \$$l.FullName }" | tr -d '\r'
 
 test:
 	go test ./internal/...
