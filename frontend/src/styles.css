@@ -66,7 +66,9 @@ button:hover { background: var(--line); }
 .titlebar .logo { width: 18px; height: 18px; flex: none; }
 .item .dog { width: 18px; height: 18px; display: block; }
 .item .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.item .sub { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item .sub { display: flex; gap: 6px; color: var(--muted); font-size: 11px; white-space: nowrap; }
+.item .sub > span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.item .sub .time { flex: none; }
 .item input { width: 100%; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--accent); border-radius: 4px; }
 .item .x { border: 0; color: var(--muted); padding: 0 4px; }
 .item > div { min-width: 0; }

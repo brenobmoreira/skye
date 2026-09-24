@@ -49,6 +49,8 @@ type Terminal struct {
 	// Ask is what claude said it needs while the terminal waits for the user.
 	Ask       string    `json:"ask"`
 	CreatedAt time.Time `json:"createdAt"`
+	// Since is when the terminal entered its state; zero until the first hook after a restart.
+	Since time.Time `json:"since,omitzero"`
 	// Order sorts terminals inside the same state group; 0 means not placed yet.
 	Order int `json:"order"`
 }
@@ -231,6 +233,12 @@ func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
 	now := r.now()
 	ask := t.Ask
 	t.Ask = ""
+	settle := func() Terminal {
+		if t.State != prev {
+			t.Since = now
+		}
+		return *t
+	}
 	switch ev.Name {
 	case "SessionStart":
 		if t.SessionID != "" && ev.SessionID != "" && t.SessionID != ev.SessionID {
@@ -290,14 +298,14 @@ func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
 		}
 		if ev.Reason == "clear" {
 			t.State = Idle
-			ch.Terminal = *t
+			ch.Terminal = settle()
 			return ch, true
 		}
 		if c, ok := t.Conversation(now); ok {
 			ch.Ended = &c
 		}
 		t.SessionID, t.Title, t.State = "", "", Shell
-		ch.Terminal = *t
+		ch.Terminal = settle()
 		return ch, true
 	}
 	if ev.SessionID != "" {
@@ -306,7 +314,7 @@ func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
 	if prev == Running && (t.State == Waiting || t.State == Idle) {
 		t.Order = r.edge(-1)
 	}
-	ch.Terminal = *t
+	ch.Terminal = settle()
 	return ch, true
 }
 

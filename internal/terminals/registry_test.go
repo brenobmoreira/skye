@@ -322,3 +322,29 @@ func TestPermissionRequestNamesTheToolTheTerminalWaitsFor(t *testing.T) {
 		t.Fatalf("ask kept after the answer: %q", ch.Terminal.Ask)
 	}
 }
+
+func TestSinceMovesOnlyWhenTheStateChanges(t *testing.T) {
+	now := t0
+	r := NewRegistry(func() time.Time { return now })
+	r.Add(Terminal{ID: "a", Name: "blog", State: Shell})
+	if got, _ := r.Get("a"); !got.Since.IsZero() {
+		t.Fatalf("new terminal since = %v", got.Since)
+	}
+	step := func(name string) Terminal {
+		now = now.Add(time.Minute)
+		ch, _ := r.Apply(hooks.Event{Terminal: "a", Name: name, SessionID: "s1"})
+		return ch.Terminal
+	}
+	if got := step("UserPromptSubmit"); !got.Since.Equal(t0.Add(time.Minute)) {
+		t.Fatalf("since = %v", got.Since)
+	}
+	if got := step("PostToolUse"); !got.Since.Equal(t0.Add(time.Minute)) {
+		t.Fatalf("still running moved since to %v", got.Since)
+	}
+	if got := step("Stop"); !got.Since.Equal(t0.Add(3 * time.Minute)) {
+		t.Fatalf("since = %v", got.Since)
+	}
+	if got := step("SessionEnd"); !got.Since.Equal(t0.Add(4 * time.Minute)) {
+		t.Fatalf("session end since = %v", got.Since)
+	}
+}
