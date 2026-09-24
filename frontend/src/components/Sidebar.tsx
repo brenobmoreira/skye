@@ -1,39 +1,42 @@
 import { useState } from 'react';
 import { api } from '../bridge';
+import { base, itemLabel } from '../lib/label';
 import { stateLabel } from '../lib/states';
 import type { Conversation, Terminal } from '../lib/types';
 
-const base = (path: string) => path.split('/').filter(Boolean).pop() ?? path;
-
-function TerminalItem({ t, active, onSelect }: { t: Terminal; active: boolean; onSelect: () => void }) {
+function TerminalItem({ t, active, unread, onSelect }: { t: Terminal; active: boolean; unread: boolean; onSelect: () => void }) {
+  const label = itemLabel(t);
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(t.name);
+  const [name, setName] = useState(label.name);
   const confirm = () => {
     setEditing(false);
-    if (name.trim() && name.trim() !== t.name) api().Rename(t.id, name.trim());
-    else setName(t.name);
+    const next = name.trim();
+    if (next && next !== label.name) api().Rename(t.id, next);
   };
   return (
-    <div className={`item${active ? ' active' : ''}`} onClick={onSelect} title={stateLabel[t.state]}>
+    <div className={`item${active ? ' active' : ''}${unread ? ' unread' : ''}`} onClick={onSelect} title={stateLabel[t.state]}>
       <span className="dot" style={{ background: `var(--${t.state})` }} />
       <div>
-        {editing ? (
-          <input
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={confirm}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') confirm();
-              if (e.key === 'Escape') { setName(t.name); setEditing(false); }
-            }}
-          />
-        ) : (
-          <div className="name" onDoubleClick={() => { setName(t.name); setEditing(true); }}>{t.name}</div>
-        )}
-        <div className="sub">{t.title || base(t.cwd) || stateLabel[t.state]}</div>
+        <div className="row">
+          {editing ? (
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={confirm}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') confirm();
+                if (e.key === 'Escape') setEditing(false);
+              }}
+            />
+          ) : (
+            <div className="name" onDoubleClick={() => { setName(label.name); setEditing(true); }}>{label.name}</div>
+          )}
+          {unread && <span className="badge" title="não lido" />}
+          <button className="x" title="fechar terminal" onClick={(e) => { e.stopPropagation(); api().Close(t.id); }}>×</button>
+        </div>
+        <div className="sub">{label.sub}</div>
       </div>
-      <button className="x" title="fechar terminal" onClick={(e) => { e.stopPropagation(); api().Close(t.id); }}>×</button>
     </div>
   );
 }
@@ -42,6 +45,7 @@ export function Sidebar(props: {
   terminals: Terminal[];
   conversations: Conversation[];
   activeId: string | null;
+  unread: Set<string>;
   onSelect: (id: string) => void;
   onResume: (sessionId: string) => void;
 }) {
@@ -49,7 +53,7 @@ export function Sidebar(props: {
     <aside className="sidebar">
       <h3>Terminais</h3>
       {props.terminals.map((t) => (
-        <TerminalItem key={t.id} t={t} active={t.id === props.activeId} onSelect={() => props.onSelect(t.id)} />
+        <TerminalItem key={t.id} t={t} active={t.id === props.activeId} unread={props.unread.has(t.id)} onSelect={() => props.onSelect(t.id)} />
       ))}
       {props.conversations.length > 0 && <h3>Encerradas</h3>}
       {props.conversations.map((c) => (

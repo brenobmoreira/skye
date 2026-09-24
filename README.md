@@ -37,6 +37,9 @@ O latido é `frontend/public/bark.ogg`; sem o arquivo, a skye toca um bipe.
 ## Uso
 
 - **+** abre um terminal vazio ou um preset.
+- Na lista, um terminal vazio leva o nome da sessão do claude (a 1ª linha do 1º prompt) ou,
+  sem sessão, o da pasta. Duplo clique no nome renomeia; o × ao lado do nome fecha o terminal.
+  Um ponto azul marca o terminal que terminou ou pediu algo enquanto você olhava outro.
 - O composer embaixo do terminal: `Enter` quebra linha, `Ctrl+Enter` envia.
 - No terminal: `Alt+Enter` quebra linha no claude; selecionar copia; `Ctrl+Shift+V` cola.
 - **×** esconde a janela (os terminais continuam); rodar `skye` de novo traz a janela.
@@ -110,3 +113,5 @@ Network Access do Chromium); enquanto isso, use `skye web` no navegador.
 9. Esconder com × e provocar um pedido de permissão: o toast aparece.
 10. Digitar rápido enquanto outro terminal despeja saída: nada fora de ordem.
 11. Com a skye escondida, rodar `skye` de novo: a mesma janela volta.
+12. Terminal vazio com `claude`: o nome na lista vira o 1º prompt; ao sair do claude, volta à pasta.
+13. Pedir algo num terminal e trocar para outro: ao terminar, o primeiro ganha o ponto azul; abri-lo tira o ponto.

@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, connection, isWindow, on, onConnection, retryConnection } from './bridge';
 import { bark } from './sound';
 import { TitleBar } from './components/TitleBar';
 import { Sidebar } from './components/Sidebar';
 import { TerminalView } from './components/TerminalView';
 import { Composer } from './components/Composer';
-import type { Conversation, Preset, Terminal } from './lib/types';
+import type { Conversation, Preset, State, Terminal } from './lib/types';
+import { nextUnread } from './lib/unread';
 import type { ConnectionState } from './windowsTransport';
 import { applyZoom, parseFontSize, zoomKey, type ZoomAction } from './lib/zoom';
 import { parseFont, type TerminalFont } from './lib/fonts';
@@ -42,6 +43,8 @@ function storedFont(): TerminalFont {
   }
 }
 
+const windowFocused = () => document.visibilityState === 'visible' && document.hasFocus();
+
 const byCreation = (a: Terminal, b: Terminal) =>
   Date.parse(a.createdAt) - Date.parse(b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
@@ -56,6 +59,9 @@ export function App() {
   const [font, setFont] = useState(storedFont);
   const [epoch, setEpoch] = useState(0);
   const [link, setLink] = useState(connection);
+  const [focused, setFocused] = useState(windowFocused);
+  const [unread, setUnread] = useState<Set<string>>(() => new Set());
+  const lastStates = useRef<Record<string, State>>({});
 
   const load = () => {
     api().List().then(setTerminals).catch(() => {});
@@ -106,8 +112,10 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const focused = () => document.visibilityState === 'visible' && document.hasFocus();
-    const report = () => { api().SetFocused(focused()).catch(() => {}); };
+    const report = () => {
+      setFocused(windowFocused());
+      api().SetFocused(windowFocused()).catch(() => {});
+    };
     load();
     const offs = [
       on('terminals', (list: Terminal[]) => setTerminals(list)),
@@ -120,8 +128,8 @@ export function App() {
         setEpoch((n) => n + 1);
       }),
     ];
-    const focus = () => { api().SetFocused(true).catch(() => {}); };
-    const blur = () => { api().SetFocused(false).catch(() => {}); };
+    const focus = () => { setFocused(true); api().SetFocused(true).catch(() => {}); };
+    const blur = () => { setFocused(false); api().SetFocused(false).catch(() => {}); };
     window.addEventListener('focus', focus);
     window.addEventListener('blur', blur);
     const web = !isWindow();
@@ -140,6 +148,12 @@ export function App() {
     setActiveId(terminals[0]?.id ?? null);
   }, [terminals, activeId]);
 
+  useEffect(() => {
+    const prev = lastStates.current;
+    setUnread((current) => nextUnread(prev, terminals, current, focused ? activeId : null));
+    lastStates.current = Object.fromEntries(terminals.map((t) => [t.id, t.state]));
+  }, [terminals, activeId, focused]);
+
   const views = [...terminals].sort(byCreation);
 
   const open = async (preset: string) => setActiveId((await api().NewTerminal(preset)).id);
@@ -157,7 +171,7 @@ export function App() {
       {link.kind !== 'ready' && <ConnectionScreen state={link} />}
       <TitleBar presets={presets} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} onPickFont={pickFont} />
       <div className="body">
-        <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} onSelect={setActiveId} onResume={resume} />
+        <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={unread} onSelect={setActiveId} onResume={resume} />
         <main className="main">
           <div className="terminals">
             {problems.length > 0 && <div className="problems">{problems.join('\n')}</div>}
