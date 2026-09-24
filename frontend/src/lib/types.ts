@@ -9,6 +9,7 @@ export interface Terminal {
   sessionId: string;
   title: string;
   ask?: string;
+  activity?: string;
   createdAt: string;
   since?: string;
   order: number;

@@ -55,3 +55,11 @@ func TestParseDescribesThePermissionRequest(t *testing.T) {
 		}
 	}
 }
+
+func TestParseReadsCompactionAndSubagents(t *testing.T) {
+	pre, _ := Parse("t1", []byte(`{"hook_event_name":"PreCompact","trigger":"auto"}`))
+	sub, _ := Parse("t1", []byte(`{"hook_event_name":"SubagentStart","agent_id":"agent-1","agent_type":"Explore"}`))
+	if pre.Trigger != "auto" || sub.AgentID != "agent-1" {
+		t.Fatalf("pre = %+v, sub = %+v", pre, sub)
+	}
+}

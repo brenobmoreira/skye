@@ -45,7 +45,8 @@ O latido é `frontend/public/bark.ogg`; sem o arquivo, a skye toca um bipe.
   sem sessão, o da pasta. Duplo clique no nome renomeia; o × ao lado do nome fecha o terminal.
   Um ponto azul marca o terminal que terminou ou pediu algo enquanto você olhava outro.
   Quem está esperando você mostra, embaixo do nome e no aviso do Windows, o que o claude pede
-  (ex.: `Bash: git push`). Depois de atualizar a skye, rode `skye install-hooks` de novo.
+  (ex.: `Bash: git push`); quem está trabalhando mostra se está compactando ou quantos
+  subagentes tem rodando. Depois de atualizar a skye, rode `skye install-hooks` de novo.
   À direita, há quanto tempo o terminal está no estado ("12 min"); depois de reiniciar a skye,
   o tempo volta no próximo evento do claude.
 - A lista agrupa por estado: esperando você, terminou, trabalhando, terminal. Quem acaba de

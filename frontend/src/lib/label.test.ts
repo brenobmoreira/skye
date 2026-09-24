@@ -41,4 +41,8 @@ describe('itemLabel', () => {
   it('ignores a stale ask once the terminal is not waiting', () => {
     expect(itemLabel(term({ state: 'running', ask: 'velho' })).sub).toBe('trabalhando');
   });
+  it('shows what a running terminal is busy with', () => {
+    expect(itemLabel(term({ title: 'arrume', state: 'running', activity: '2 subagentes' })).sub).toBe('2 subagentes');
+    expect(itemLabel(term({ title: 'arrume', state: 'idle', activity: '1 subagente' })).sub).toBe('skye');
+  });
 });
