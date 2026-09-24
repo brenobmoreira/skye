@@ -1,7 +1,8 @@
 import { useEffect, useState, type MouseEvent } from 'react';
 import { api, connection, isWindow, mode, runtime } from '../bridge';
 import { windowControls } from '../windowControls';
-import type { Preset } from '../lib/types';
+import type { Preset, Usage } from '../lib/types';
+import { usageBadge } from '../lib/usage';
 import { FONTS, type TerminalFont } from '../lib/fonts';
 
 const controls = windowControls(mode, api, runtime, () => connection().kind === 'ready');
@@ -14,12 +15,14 @@ export function TitleBar(props: {
   onToggleSound: () => void;
   font: TerminalFont;
   onPickFont: (font: TerminalFont) => void;
+  usage: Usage | null;
 }) {
   const [open, setOpen] = useState(false);
   const [maximised, setMaximised] = useState(false);
   const [settings, setSettings] = useState(false);
   const pick = (preset: string) => { setOpen(false); props.onNew(preset); };
   const windowed = isWindow();
+  const badge = usageBadge(props.usage, Date.now());
 
   useEffect(() => {
     if (!windowed) return;
@@ -57,6 +60,7 @@ export function TitleBar(props: {
       </div>
       {windowed && sound}
       <span className="spacer" />
+      {badge && <span className={badge.stale ? 'usage stale' : 'usage'} title={badge.title}>{badge.text}</span>}
       <div className="menu">
         <button className="flat" onClick={() => setSettings(!settings)} title="configurações">⚙</button>
         {settings && (

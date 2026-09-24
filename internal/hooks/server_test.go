@@ -23,7 +23,7 @@ func client(path string) *http.Client {
 func TestServerDeliversEventsAndAnswers204(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "s.sock")
 	got := make(chan Event, 1)
-	srv, err := Listen(path, func(e Event) { got <- e }, nil, t.Logf)
+	srv, err := Listen(path, func(e Event) { got <- e }, nil, nil, t.Logf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,11 +58,11 @@ func TestServerDeliversEventsAndAnswers204(t *testing.T) {
 
 func TestListenDetectsRunningInstanceAndStaleSocket(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "s.sock")
-	srv, err := Listen(path, func(Event) {}, nil, t.Logf)
+	srv, err := Listen(path, func(Event) {}, nil, nil, t.Logf)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Listen(path, func(Event) {}, nil, t.Logf); !errors.Is(err, ErrInUse) {
+	if _, err := Listen(path, func(Event) {}, nil, nil, t.Logf); !errors.Is(err, ErrInUse) {
 		t.Fatalf("second Listen: %v", err)
 	}
 	srv.Close()
@@ -70,7 +70,7 @@ func TestListenDetectsRunningInstanceAndStaleSocket(t *testing.T) {
 	if err := os.WriteFile(path, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	srv2, err := Listen(path, func(Event) {}, nil, t.Logf)
+	srv2, err := Listen(path, func(Event) {}, nil, nil, t.Logf)
 	if err != nil {
 		t.Fatalf("stale socket: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestListenDetectsRunningInstanceAndStaleSocket(t *testing.T) {
 func TestServerShowsWindowOnRequest(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "s.sock")
 	shown := make(chan struct{}, 1)
-	srv, err := Listen(path, func(Event) {}, func() { shown <- struct{}{} }, t.Logf)
+	srv, err := Listen(path, func(Event) {}, func() { shown <- struct{}{} }, nil, t.Logf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestRequestShow(t *testing.T) {
 		t.Fatal("RequestShow succeeded with nothing listening")
 	}
 	shown := make(chan struct{}, 1)
-	srv, err := Listen(path, func(Event) {}, func() { shown <- struct{}{} }, t.Logf)
+	srv, err := Listen(path, func(Event) {}, func() { shown <- struct{}{} }, nil, t.Logf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,5 +118,28 @@ func TestRequestShow(t *testing.T) {
 	case <-shown:
 	case <-time.After(2 * time.Second):
 		t.Fatal("onShow not called")
+	}
+}
+
+func TestServerDeliversStatusLineUsage(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "s.sock")
+	got := make(chan Usage, 1)
+	srv, err := Listen(path, func(Event) {}, nil, func(u Usage) { got <- u }, t.Logf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Close()
+	body := `{"rate_limits":{"five_hour":{"used_percentage":10,"resets_at":1790000000}}}`
+	resp, err := client(path).Post("http://skye/statusline?t=t1", "application/json", strings.NewReader(body))
+	if err != nil || resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("post: %v %v", resp, err)
+	}
+	select {
+	case u := <-got:
+		if u.FiveHour == nil || u.FiveHour.UsedPct != 10 {
+			t.Fatalf("got %+v", u)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("usage handler not called")
 	}
 }

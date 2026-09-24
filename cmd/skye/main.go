@@ -21,7 +21,7 @@ const usage = `skye — terminais do Claude Code no WSL
 
   skye                 abre a janela
   skye web [--no-open] abre no navegador (http://127.0.0.1)
-  skye install-hooks   instala os hooks em ~/.claude/settings.json
+  skye install-hooks   instala os hooks e o repasse do statusLine em ~/.claude/settings.json
   skye launch <id>     uso interno: roda o comando de um terminal`
 
 const (
@@ -75,7 +75,7 @@ func runInstallHooks() int {
 		fmt.Fprintln(os.Stderr, "skye install-hooks:", err)
 		return 1
 	}
-	fmt.Println("hooks instalados em", path)
+	fmt.Println("hooks e repasse do statusLine instalados em", path)
 	if backup != "" {
 		fmt.Println("backup do arquivo anterior:", backup)
 	}

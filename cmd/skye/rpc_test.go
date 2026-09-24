@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/brenobmoreira/skye/internal/config"
+	"github.com/brenobmoreira/skye/internal/hooks"
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
 )
@@ -52,6 +53,10 @@ func (f *fakeTarget) Resize(id string, cols, rows int) error {
 func (f *fakeTarget) Snapshot(id string) (string, error) {
 	f.record("Snapshot(%s)", id)
 	return "tela", nil
+}
+func (f *fakeTarget) Usage() hooks.Usage {
+	f.record("Usage")
+	return hooks.Usage{FiveHour: &hooks.Window{UsedPct: 5}}
 }
 func (f *fakeTarget) Reorder(ids []string) error {
 	f.record("Reorder(%s)", strings.Join(ids, ","))
@@ -117,6 +122,7 @@ func TestDispatchCallsEachMethodWithDecodedArgs(t *testing.T) {
 		{"SetFocused", `[true]`, "SetFocused(true)", `null`, false},
 		{"Quit", `[]`, "Quit", `null`, false},
 		{"Problems", `[]`, "Problems", `["p"]`, false},
+		{"Usage", `[]`, "Usage", `{"fiveHour":{"usedPct":5`, false},
 	}
 	for _, c := range cases {
 		f := &fakeTarget{}
