@@ -29,7 +29,7 @@ func (s *Shell) Connect() (winshell.Endpoint, error) {
 		started = true
 		return startDetached(name, args...)
 	}
-	ep, err := winshell.Ensure(winshell.Port(os.Getenv), run, start, winshell.Probe, time.Sleep)
+	ep, err := winshell.Ensure(winshell.Port(os.Getenv), run, start, winshell.Probe, gaveUp, time.Sleep)
 	if err != nil && started {
 		if tail := logTail(); tail != "" {
 			err = fmt.Errorf("%w\n\nsaída do skye web:\n%s", err, tail)
@@ -89,6 +89,10 @@ func createLog() (*os.File, error) {
 	return os.Create(path)
 }
 
+func gaveUp() (string, bool) {
+	return winshell.GaveUp(logTail())
+}
+
 func logTail() string {
 	f, err := os.Open(logPath())
 	if err != nil {
@@ -99,5 +103,5 @@ func logTail() string {
 		_, _ = f.Seek(-logTailBytes, io.SeekEnd)
 	}
 	data, _ := io.ReadAll(f)
-	return strings.TrimSpace(string(data))
+	return winshell.Redact(strings.TrimSpace(string(data)))
 }
