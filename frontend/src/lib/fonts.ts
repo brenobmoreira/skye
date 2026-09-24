@@ -7,6 +7,9 @@ export const FONTS: TerminalFont[] = [
 
 export const DEFAULT_FONT = FONTS[0];
 
+// xterm's default of 1.0 packs the lines together; 1.2 is close to what Windows Terminal draws.
+export const LINE_HEIGHT = 1.2;
+
 export function parseFont(stored: string | null): TerminalFont {
   return FONTS.find((f) => f.id === stored) ?? DEFAULT_FONT;
 }
