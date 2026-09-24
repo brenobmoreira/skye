@@ -67,7 +67,7 @@ func TestIdleReminderNotificationDoesNotBarkAgain(t *testing.T) {
 	}
 }
 
-func TestClearEndsConversationAndStartsNewOne(t *testing.T) {
+func TestSessionEndArchivesAndStartsNewOne(t *testing.T) {
 	r := newReg()
 	apply(t, r, "UserPromptSubmit", func(e *hooks.Event) { e.Prompt = "first task"; e.Cwd = "/home/demo/blog" })
 	apply(t, r, "Stop")
@@ -244,5 +244,32 @@ func TestReorderCannotMoveAcrossStateGroups(t *testing.T) {
 	r.Reorder([]string{"i", "w"})
 	if got := ids(r.List()); got != "w,i" {
 		t.Fatalf("order = %s", got)
+	}
+}
+
+func TestClearKeepsTheSessionOutOfEnded(t *testing.T) {
+	r := newReg()
+	apply(t, r, "UserPromptSubmit", func(e *hooks.Event) { e.Prompt = "first task" })
+	apply(t, r, "Stop")
+	end := apply(t, r, "SessionEnd", func(e *hooks.Event) { e.Reason = "clear" })
+	if end.Ended != nil || end.Terminal.State != Idle {
+		t.Fatalf("clear ended the session: %+v", end)
+	}
+	start := apply(t, r, "SessionStart", func(e *hooks.Event) { e.SessionID = "s2"; e.Source = "clear" })
+	if start.Ended != nil || start.Terminal.SessionID != "s2" || start.Terminal.Title != "" || start.Terminal.State != Idle {
+		t.Fatalf("start after clear = %+v", start)
+	}
+	apply(t, r, "UserPromptSubmit", func(e *hooks.Event) { e.SessionID = "s2"; e.Prompt = "second task" })
+	if got, _ := r.Get("a"); got.Title != "second task" {
+		t.Fatalf("title = %q", got.Title)
+	}
+}
+
+func TestClearStartWithoutEndDoesNotArchive(t *testing.T) {
+	r := newReg()
+	apply(t, r, "UserPromptSubmit", func(e *hooks.Event) { e.Prompt = "old" })
+	ch := apply(t, r, "SessionStart", func(e *hooks.Event) { e.SessionID = "s2"; e.Source = "clear" })
+	if ch.Ended != nil || ch.Terminal.Title != "" {
+		t.Fatalf("change = %+v", ch)
 	}
 }

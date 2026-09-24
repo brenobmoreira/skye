@@ -226,7 +226,8 @@ func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
 	switch ev.Name {
 	case "SessionStart":
 		if t.SessionID != "" && ev.SessionID != "" && t.SessionID != ev.SessionID {
-			if c, ok := t.Conversation(now); ok {
+			// After /clear the terminal keeps going as the same session for the user.
+			if c, ok := t.Conversation(now); ok && ev.Source != "clear" {
 				ch.Ended = &c
 			}
 			t.Title = ""
@@ -265,6 +266,11 @@ func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
 	case "SessionEnd":
 		if ev.Cwd != "" {
 			t.Cwd = ev.Cwd
+		}
+		if ev.Reason == "clear" {
+			t.State = Idle
+			ch.Terminal = *t
+			return ch, true
 		}
 		if c, ok := t.Conversation(now); ok {
 			ch.Ended = &c

@@ -13,6 +13,10 @@ type Event struct {
 	Cwd       string
 	Prompt    string
 	Message   string
+	// Reason says why a SessionEnd happened and Source why a SessionStart did; both are
+	// "clear" around a /clear.
+	Reason string
+	Source string
 }
 
 var ErrNoTerminal = errors.New("hook without terminal id")
@@ -23,6 +27,8 @@ type payload struct {
 	Cwd           string `json:"cwd"`
 	Prompt        string `json:"prompt"`
 	Message       string `json:"message"`
+	Reason        string `json:"reason"`
+	Source        string `json:"source"`
 }
 
 func Parse(terminal string, body []byte) (Event, error) {
@@ -43,5 +49,7 @@ func Parse(terminal string, body []byte) (Event, error) {
 		Cwd:       p.Cwd,
 		Prompt:    p.Prompt,
 		Message:   p.Message,
+		Reason:    p.Reason,
+		Source:    p.Source,
 	}, nil
 }
