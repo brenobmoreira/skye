@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api } from '../bridge';
 import { base, itemLabel } from '../lib/label';
 import { moveWithinGroup } from '../lib/order';
+import { DogIcon } from './DogIcon';
 import { stateLabel } from '../lib/states';
 import type { Conversation, Terminal } from '../lib/types';
 
@@ -37,7 +38,7 @@ function TerminalItem({ t, active, unread, onSelect, drag }: { t: Terminal; acti
       onDrop={(e) => { e.preventDefault(); drag.drop(t.id); }}
       onDragEnd={drag.end}
     >
-      <span className="dot" style={{ background: `var(--${t.state})` }} />
+      <DogIcon color={`var(--${t.state})`} title={stateLabel[t.state]} />
       <div>
         <div className="row">
           {editing ? (
@@ -104,7 +105,7 @@ export function Sidebar(props: {
       )}
       {endedOpen && props.conversations.map((c) => (
         <div className="item" key={c.sessionId} onClick={() => props.onResume(c.sessionId)} title="retomar">
-          <span className="dot" style={{ background: 'var(--shell)' }} />
+          <DogIcon color="var(--shell)" title="encerrada" />
           <div>
             <div className="row">
               <div className="name">{c.title}</div>

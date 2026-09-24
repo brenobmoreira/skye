@@ -51,10 +51,10 @@ button:hover { background: var(--line); }
 .sidebar h3 { font-size: 11px; text-transform: uppercase; color: var(--muted); margin: 14px 4px 6px; }
 .sidebar h3.toggle { cursor: pointer; user-select: none; }
 .sidebar h3.toggle:hover { color: var(--text); }
-.item { display: grid; grid-template-columns: 12px 1fr auto; gap: 8px; align-items: center; padding: 6px; border-radius: 6px; cursor: pointer; }
+.item { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: center; padding: 6px; border-radius: 6px; cursor: pointer; }
 .item:hover { background: var(--panel); }
 .item.active { background: var(--line); }
-.item .dot { width: 10px; height: 10px; border-radius: 50%; }
+.item .dog { width: 18px; height: 18px; display: block; }
 .item .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item .sub { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item input { width: 100%; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--accent); border-radius: 4px; }
