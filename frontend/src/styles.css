@@ -150,6 +150,7 @@ button:hover { background: var(--line); }
 .mon-table .cmd { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', monospace; }
 .mon-table .bar-col { width: 22%; min-width: 60px; }
 .mon-table tr.link { cursor: pointer; }
+.mon-table .bg { display: block; font-size: 10px; color: var(--muted); }
 .mon-table tr.link:hover td { background: var(--panel); }
 .mon-table tr.muted td { color: var(--muted); }
 .mon-table tfoot td { font-weight: 600; border-bottom: 0; }

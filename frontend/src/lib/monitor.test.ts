@@ -21,6 +21,7 @@ describe('memoryLevel', () => {
 describe('strayLabel', () => {
   it('names each kind of leftover', () => {
     expect(strayLabel('solto')).toBe('processo solto');
+    expect(strayLabel('fundo')).toBe('em segundo plano');
     expect(strayLabel('claude')).toBe('claude fora da skye');
     expect(strayLabel('skye')).toBe('outra skye');
     expect(strayLabel('janela')).toBe('janela sem item');

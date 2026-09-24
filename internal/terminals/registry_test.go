@@ -422,3 +422,19 @@ func TestSetContextReportsOnlyVisibleChanges(t *testing.T) {
 		t.Fatalf("context kept after the session: %+v", got.Context)
 	}
 }
+
+func TestTitleSkipsPastedContent(t *testing.T) {
+	cases := map[string]string{
+		"<pasted_content id=\"bf47\">\nlog line 1\nlog line 2\n</pasted_content>\n\npor que isso falha?": "por que isso falha?",
+		"olha isso:\n<pasted_content id=\"a1\">\nerro\n</pasted_content>":                                "olha isso:",
+		"<pasted_content id=\"bf47\">\n\n  stack trace aqui\n</pasted_content>":                          "stack trace aqui",
+		"<pasted_content id=\"x\">a</pasted_content> e depois?":                                          "e depois?",
+	}
+	for prompt, want := range cases {
+		r := newReg()
+		apply(t, r, "UserPromptSubmit", func(e *hooks.Event) { e.Prompt = prompt })
+		if got, _ := r.Get("a"); got.Title != want {
+			t.Errorf("title of %q = %q, want %q", prompt, got.Title, want)
+		}
+	}
+}

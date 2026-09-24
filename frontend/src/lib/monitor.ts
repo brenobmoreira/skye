@@ -19,6 +19,7 @@ export function memoryLevel(m: Pick<Machine, 'memTotalMb' | 'memAvailMb'>): Memo
 
 const strayLabels: Record<StrayKind, string> = {
   solto: 'processo solto',
+  fundo: 'em segundo plano',
   claude: 'claude fora da skye',
   skye: 'outra skye',
   janela: 'janela sem item',

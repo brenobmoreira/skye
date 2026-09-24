@@ -79,9 +79,11 @@ export interface TerminalLoad {
   pid: number;
   procs: number;
   rssMb: number;
+  bgProcs: number;
+  bgMb: number;
 }
 
-export type StrayKind = 'solto' | 'claude' | 'skye' | 'janela';
+export type StrayKind = 'solto' | 'fundo' | 'claude' | 'skye' | 'janela';
 
 export interface Stray {
   kind: StrayKind;
@@ -112,5 +114,6 @@ export interface MonitorReport {
   selfMb: number;
   terminals: TerminalLoad[] | null;
   strays: Stray[] | null;
+  background: Stray[] | null;
   servers: TmuxServer[] | null;
 }

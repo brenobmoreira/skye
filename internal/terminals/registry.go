@@ -3,6 +3,7 @@ package terminals
 import (
 	"fmt"
 	"math"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -301,7 +302,7 @@ func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
 		t.State = Idle
 	case "UserPromptSubmit":
 		if t.Title == "" {
-			t.Title = firstLine(ev.Prompt, TitleLimit)
+			t.Title = titleFrom(ev.Prompt)
 		}
 		if ev.Cwd != "" {
 			t.Cwd = ev.Cwd
@@ -400,6 +401,17 @@ func (t *Terminal) activity() string {
 		parts = append(parts, fmt.Sprintf("%d subagentes", n))
 	}
 	return strings.Join(parts, " · ")
+}
+
+var pasted = regexp.MustCompile(`(?s)<pasted_content[^>]*>(.*?)</pasted_content>`)
+
+// titleFrom names a session after what the user wrote, not after text they pasted; a prompt that
+// is only pasted text is named after its first line.
+func titleFrom(prompt string) string {
+	if title := firstLine(pasted.ReplaceAllString(prompt, "\n"), TitleLimit); title != "" {
+		return title
+	}
+	return firstLine(pasted.ReplaceAllString(prompt, "$1"), TitleLimit)
 }
 
 func firstLine(text string, limit int) string {
