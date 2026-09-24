@@ -54,6 +54,7 @@ type App struct {
 	mu      sync.Mutex
 	sound   bool
 	focused bool
+	usage   hooks.Usage
 }
 
 func New(o Options) *App {
@@ -186,6 +187,32 @@ func (a *App) Reorder(ids []string) error {
 	}
 	a.emitTerminals()
 	return nil
+}
+
+// HandleUsage keeps the plan usage the status line last reported and tells the clients when
+// the numbers change.
+func (a *App) HandleUsage(u hooks.Usage) {
+	u.UpdatedAt = a.o.Now()
+	a.mu.Lock()
+	changed := !sameWindow(a.usage.FiveHour, u.FiveHour) || !sameWindow(a.usage.SevenDay, u.SevenDay)
+	a.usage = u
+	a.mu.Unlock()
+	if changed {
+		a.o.Emit("usage", u)
+	}
+}
+
+func (a *App) Usage() hooks.Usage {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.usage
+}
+
+func sameWindow(x, y *hooks.Window) bool {
+	if x == nil || y == nil {
+		return x == y
+	}
+	return *x == *y
 }
 
 func (a *App) Rename(id, name string) error {

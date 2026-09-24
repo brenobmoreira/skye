@@ -19,7 +19,7 @@ type Server struct {
 	path string
 }
 
-func Listen(path string, handle func(Event), onShow func(), logf func(string, ...any)) (*Server, error) {
+func Listen(path string, handle func(Event), onShow func(), onUsage func(Usage), logf func(string, ...any)) (*Server, error) {
 	if conn, err := net.DialTimeout("unix", path, 500*time.Millisecond); err == nil {
 		conn.Close()
 		return nil, ErrInUse
@@ -49,6 +49,13 @@ func Listen(path string, handle func(Event), onShow func(), logf func(string, ..
 			return
 		}
 		handle(ev)
+	})
+	mux.HandleFunc("POST /statusline", func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+		w.WriteHeader(http.StatusNoContent)
+		if u, ok := ParseUsage(body); ok && onUsage != nil && r.URL.Query().Get("t") != "" {
+			onUsage(u)
+		}
 	})
 	mux.HandleFunc("POST /show", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)

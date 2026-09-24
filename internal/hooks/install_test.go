@@ -101,3 +101,46 @@ func TestCommandIsSafeOutsideSkye(t *testing.T) {
 		}
 	}
 }
+
+func statusCommand(t *testing.T, path string) string {
+	t.Helper()
+	sl, ok := readSettings(t, path)["statusLine"].(map[string]any)
+	if !ok {
+		t.Fatal("no statusLine")
+	}
+	return sl["command"].(string)
+}
+
+func TestInstallWrapsTheUserStatusLineOnce(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	original := `{"statusLine":{"type":"command","command":"bash ~/.claude/statusline.sh","padding":1}}`
+	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Install(path); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Install(path); err != nil {
+		t.Fatal(err)
+	}
+	cmd := statusCommand(t, path)
+	if strings.Count(cmd, "http://skye/statusline") != 1 {
+		t.Fatalf("wrapped %d times: %q", strings.Count(cmd, "http://skye/statusline"), cmd)
+	}
+	if got, ok := originalStatusLine(cmd); !ok || got != "bash ~/.claude/statusline.sh" {
+		t.Fatalf("original = %q", got)
+	}
+	if readSettings(t, path)["statusLine"].(map[string]any)["padding"] != float64(1) {
+		t.Fatal("statusLine fields lost")
+	}
+}
+
+func TestInstallAddsARelayOnlyStatusLine(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if _, err := Install(path); err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := originalStatusLine(statusCommand(t, path)); !ok || got != "true" {
+		t.Fatalf("original = %q", got)
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/brenobmoreira/skye/internal/config"
+	"github.com/brenobmoreira/skye/internal/hooks"
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
 	"github.com/brenobmoreira/skye/internal/web"
@@ -28,6 +29,7 @@ type rpcTarget interface {
 	SetFocused(focused bool)
 	Quit() error
 	Problems() []string
+	Usage() hooks.Usage
 }
 
 func decodeArgs(method string, args []json.RawMessage, dst ...any) error {
@@ -77,6 +79,11 @@ func dispatcher(t rpcTarget) web.Dispatch {
 				return nil, err
 			}
 			return t.Problems(), nil
+		case "Usage":
+			if err := decode(); err != nil {
+				return nil, err
+			}
+			return t.Usage(), nil
 		case "Quit":
 			if err := decode(); err != nil {
 				return nil, err

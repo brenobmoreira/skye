@@ -48,6 +48,7 @@ func Install(path string) (string, error) {
 		hooksMap[ev] = groups
 	}
 	settings["hooks"] = hooksMap
+	settings["statusLine"] = wrapStatusLine(settings["statusLine"])
 	out, err := json.MarshalIndent(settings, "", "  ")
 	if err != nil {
 		return "", err

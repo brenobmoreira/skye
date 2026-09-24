@@ -1,4 +1,4 @@
-import type { Conversation, OutputEvent, Preset, Terminal } from './lib/types';
+import type { Conversation, OutputEvent, Preset, Terminal, Usage } from './lib/types';
 import { createOutputHub } from './output';
 import { createSendQueue } from './sendQueue';
 import { createWsClient, type SocketLike } from './wsClient';
@@ -25,6 +25,7 @@ interface GoBridge {
   ToggleMaximise(): Promise<void>;
   Quit(): Promise<void>;
   Problems(): Promise<string[]>;
+  Usage(): Promise<Usage>;
   OpenURL(url: string): Promise<void>;
 }
 
@@ -119,6 +120,7 @@ function remoteBridge(connect: () => SocketLike): { bridge: GoBridge; on: (name:
     ToggleMaximise: async () => {},
     Quit: () => call('Quit'),
     Problems: () => call('Problems'),
+    Usage: () => call('Usage'),
     OpenURL: async () => {},
   };
   return { bridge, on: (name, cb) => client.on(name, cb) };

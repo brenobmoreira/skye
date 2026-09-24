@@ -368,3 +368,26 @@ func TestReorderPersistsAndSurvivesRecover(t *testing.T) {
 		t.Fatalf("recovered list = %+v", got)
 	}
 }
+
+func TestUsageKeepsTheLatestAndEmitsOnlyOnChange(t *testing.T) {
+	h := newHarness(t, config.Default())
+	if u := h.app.Usage(); u.FiveHour != nil {
+		t.Fatalf("usage before any status line = %+v", u)
+	}
+	u := hooks.Usage{FiveHour: &hooks.Window{UsedPct: 40, ResetsAt: 1790000000}}
+	h.app.HandleUsage(u)
+	h.app.HandleUsage(hooks.Usage{FiveHour: &hooks.Window{UsedPct: 40, ResetsAt: 1790000000}})
+	h.app.HandleUsage(hooks.Usage{FiveHour: &hooks.Window{UsedPct: 41, ResetsAt: 1790000000}})
+	count := 0
+	for _, e := range h.events {
+		if e == "usage" {
+			count++
+		}
+	}
+	if count != 2 {
+		t.Fatalf("usage events = %d", count)
+	}
+	if got := h.app.Usage(); got.FiveHour.UsedPct != 41 || got.UpdatedAt.IsZero() {
+		t.Fatalf("usage = %+v", got)
+	}
+}

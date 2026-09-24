@@ -85,7 +85,7 @@ func (b *Bridge) boot() error {
 	if err != nil {
 		b.problem("config inválida, usando padrões: %v", err)
 	}
-	server, err := hooks.Listen(paths.Socket, b.handleHook, b.host.show, b.host.logf)
+	server, err := hooks.Listen(paths.Socket, b.handleHook, b.host.show, b.handleUsage, b.host.logf)
 	if errors.Is(err, hooks.ErrInUse) {
 		return errOtherSkye
 	}
@@ -151,6 +151,19 @@ func (b *Bridge) handleHook(ev hooks.Event) {
 	if a, err := b.ready(); err == nil {
 		a.HandleHook(ev)
 	}
+}
+
+func (b *Bridge) handleUsage(u hooks.Usage) {
+	if a, err := b.ready(); err == nil {
+		a.HandleUsage(u)
+	}
+}
+
+func (b *Bridge) Usage() hooks.Usage {
+	if a, err := b.ready(); err == nil {
+		return a.Usage()
+	}
+	return hooks.Usage{}
 }
 
 func (b *Bridge) pump(c *tmuxctl.Client, a *app.App) {

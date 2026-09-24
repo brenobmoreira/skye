@@ -20,6 +20,17 @@ export interface Conversation {
   endedAt: string;
 }
 
+export interface UsageWindow {
+  usedPct: number;
+  resetsAt: number;
+}
+
+export interface Usage {
+  fiveHour: UsageWindow | null;
+  sevenDay: UsageWindow | null;
+  updatedAt: string;
+}
+
 export interface Preset {
   name: string;
   command: string;

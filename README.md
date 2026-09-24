@@ -16,6 +16,10 @@ skye late.
     install -m 755 skye ~/.local/bin/skye
     skye install-hooks        # uma vez; depois reinicie as sessões do claude
 
+O `install-hooks` também envolve o seu `statusLine`: ele continua desenhando igual, e uma cópia
+do JSON vai para a skye, que mostra o uso do plano (5h e 7d) na barra de título. Rode de novo
+depois de trocar o comando do `statusLine`.
+
 Build com `make build` (o `go build` puro precisa do `frontend/dist`).
 
 ## Configuração
@@ -121,3 +125,4 @@ Network Access do Chromium); enquanto isso, use `skye web` no navegador.
 13. Pedir algo num terminal e trocar para outro: ao terminar, o primeiro ganha o ponto azul; abri-lo tira o ponto.
 14. Arrastar um terminal para cima de outro do mesmo grupo: troca de lugar; `pkill skye` e reabrir mantém a ordem.
 15. `echo https://example.com` e `Ctrl+clique` no link: abre no navegador do Windows (janela Linux, `skye.exe` e navegador); clique simples não abre.
+16. Depois de `skye install-hooks`, mandar um prompt: a barra de título mostra `5h N% · 7d N%`; o statusline do terminal continua igual.

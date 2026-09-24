@@ -4,7 +4,7 @@ import { bark } from './sound';
 import { TitleBar } from './components/TitleBar';
 import { Sidebar } from './components/Sidebar';
 import { TerminalView } from './components/TerminalView';
-import type { Conversation, Preset, State, Terminal } from './lib/types';
+import type { Conversation, Preset, State, Terminal, Usage } from './lib/types';
 import { nextUnread } from './lib/unread';
 import type { ConnectionState } from './windowsTransport';
 import { applyZoom, parseFontSize, zoomKey, type ZoomAction } from './lib/zoom';
@@ -59,6 +59,7 @@ export function App() {
   const [epoch, setEpoch] = useState(0);
   const [link, setLink] = useState(connection);
   const [focused, setFocused] = useState(windowFocused);
+  const [usage, setUsage] = useState<Usage | null>(null);
   const [unread, setUnread] = useState<Set<string>>(() => new Set());
   const lastStates = useRef<Record<string, State>>({});
 
@@ -68,6 +69,7 @@ export function App() {
     api().Presets().then(setPresets).catch(() => {});
     api().Sound().then(setSound).catch(() => {});
     api().Problems().then(setProblems).catch(() => {});
+    api().Usage().then(setUsage).catch(() => {});
   };
 
   useEffect(() => {
@@ -121,6 +123,7 @@ export function App() {
       on('conversations', (list: Conversation[]) => setConversations(list)),
       on('bark', () => { bark(); }),
       on('problems', (list: string[]) => setProblems(list)),
+      on('usage', (u: Usage) => setUsage(u)),
       on('reconnected', () => {
         load();
         report();
@@ -172,7 +175,7 @@ export function App() {
   return (
     <div className={isWindow() ? 'app windowed' : 'app'}>
       {link.kind !== 'ready' && <ConnectionScreen state={link} />}
-      <TitleBar presets={presets} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} onPickFont={pickFont} />
+      <TitleBar presets={presets} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} onPickFont={pickFont} usage={usage} />
       <div className="body">
         <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={unread} onSelect={setActiveId} onReorder={reorder} onResume={resume} />
         <main className="main">
