@@ -39,3 +39,24 @@ func TestStatusLineCommandKeepsTheOriginalOutputAndCanBeUnwrapped(t *testing.T) 
 		t.Fatalf("output = %q %v", out, err)
 	}
 }
+
+func TestParseStatusReadsTheSession(t *testing.T) {
+	body := []byte(`{"model":{"id":"claude-opus-5-5","display_name":"Opus 5.5"},"context_window":{"used_percentage":42.4},"cost":{"total_cost_usd":1.234},"rate_limits":{"five_hour":{"used_percentage":10,"resets_at":1790000000}}}`)
+	s, ok := ParseStatus(body)
+	if !ok || !s.HasUsage || s.Usage.FiveHour.UsedPct != 10 {
+		t.Fatalf("status = %+v ok=%v", s, ok)
+	}
+	if s.Session.ContextPct == nil || *s.Session.ContextPct != 42.4 || s.Session.Model != "Opus 5.5" || s.Session.CostUSD == nil || *s.Session.CostUSD != 1.234 {
+		t.Fatalf("session = %+v", s.Session)
+	}
+}
+
+func TestParseStatusWithoutUsageOrSession(t *testing.T) {
+	s, ok := ParseStatus([]byte(`{"model":{"id":"x"}}`))
+	if !ok || s.HasUsage || s.Session.ContextPct != nil || s.Session.Model != "" {
+		t.Fatalf("status = %+v ok=%v", s, ok)
+	}
+	if _, ok := ParseStatus([]byte(`not json`)); ok {
+		t.Fatal("bad json parsed")
+	}
+}

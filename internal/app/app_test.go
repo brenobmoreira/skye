@@ -403,3 +403,23 @@ func TestToastSaysWhatTheTerminalAsks(t *testing.T) {
 		t.Fatalf("toast = %v", h.notif.shown)
 	}
 }
+
+func TestStatusLineFeedsUsageAndTheTerminalContext(t *testing.T) {
+	h := newHarness(t, config.Default())
+	term, _ := h.app.NewTerminal("")
+	pct := 30.0
+	s := hooks.Status{HasUsage: true, Usage: hooks.Usage{FiveHour: &hooks.Window{UsedPct: 5}}, Session: hooks.Session{ContextPct: &pct, Model: "Opus 5.5"}}
+	before := len(h.events)
+	h.app.HandleStatus(term.ID, s)
+	h.app.HandleStatus(term.ID, s)
+	counts := map[string]int{}
+	for _, e := range h.events[before:] {
+		counts[e]++
+	}
+	if counts["terminals"] != 1 || counts["usage"] != 1 {
+		t.Fatalf("events = %v", counts)
+	}
+	if got := h.app.List()[0].Context; got == nil || *got.ContextPct != 30 {
+		t.Fatalf("context = %+v", got)
+	}
+}

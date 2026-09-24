@@ -85,7 +85,7 @@ func (b *Bridge) boot() error {
 	if err != nil {
 		b.problem("config inválida, usando padrões: %v", err)
 	}
-	server, err := hooks.Listen(paths.Socket, b.handleHook, b.host.show, b.handleUsage, b.host.logf)
+	server, err := hooks.Listen(paths.Socket, b.handleHook, b.host.show, b.handleStatus, b.host.logf)
 	if errors.Is(err, hooks.ErrInUse) {
 		return errOtherSkye
 	}
@@ -153,9 +153,9 @@ func (b *Bridge) handleHook(ev hooks.Event) {
 	}
 }
 
-func (b *Bridge) handleUsage(u hooks.Usage) {
+func (b *Bridge) handleStatus(terminal string, s hooks.Status) {
 	if a, err := b.ready(); err == nil {
-		a.HandleUsage(u)
+		a.HandleStatus(terminal, s)
 	}
 }
 

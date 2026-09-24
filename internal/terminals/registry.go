@@ -2,6 +2,7 @@ package terminals
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"sync"
@@ -57,7 +58,9 @@ type Terminal struct {
 	// Since is when the terminal entered its state; zero until the first hook after a restart.
 	Since time.Time `json:"since,omitzero"`
 	// Activity says what a running terminal is busy with: compacting, subagents.
-	Activity   string `json:"activity,omitempty"`
+	Activity string `json:"activity,omitempty"`
+	// Context is what the status line last said about the claude session in the terminal.
+	Context    *hooks.Session `json:"context,omitempty"`
 	compacting bool
 	agents     map[string]bool
 	// Order sorts terminals inside the same state group; 0 means not placed yet.
@@ -200,6 +203,30 @@ func (r *Registry) Rename(id, name string) (Terminal, bool) {
 	return *t, true
 }
 
+// SetContext keeps what the status line says about a terminal's session and reports whether
+// anything the list shows changed: the context in whole percent, the model or the cost in cents.
+func (r *Registry) SetContext(id string, s hooks.Session) (Terminal, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	t, ok := r.items[id]
+	if !ok || (s.ContextPct == nil && s.Model == "") {
+		return Terminal{}, false
+	}
+	changed := t.Context == nil || shown(t.Context) != shown(&s)
+	t.Context = &s
+	return *t, changed
+}
+
+func shown(s *hooks.Session) [3]string {
+	round := func(v *float64, scale float64) string {
+		if v == nil {
+			return ""
+		}
+		return fmt.Sprint(math.Round(*v * scale))
+	}
+	return [3]string{round(s.ContextPct, 1), s.Model, round(s.CostUSD, 100)}
+}
+
 func (r *Registry) List() []Terminal {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -324,7 +351,7 @@ func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
 		if c, ok := t.Conversation(now); ok {
 			ch.Ended = &c
 		}
-		t.SessionID, t.Title, t.State = "", "", Shell
+		t.SessionID, t.Title, t.State, t.Context = "", "", Shell, nil
 		ch.Terminal = settle()
 		return ch, true
 	}

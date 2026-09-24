@@ -189,6 +189,17 @@ func (a *App) Reorder(ids []string) error {
 	return nil
 }
 
+// HandleStatus takes one status line report: the plan usage for everybody and the session
+// details for the terminal that sent it.
+func (a *App) HandleStatus(terminal string, s hooks.Status) {
+	if s.HasUsage {
+		a.HandleUsage(s.Usage)
+	}
+	if _, changed := a.reg.SetContext(terminal, s.Session); changed {
+		a.emitTerminals()
+	}
+}
+
 // HandleUsage keeps the plan usage the status line last reported and tells the clients when
 // the numbers change.
 func (a *App) HandleUsage(u hooks.Usage) {

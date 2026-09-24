@@ -19,7 +19,31 @@ type Window struct {
 	ResetsAt int64   `json:"resetsAt"`
 }
 
+// Session is what the status line says about one claude session: how full its context is, the
+// model and what it cost so far.
+type Session struct {
+	ContextPct *float64 `json:"contextPct,omitempty"`
+	Model      string   `json:"model,omitempty"`
+	CostUSD    *float64 `json:"costUsd,omitempty"`
+}
+
+// Status is one status line report: the account usage, when it came, and the session.
+type Status struct {
+	Usage    Usage
+	HasUsage bool
+	Session  Session
+}
+
 type statusPayload struct {
+	Model struct {
+		DisplayName string `json:"display_name"`
+	} `json:"model"`
+	ContextWindow struct {
+		UsedPercentage *float64 `json:"used_percentage"`
+	} `json:"context_window"`
+	Cost struct {
+		TotalCostUSD *float64 `json:"total_cost_usd"`
+	} `json:"cost"`
 	RateLimits struct {
 		FiveHour *rawWindow `json:"five_hour"`
 		SevenDay *rawWindow `json:"seven_day"`
@@ -39,12 +63,21 @@ func (w *rawWindow) window() *Window {
 }
 
 func ParseUsage(body []byte) (Usage, bool) {
+	s, _ := ParseStatus(body)
+	return s.Usage, s.HasUsage
+}
+
+func ParseStatus(body []byte) (Status, bool) {
 	var p statusPayload
 	if err := json.Unmarshal(body, &p); err != nil {
-		return Usage{}, false
+		return Status{}, false
 	}
 	u := Usage{FiveHour: p.RateLimits.FiveHour.window(), SevenDay: p.RateLimits.SevenDay.window()}
-	return u, u.FiveHour != nil || u.SevenDay != nil
+	return Status{
+		Usage:    u,
+		HasUsage: u.FiveHour != nil || u.SevenDay != nil,
+		Session:  Session{ContextPct: p.ContextWindow.UsedPercentage, Model: p.Model.DisplayName, CostUSD: p.Cost.TotalCostUSD},
+	}, true
 }
 
 const statusMarker = "http://skye/statusline"
