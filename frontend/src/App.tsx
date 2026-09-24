@@ -7,14 +7,24 @@ import { TerminalView } from './components/TerminalView';
 import { Composer } from './components/Composer';
 import type { Conversation, Preset, Terminal } from './lib/types';
 import { applyZoom, parseFontSize, zoomKey, type ZoomAction } from './lib/zoom';
+import { parseFont, type TerminalFont } from './lib/fonts';
 
 const FONT_KEY = 'skye:fontSize';
+const FAMILY_KEY = 'skye:font';
 
 function storedFontSize(): number {
   try {
     return parseFontSize(localStorage.getItem(FONT_KEY));
   } catch {
     return parseFontSize(null);
+  }
+}
+
+function storedFont(): TerminalFont {
+  try {
+    return parseFont(localStorage.getItem(FAMILY_KEY));
+  } catch {
+    return parseFont(null);
   }
 }
 
@@ -29,6 +39,7 @@ export function App() {
   const [sound, setSound] = useState(true);
   const [problems, setProblems] = useState<string[]>([]);
   const [fontSize, setFontSize] = useState(storedFontSize);
+  const [font, setFont] = useState(storedFont);
   const [epoch, setEpoch] = useState(0);
 
   useEffect(() => {
@@ -107,17 +118,23 @@ export function App() {
   const open = async (preset: string) => setActiveId((await api().NewTerminal(preset)).id);
   const resume = async (sessionId: string) => setActiveId((await api().Resume(sessionId)).id);
   const toggleSound = () => { api().SetSound(!sound); setSound(!sound); };
+  const pickFont = (next: TerminalFont) => {
+    setFont(next);
+    try {
+      localStorage.setItem(FAMILY_KEY, next.id);
+    } catch {}
+  };
 
   return (
     <div className="app">
-      <TitleBar presets={presets} sound={sound} onNew={open} onToggleSound={toggleSound} />
+      <TitleBar presets={presets} sound={sound} onNew={open} onToggleSound={toggleSound} font={font} onPickFont={pickFont} />
       <div className="body">
         <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} onSelect={setActiveId} onResume={resume} />
         <main className="main">
           <div className="terminals">
             {problems.length > 0 && <div className="problems">{problems.join('\n')}</div>}
             {terminals.length === 0 && <div className="empty">Nenhum terminal. Abra um no +.</div>}
-            {views.map((t) => <TerminalView key={`${t.id}:${epoch}`} id={t.id} active={t.id === activeId} fontSize={fontSize} />)}
+            {views.map((t) => <TerminalView key={`${t.id}:${epoch}`} id={t.id} active={t.id === activeId} fontSize={fontSize} fontFamily={font.family} />)}
           </div>
           {activeId && <Composer key={activeId} id={activeId} />}
         </main>
