@@ -35,3 +35,23 @@ func TestParseRejects(t *testing.T) {
 		}
 	}
 }
+
+func TestParseDescribesThePermissionRequest(t *testing.T) {
+	cases := map[string]string{
+		`{"tool_name":"Bash","tool_input":{"command":"git push origin main","description":"push"}}`: "Bash: git push origin main",
+		`{"tool_name":"Edit","tool_input":{"file_path":"/home/demo/blog/a.go"}}`:                    "Edit: /home/demo/blog/a.go",
+		`{"tool_name":"WebFetch","tool_input":{"url":"https://example.com"}}`:                       "WebFetch: https://example.com",
+		`{"tool_name":"mcp__x__y","tool_input":{"q":1}}`:                                            "mcp__x__y",
+		`{"x":1}`: "",
+	}
+	for extra, want := range cases {
+		body := `{"hook_event_name":"PermissionRequest",` + extra[1:]
+		ev, err := Parse("t1", []byte(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ev.Tool != want {
+			t.Errorf("%s: tool = %q, want %q", extra, ev.Tool, want)
+		}
+	}
+}

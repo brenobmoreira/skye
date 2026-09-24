@@ -339,6 +339,9 @@ func (a *App) alert(t terminals.Terminal) {
 	body := "terminou"
 	if t.State == terminals.Waiting {
 		body = "esperando você"
+		if t.Ask != "" {
+			body = t.Ask
+		}
 	}
 	go func() {
 		if err := a.o.Notifier.Show(t.Name, body); err != nil {

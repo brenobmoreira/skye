@@ -391,3 +391,15 @@ func TestUsageKeepsTheLatestAndEmitsOnlyOnChange(t *testing.T) {
 		t.Fatalf("usage = %+v", got)
 	}
 }
+
+func TestToastSaysWhatTheTerminalAsks(t *testing.T) {
+	h := newHarness(t, config.Default())
+	term, _ := h.app.NewTerminal("")
+	h.app.SetFocused(false)
+	h.hook(term.ID, "UserPromptSubmit")
+	h.hook(term.ID, "Notification", func(e *hooks.Event) { e.Message = "Claude needs your permission to use Bash" })
+	waitFor(t, func() bool { return h.notif.count() == 1 })
+	if h.notif.shown[0] != "shell|Claude needs your permission to use Bash" {
+		t.Fatalf("toast = %v", h.notif.shown)
+	}
+}

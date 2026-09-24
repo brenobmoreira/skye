@@ -17,6 +17,8 @@ type Event struct {
 	// "clear" around a /clear.
 	Reason string
 	Source string
+	// Tool is the tool a PermissionRequest asks for, with its command, file or url.
+	Tool string
 }
 
 var ErrNoTerminal = errors.New("hook without terminal id")
@@ -29,6 +31,21 @@ type payload struct {
 	Message       string `json:"message"`
 	Reason        string `json:"reason"`
 	Source        string `json:"source"`
+	ToolName      string `json:"tool_name"`
+	ToolInput     struct {
+		Command  string `json:"command"`
+		FilePath string `json:"file_path"`
+		URL      string `json:"url"`
+	} `json:"tool_input"`
+}
+
+func (p payload) tool() string {
+	for _, detail := range []string{p.ToolInput.Command, p.ToolInput.FilePath, p.ToolInput.URL} {
+		if detail != "" && p.ToolName != "" {
+			return p.ToolName + ": " + detail
+		}
+	}
+	return p.ToolName
 }
 
 func Parse(terminal string, body []byte) (Event, error) {
@@ -51,5 +68,6 @@ func Parse(terminal string, body []byte) (Event, error) {
 		Message:   p.Message,
 		Reason:    p.Reason,
 		Source:    p.Source,
+		Tool:      p.tool(),
 	}, nil
 }

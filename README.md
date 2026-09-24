@@ -44,6 +44,8 @@ O latido é `frontend/public/bark.ogg`; sem o arquivo, a skye toca um bipe.
 - Na lista, um terminal vazio leva o nome da sessão do claude (a 1ª linha do 1º prompt) ou,
   sem sessão, o da pasta. Duplo clique no nome renomeia; o × ao lado do nome fecha o terminal.
   Um ponto azul marca o terminal que terminou ou pediu algo enquanto você olhava outro.
+  Quem está esperando você mostra, embaixo do nome e no aviso do Windows, o que o claude pede
+  (ex.: `Bash: git push`). Depois de atualizar a skye, rode `skye install-hooks` de novo.
 - A lista agrupa por estado: esperando você, terminou, trabalhando, terminal. Quem acaba de
   terminar ou pedir algo sobe para o topo do seu grupo. Arraste um item para mudar a ordem dentro
   do grupo; a ordem fica salva.
@@ -118,7 +120,7 @@ Network Access do Chromium); enquanto isso, use `skye web` no navegador.
 
 1. Abrir terminal vazio e preset; `ls --color`, `git log` desenham certo.
 2. `claude` no terminal: `Alt+Enter` quebra linha; colar 3 linhas com `Ctrl+Shift+V` chega como um prompt.
-3. Pedir algo que exija permissão: cachorro amarelo, latido, toast com a janela fora de foco.
+3. Pedir algo que exija permissão: cachorro amarelo, latido, toast com a janela fora de foco; o item e o toast mostram a ferramenta e o comando (`Bash: …`).
 4. Resposta termina: cachorro verde, latido; um minuto depois, nenhum segundo latido.
 5. `/clear`: o terminal continua o mesmo, sem nada novo em *Encerradas*; o próximo prompt vira o nome. Sair do claude (`/exit`) manda a conversa para *Encerradas*.
 6. Fechar a janela no ×, rodar `skye` de novo: mesma janela, terminais intactos.

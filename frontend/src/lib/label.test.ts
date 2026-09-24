@@ -31,4 +31,14 @@ describe('itemLabel', () => {
   it('keeps the preset name', () => {
     expect(itemLabel(term({ name: 'claude', preset: 'claude', title: 'oi' }))).toEqual({ name: 'claude', sub: 'oi' });
   });
+  it('shows what a waiting terminal asks under the name', () => {
+    expect(itemLabel(term({ title: 'arrume o teste', state: 'waiting', ask: 'Claude needs your permission to use Bash' }))).toEqual({
+      name: 'arrume o teste',
+      sub: 'Claude needs your permission to use Bash',
+    });
+    expect(itemLabel(term({ name: 'api', state: 'waiting', ask: 'precisa de permissão' })).sub).toBe('precisa de permissão');
+  });
+  it('ignores a stale ask once the terminal is not waiting', () => {
+    expect(itemLabel(term({ state: 'running', ask: 'velho' })).sub).toBe('trabalhando');
+  });
 });

@@ -32,7 +32,7 @@ function TerminalItem({ t, active, unread, onSelect, drag }: { t: Terminal; acti
     <div
       className={`item${active ? ' active' : ''}${unread ? ' unread' : ''}${drag.dragging === t.id ? ' dragging' : ''}`}
       onClick={onSelect}
-      title={stateLabel[t.state]}
+      title={t.state === 'waiting' && t.ask ? `${stateLabel[t.state]}: ${t.ask}` : stateLabel[t.state]}
       draggable={!editing}
       onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; drag.start(t.id); }}
       onDragOver={(e) => { if (drag.over(t.id)) e.preventDefault(); }}

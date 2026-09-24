@@ -273,3 +273,52 @@ func TestClearStartWithoutEndDoesNotArchive(t *testing.T) {
 		t.Fatalf("change = %+v", ch)
 	}
 }
+
+func TestWaitingKeepsWhatClaudeAsksUntilItMovesOn(t *testing.T) {
+	ask := func(e *hooks.Event) { e.Message = "Claude needs your permission to use Bash" }
+	for _, next := range []string{"PostToolUse", "UserPromptSubmit", "Stop", "SessionEnd"} {
+		r := newReg()
+		apply(t, r, "UserPromptSubmit")
+		if ch := apply(t, r, "Notification", ask); ch.Terminal.Ask != "Claude needs your permission to use Bash" {
+			t.Fatalf("ask = %q", ch.Terminal.Ask)
+		}
+		if ch := apply(t, r, next); ch.Terminal.Ask != "" {
+			t.Fatalf("%s kept ask %q", next, ch.Terminal.Ask)
+		}
+	}
+}
+
+func TestIdleReminderDoesNotBecomeAnAsk(t *testing.T) {
+	r := newReg()
+	apply(t, r, "UserPromptSubmit")
+	apply(t, r, "Stop")
+	ch := apply(t, r, "Notification", func(e *hooks.Event) { e.Message = "Claude is waiting for your input" })
+	if ch.Terminal.Ask != "" {
+		t.Fatalf("ask = %q", ch.Terminal.Ask)
+	}
+}
+
+func TestAskIsCutAtTheLimit(t *testing.T) {
+	r := newReg()
+	apply(t, r, "UserPromptSubmit")
+	ch := apply(t, r, "Notification", func(e *hooks.Event) { e.Message = "  " + strings.Repeat("x", 300) + "\nmore" })
+	if got := []rune(ch.Terminal.Ask); len(got) != AskLimit || got[len(got)-1] != '…' {
+		t.Fatalf("ask = %q", ch.Terminal.Ask)
+	}
+}
+
+func TestPermissionRequestNamesTheToolTheTerminalWaitsFor(t *testing.T) {
+	r := newReg()
+	apply(t, r, "UserPromptSubmit")
+	ch := apply(t, r, "PermissionRequest", func(e *hooks.Event) { e.Tool = "Bash: git push" })
+	if ch.Terminal.State != Running || ch.Attention {
+		t.Fatalf("permission request moved the terminal: %+v", ch)
+	}
+	ch = apply(t, r, "Notification", func(e *hooks.Event) { e.Message = "Claude needs your permission" })
+	if ch.Terminal.State != Waiting || ch.Terminal.Ask != "Bash: git push" {
+		t.Fatalf("state=%s ask=%q", ch.Terminal.State, ch.Terminal.Ask)
+	}
+	if ch := apply(t, r, "PostToolUse"); ch.Terminal.Ask != "" {
+		t.Fatalf("ask kept after the answer: %q", ch.Terminal.Ask)
+	}
+}
