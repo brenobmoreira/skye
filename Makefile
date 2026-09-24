@@ -21,7 +21,7 @@ install-windows: windows
 	test -n "$$appdata" || { echo "não achei o %LOCALAPPDATA% do Windows" >&2; exit 1; }; \
 	dir="$$(wslpath "$$appdata")/skye"; \
 	mkdir -p "$$dir" && cp skye.exe "$$dir/skye.exe" && \
-	echo "instalado em $$(wslpath -w "$$dir/skye.exe")"
+	printf 'instalado em %s\n' "$$(wslpath -w "$$dir/skye.exe")"
 	@$(MAKE) --no-print-directory windows-shortcuts
 
 # Points skye.lnk on the desktop and in the Start menu at the installed skye.exe. The shell
