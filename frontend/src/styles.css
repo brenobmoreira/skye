@@ -10,6 +10,7 @@
   --running: #7aa2f7;
   --shell: #565f89;
   --term-bg: #0e0e12;
+  --titlebar: #0b0b0e;
   font-family: system-ui, sans-serif;
   font-size: 13px;
   color: var(--text);
@@ -25,6 +26,17 @@ button:hover { background: var(--line); }
 .titlebar button, .titlebar .menu { --wails-draggable: no-drag; }
 .titlebar .brand { font-weight: 600; margin-right: 8px; }
 .titlebar .spacer { flex: 1; }
+.app.windowed { grid-template-rows: 30px 1fr; }
+.titlebar.windowed { gap: 4px; padding: 0 0 0 10px; background: var(--titlebar); border-bottom: 0; user-select: none; }
+.titlebar.windowed .brand { font-size: 12px; color: var(--muted); margin-right: 6px; }
+.titlebar.windowed .flat { border: 0; border-radius: 4px; padding: 2px 8px; }
+.titlebar.windowed .flat:hover { background: rgba(255, 255, 255, 0.08); }
+.titlebar.windowed .quit { color: var(--muted); margin-right: 6px; font-size: 12px; }
+.titlebar.windowed .menu-list { top: 26px; }
+.window-controls { display: flex; align-self: stretch; }
+.window-controls button { width: 46px; height: 30px; padding: 0; border: 0; border-radius: 0; font-size: 12px; line-height: 30px; color: var(--muted); }
+.window-controls button:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); }
+.window-controls button.close:hover { background: #e81123; color: #fff; }
 .menu { position: relative; }
 .menu-list { position: absolute; top: 30px; left: 0; z-index: 10; min-width: 220px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 4px; }
 .menu-list button { display: block; width: 100%; text-align: left; border: 0; }

@@ -1,6 +1,9 @@
-import { useState } from 'react';
-import { api, isWindow, runtime } from '../bridge';
+import { useEffect, useState, type MouseEvent } from 'react';
+import { api, isWindow, mode, runtime } from '../bridge';
+import { windowControls } from '../windowControls';
 import type { Preset } from '../lib/types';
+
+const controls = windowControls(mode, api, runtime);
 
 export function TitleBar(props: {
   presets: Preset[];
@@ -9,13 +12,28 @@ export function TitleBar(props: {
   onToggleSound: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [maximised, setMaximised] = useState(false);
   const pick = (preset: string) => { setOpen(false); props.onNew(preset); };
   const windowed = isWindow();
+
+  useEffect(() => {
+    if (!windowed) return;
+    const check = () => { controls.isMaximised().then(setMaximised).catch(() => {}); };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, [windowed]);
+
+  const onDoubleClick = (e: MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button, .menu')) return;
+    controls.toggleMaximise();
+  };
+
   return (
-    <header className="titlebar" onDoubleClick={windowed ? () => api().ToggleMaximise() : undefined}>
+    <header className={windowed ? 'titlebar windowed' : 'titlebar'} onDoubleClick={windowed ? onDoubleClick : undefined}>
       <span className="brand">skye</span>
       <div className="menu">
-        <button onClick={() => setOpen(!open)} title="novo terminal">+</button>
+        <button className="flat" onClick={() => setOpen(!open)} title="novo terminal">+</button>
         {open && (
           <div className="menu-list" onMouseLeave={() => setOpen(false)}>
             <button onClick={() => pick('')}>terminal vazio</button>
@@ -28,16 +46,16 @@ export function TitleBar(props: {
           </div>
         )}
       </div>
+      <button className="flat" onClick={props.onToggleSound} title="latido">{props.sound ? '🔔' : '🔕'}</button>
       <span className="spacer" />
-      <button onClick={props.onToggleSound} title="latido">{props.sound ? '🔔' : '🔕'}</button>
+      <button className="flat quit" onClick={() => { controls.quitAll().catch(() => {}); }} title="sair e encerrar todos os terminais">sair</button>
       {windowed && (
-        <>
-          <button onClick={() => runtime().WindowMinimise()} title="minimizar">–</button>
-          <button onClick={() => api().ToggleMaximise()} title="maximizar">□</button>
-          <button onClick={() => api().Hide()} title="esconder (os terminais continuam)">×</button>
-        </>
+        <div className="window-controls">
+          <button onClick={controls.minimise} title="minimizar">—</button>
+          <button onClick={controls.toggleMaximise} title={maximised ? 'restaurar' : 'maximizar'}>{maximised ? '❐' : '☐'}</button>
+          <button className="close" onClick={controls.close} title={mode === 'windows-app' ? 'fechar a janela (os terminais continuam)' : 'esconder (os terminais continuam)'}>✕</button>
+        </div>
       )}
-      <button onClick={() => api().Quit()} title="sair e encerrar todos os terminais">sair</button>
     </header>
   );
 }

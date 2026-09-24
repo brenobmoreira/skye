@@ -130,7 +130,7 @@ export function App() {
   const toggleSound = () => { api().SetSound(!sound); setSound(!sound); };
 
   return (
-    <div className="app">
+    <div className={isWindow() ? 'app windowed' : 'app'}>
       {link.kind !== 'ready' && <ConnectionScreen state={link} />}
       <TitleBar presets={presets} sound={sound} onNew={open} onToggleSound={toggleSound} />
       <div className="body">
