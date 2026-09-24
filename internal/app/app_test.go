@@ -226,17 +226,27 @@ func TestCloseArchivesConversation(t *testing.T) {
 	}
 }
 
-func TestClearMovesOldConversationToEnded(t *testing.T) {
+func TestClearKeepsConversationOutOfEnded(t *testing.T) {
 	h := newHarness(t, config.Default())
 	term, _ := h.app.NewTerminal("")
 	h.hook(term.ID, "UserPromptSubmit", func(e *hooks.Event) { e.Prompt = "old task" })
-	h.hook(term.ID, "SessionEnd")
-	h.hook(term.ID, "SessionStart", func(e *hooks.Event) { e.SessionID = "new-id" })
-	if c := h.app.Conversations(); len(c) != 1 || c[0].Title != "old task" {
+	h.hook(term.ID, "SessionEnd", func(e *hooks.Event) { e.Reason = "clear" })
+	h.hook(term.ID, "SessionStart", func(e *hooks.Event) { e.SessionID = "new-id"; e.Source = "clear" })
+	if c := h.app.Conversations(); len(c) != 0 {
 		t.Fatalf("conversations = %+v", c)
 	}
 	if got := h.app.List()[0]; got.SessionID != "new-id" || got.Title != "" {
 		t.Fatalf("terminal = %+v", got)
+	}
+}
+
+func TestExitMovesConversationToEnded(t *testing.T) {
+	h := newHarness(t, config.Default())
+	term, _ := h.app.NewTerminal("")
+	h.hook(term.ID, "UserPromptSubmit", func(e *hooks.Event) { e.Prompt = "old task" })
+	h.hook(term.ID, "SessionEnd", func(e *hooks.Event) { e.Reason = "prompt_input_exit" })
+	if c := h.app.Conversations(); len(c) != 1 || c[0].Title != "old task" {
+		t.Fatalf("conversations = %+v", c)
 	}
 }
 

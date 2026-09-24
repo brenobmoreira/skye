@@ -109,7 +109,7 @@ Network Access do Chromium); enquanto isso, use `skye web` no navegador.
 2. `claude` no terminal: `Alt+Enter` quebra linha; composer com 3 linhas chega como um prompt.
 3. Pedir algo que exija permissão: bolinha amarela, latido, toast com a janela fora de foco.
 4. Resposta termina: bolinha verde, latido; um minuto depois, nenhum segundo latido.
-5. `/clear`: a conversa anterior aparece em *Encerradas*.
+5. `/clear`: o terminal continua o mesmo, sem nada novo em *Encerradas*; o próximo prompt vira o nome. Sair do claude (`/exit`) manda a conversa para *Encerradas*.
 6. Fechar a janela no ×, rodar `skye` de novo: mesma janela, terminais intactos.
 7. `pkill skye` e reabrir: terminais reencontrados com os nomes.
 8. **sair**, reabrir, *retomar*: `claude --resume` volta na pasta certa.

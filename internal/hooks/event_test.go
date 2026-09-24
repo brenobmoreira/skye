@@ -17,6 +17,14 @@ func TestParse(t *testing.T) {
 	}
 }
 
+func TestParseReadsWhyASessionStartsOrEnds(t *testing.T) {
+	end, _ := Parse("t1", []byte(`{"hook_event_name":"SessionEnd","reason":"clear"}`))
+	start, _ := Parse("t1", []byte(`{"hook_event_name":"SessionStart","source":"clear"}`))
+	if end.Reason != "clear" || start.Source != "clear" {
+		t.Fatalf("end = %+v, start = %+v", end, start)
+	}
+}
+
 func TestParseRejects(t *testing.T) {
 	if _, err := Parse("", []byte(`{"hook_event_name":"Stop"}`)); !errors.Is(err, ErrNoTerminal) {
 		t.Fatalf("no terminal: %v", err)
