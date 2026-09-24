@@ -63,6 +63,30 @@ Chrome, menu → *Transmitir, salvar e compartilhar* → *Instalar página como 
 - O token fica em `~/.config/skye/web-token`. Apague o arquivo para revogar o app
   instalado; o próximo `skye web` cria outro e imprime o endereço novo.
 
+## App do Windows (skye.exe)
+
+Uma janela nativa do Windows (WebView2) com a mesma interface. O motor continua no WSL: o
+`skye.exe` só mostra a janela e fala com o `skye web`.
+
+    make windows              # gera ./skye.exe
+    make install-windows      # copia para %LOCALAPPDATA%\skye\skye.exe e imprime o caminho
+
+Abra o caminho impresso no Explorer, rode o `skye.exe` e, com ele aberto, clique com o botão
+direito no ícone da barra de tarefas → *Fixar na barra de tarefas*. Feche o `skye.exe` antes
+de rodar `make install-windows` de novo (o Windows não deixa sobrescrever o arquivo aberto).
+
+- Precisa da skye instalada no WSL (`~/.local/bin/skye`, ver *Build e instalação*).
+- Se o `skye web` não estiver de pé, o `skye.exe` sobe ele sozinho e escondido
+  (`wsl.exe -- bash -lc "skye web --no-open"`); não é preciso deixar terminal aberto.
+- Fechar a janela no ✕ fecha só o `skye.exe`: o `skye web` e os terminais continuam no WSL,
+  e reabrir mostra tudo como estava. **sair** encerra os terminais, o `skye web` e a janela.
+- Se algo falhar, a janela mostra o comando que falhou e a saída dele, com *tentar de novo*.
+  A saída do `skye web` que o `skye.exe` subiu fica em `%LOCALAPPDATA%\skye\web.log`.
+- Porta: `7810`, ou a da variável de ambiente `SKYE_WEB_PORT` do Windows. Ela precisa bater
+  com o `web_port` do `config.toml`.
+- A janela Linux (`skye`) e o `skye web` não rodam ao mesmo tempo: com a janela Linux aberta,
+  o `skye.exe` mostra o erro do `skye web` que não subiu.
+
 ## Testes
 
     make test
