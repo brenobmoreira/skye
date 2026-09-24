@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -503,5 +504,55 @@ func TestTokenInQueryDoesNotOpenStaticFiles(t *testing.T) {
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusForbidden {
 		t.Fatalf("status %d", resp.StatusCode)
+	}
+}
+
+func waitFor(t *testing.T, what string, cond func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for !cond() {
+		if time.Now().After(deadline) {
+			t.Fatal(what)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+func TestLastClientGoneFiresOnlyWhenNoClientRemains(t *testing.T) {
+	var mu sync.Mutex
+	fired := 0
+	s, err := Listen(0, Options{
+		Token:    testToken,
+		Assets:   fstest.MapFS{},
+		Dispatch: echoDispatch,
+		Logf:     t.Logf,
+		OnLastClientGone: func() {
+			mu.Lock()
+			fired++
+			mu.Unlock()
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	go func() { _ = s.Serve() }()
+	t.Cleanup(func() { _ = s.Close() })
+	port := s.Addr().(*net.TCPAddr).Port
+	h := harness{srv: s, base: fmt.Sprintf("http://127.0.0.1:%d", port), port: port}
+	count := func() int { mu.Lock(); defer mu.Unlock(); return fired }
+
+	a, b := open(t, h), open(t, h)
+	waitFor(t, "two clients never registered", func() bool { return s.Clients() == 2 })
+	a.Close(websocket.StatusNormalClosure, "")
+	waitFor(t, "first client never left", func() bool { return s.Clients() == 1 })
+	time.Sleep(50 * time.Millisecond)
+	if n := count(); n != 0 {
+		t.Fatalf("fired %d times while a client remained", n)
+	}
+	b.Close(websocket.StatusNormalClosure, "")
+	waitFor(t, "last-client callback never fired", func() bool { return count() == 1 })
+	time.Sleep(50 * time.Millisecond)
+	if n := count(); n != 1 {
+		t.Fatalf("fired %d times", n)
 	}
 }

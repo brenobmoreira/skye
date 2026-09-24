@@ -71,6 +71,8 @@ func runWeb(args []string) int {
 		Assets:   assets,
 		Dispatch: dispatcher(bridge),
 		Logf:     log.Printf,
+
+		OnLastClientGone: func() { bridge.SetFocused(false) },
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "skye web: não consegui abrir a porta %d (web_port no config.toml): %v\n", cfg.WebPort, err)

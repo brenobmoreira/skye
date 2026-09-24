@@ -37,6 +37,8 @@ type Options struct {
 	Assets   fs.FS
 	Dispatch Dispatch
 	Logf     func(format string, args ...any)
+
+	OnLastClientGone func()
 }
 
 type Server struct {
@@ -236,9 +238,14 @@ func (s *Server) register(c *client) bool {
 
 func (s *Server) unregister(c *client) {
 	s.mu.Lock()
+	_, known := s.clients[c]
 	delete(s.clients, c)
+	gone := known && len(s.clients) == 0 && !s.closed
 	s.mu.Unlock()
 	c.close()
+	if gone && s.opts.OnLastClientGone != nil {
+		s.opts.OnLastClientGone()
+	}
 }
 
 func (s *Server) serveSocket(w http.ResponseWriter, r *http.Request) {
