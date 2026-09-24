@@ -27,6 +27,7 @@ const (
 	badOriginText  = "acesso negado: origem não permitida\n"
 	loopbackHost   = "127.0.0.1"
 	frameNotParsed = "requisição inválida"
+	WindowsOrigin  = "http://wails.localhost"
 )
 
 type Dispatch func(method string, args []json.RawMessage) (any, error)
@@ -109,11 +110,19 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.login(w, r)
 		return
 	}
+	if r.URL.Path == "/ws" && s.windowsApp(r) {
+		s.serveSocket(w, r)
+		return
+	}
 	if !s.hasCookie(r) {
 		forbid(w, forbiddenText)
 		return
 	}
 	if r.URL.Path == "/ws" {
+		if !s.originAllowed(r.Header.Get("Origin")) {
+			forbid(w, badOriginText)
+			return
+		}
 		s.serveSocket(w, r)
 		return
 	}
@@ -124,7 +133,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) matches(candidate string) bool {
-	return subtle.ConstantTimeCompare([]byte(candidate), []byte(s.opts.Token)) == 1
+	return candidate != "" && subtle.ConstantTimeCompare([]byte(candidate), []byte(s.opts.Token)) == 1
 }
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
@@ -151,6 +160,10 @@ func (s *Server) hasCookie(r *http.Request) bool {
 		}
 	}
 	return found
+}
+
+func (s *Server) windowsApp(r *http.Request) bool {
+	return r.Header.Get("Origin") == WindowsOrigin && s.matches(r.URL.Query().Get("token"))
 }
 
 func (s *Server) originAllowed(origin string) bool {
@@ -229,10 +242,6 @@ func (s *Server) unregister(c *client) {
 }
 
 func (s *Server) serveSocket(w http.ResponseWriter, r *http.Request) {
-	if !s.originAllowed(r.Header.Get("Origin")) {
-		forbid(w, badOriginText)
-		return
-	}
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{InsecureSkipVerify: true})
 	if err != nil {
 		s.opts.Logf("web: websocket accept: %v", err)

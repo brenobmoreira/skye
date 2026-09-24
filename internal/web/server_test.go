@@ -418,3 +418,90 @@ func TestMalformedArgsReplyKeepsID(t *testing.T) {
 		t.Fatalf("reply = %v", m)
 	}
 }
+
+const exeOrigin = "http://wails.localhost"
+
+func dialQuery(t *testing.T, h harness, cookie bool, origin, query string) (*websocket.Conn, *http.Response, error) {
+	t.Helper()
+	header := http.Header{}
+	if cookie {
+		header.Set("Cookie", CookieName+"="+testToken)
+	}
+	if origin != "" {
+		header.Set("Origin", origin)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	conn, resp, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(h.base, "http")+"/ws"+query, &websocket.DialOptions{HTTPHeader: header})
+	if conn != nil {
+		t.Cleanup(func() { conn.CloseNow() })
+	}
+	return conn, resp, err
+}
+
+func TestWindowsAppOriginWithTokenOpensSocket(t *testing.T) {
+	h := start(t)
+	conn, resp, err := dialQuery(t, h, false, exeOrigin, "?token="+testToken)
+	if err != nil {
+		t.Fatalf("err=%v resp=%v", err, resp)
+	}
+	if resp.StatusCode != http.StatusSwitchingProtocols {
+		t.Fatalf("status %d", resp.StatusCode)
+	}
+	send(t, conn, `{"id":1,"method":"Echo","args":["janela"]}`)
+	if m := recv(t, conn); string(m["result"]) != `"janela"` {
+		t.Fatalf("reply = %v", m)
+	}
+}
+
+func TestWindowsAppOriginWithoutRightTokenIsForbidden(t *testing.T) {
+	h := start(t)
+	for _, query := range []string{
+		"",
+		"?token=",
+		"?token=nope",
+		"?token=" + strings.Repeat("0", 64),
+		"?token=" + strings.ToUpper(testToken),
+	} {
+		for _, cookie := range []bool{false, true} {
+			_, resp, err := dialQuery(t, h, cookie, exeOrigin, query)
+			if err == nil || resp == nil || resp.StatusCode != http.StatusForbidden {
+				t.Fatalf("query %q cookie %v: err=%v resp=%v", query, cookie, err, resp)
+			}
+		}
+	}
+}
+
+func TestWindowsAppTokenNeedsTheExactOrigin(t *testing.T) {
+	h := start(t)
+	for _, origin := range []string{
+		"",
+		"https://wails.localhost",
+		"http://wails.localhost:80",
+		"http://wails.localhost.evil.example",
+		"http://evil.wails.localhost",
+		"wails://wails",
+		"null",
+		fmt.Sprintf("http://localhost:%d", h.port),
+		fmt.Sprintf("http://127.0.0.1:%d", h.port),
+	} {
+		_, resp, err := dialQuery(t, h, false, origin, "?token="+testToken)
+		if err == nil || resp == nil || resp.StatusCode != http.StatusForbidden {
+			t.Fatalf("origin %q with token, no cookie: err=%v resp=%v", origin, err, resp)
+		}
+	}
+}
+
+func TestTokenInQueryDoesNotOpenStaticFiles(t *testing.T) {
+	h := start(t)
+	req, _ := http.NewRequest(http.MethodGet, h.base+"/app.js?token="+testToken, nil)
+	req.Header.Set("Origin", exeOrigin)
+	resp, err := noRedirect().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("status %d", resp.StatusCode)
+	}
+}
