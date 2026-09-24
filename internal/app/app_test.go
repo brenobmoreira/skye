@@ -339,3 +339,30 @@ func TestQuitArchivesAllAndKillsServer(t *testing.T) {
 		t.Fatalf("launch specs left: %v", ids)
 	}
 }
+
+func TestReorderPersistsAndSurvivesRecover(t *testing.T) {
+	h := newHarness(t, config.Default())
+	a, _ := h.app.NewTerminal("")
+	b, _ := h.app.NewTerminal("")
+	if err := h.app.Reorder([]string{b.ID, a.ID}); err != nil {
+		t.Fatal(err)
+	}
+	if got := h.app.List(); got[0].ID != b.ID {
+		t.Fatalf("list = %+v", got)
+	}
+	spec, _ := launch.Read(h.paths.LaunchDir, b.ID)
+	if spec.Order != 1 {
+		t.Fatalf("order not persisted: %+v", spec)
+	}
+
+	again := newHarness(t, config.Default())
+	again.paths = h.paths
+	again.app.o.Paths = h.paths
+	again.tmux.windows = []tmuxctl.Window{{ID: "@1", Pane: "%1", SkyeID: a.ID}, {ID: "@2", Pane: "%2", SkyeID: b.ID}}
+	if err := again.app.Recover(); err != nil {
+		t.Fatal(err)
+	}
+	if got := again.app.List(); got[0].ID != b.ID {
+		t.Fatalf("recovered list = %+v", got)
+	}
+}

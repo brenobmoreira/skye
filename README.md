@@ -40,6 +40,9 @@ O latido é `frontend/public/bark.ogg`; sem o arquivo, a skye toca um bipe.
 - Na lista, um terminal vazio leva o nome da sessão do claude (a 1ª linha do 1º prompt) ou,
   sem sessão, o da pasta. Duplo clique no nome renomeia; o × ao lado do nome fecha o terminal.
   Um ponto azul marca o terminal que terminou ou pediu algo enquanto você olhava outro.
+- A lista agrupa por estado: esperando você, terminou, trabalhando, terminal. Quem acaba de
+  terminar ou pedir algo sobe para o topo do seu grupo. Arraste um item para mudar a ordem dentro
+  do grupo; a ordem fica salva.
 - O composer embaixo do terminal: `Enter` quebra linha, `Ctrl+Enter` envia.
 - No terminal: `Alt+Enter` quebra linha no claude; selecionar copia; `Ctrl+Shift+V` cola.
 - **×** esconde a janela (os terminais continuam); rodar `skye` de novo traz a janela.
@@ -115,3 +118,4 @@ Network Access do Chromium); enquanto isso, use `skye web` no navegador.
 11. Com a skye escondida, rodar `skye` de novo: a mesma janela volta.
 12. Terminal vazio com `claude`: o nome na lista vira o 1º prompt; ao sair do claude, volta à pasta.
 13. Pedir algo num terminal e trocar para outro: ao terminar, o primeiro ganha o ponto azul; abri-lo tira o ponto.
+14. Arrastar um terminal para cima de outro do mesmo grupo: troca de lugar; `pkill skye` e reabrir mantém a ordem.

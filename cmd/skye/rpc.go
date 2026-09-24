@@ -21,6 +21,7 @@ type rpcTarget interface {
 	Resize(id string, cols, rows int) error
 	Snapshot(id string) (string, error)
 	Rename(id, name string) error
+	Reorder(ids []string) error
 	Close(id string) error
 	Forget(sessionID string) error
 	Sound() bool
@@ -48,6 +49,7 @@ func dispatcher(t rpcTarget) web.Dispatch {
 			a, b       string
 			cols, rows int
 			flag       bool
+			list       []string
 		)
 		decode := func(dst ...any) error { return decodeArgs(method, args, dst...) }
 		switch method {
@@ -121,6 +123,11 @@ func dispatcher(t rpcTarget) web.Dispatch {
 				return nil, err
 			}
 			return nil, t.Rename(a, b)
+		case "Reorder":
+			if err := decode(&list); err != nil {
+				return nil, err
+			}
+			return nil, t.Reorder(list)
 		case "Resize":
 			if err := decode(&a, &cols, &rows); err != nil {
 				return nil, err

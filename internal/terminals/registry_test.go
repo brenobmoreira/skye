@@ -173,3 +173,76 @@ func TestListOrderLookupRenameRemove(t *testing.T) {
 		t.Fatal("empty list must be non-nil")
 	}
 }
+
+func ids(list []Terminal) string {
+	var out []string
+	for _, t := range list {
+		out = append(out, t.ID)
+	}
+	return strings.Join(out, ",")
+}
+
+func TestNewTerminalsGoToTheEndOfTheirGroup(t *testing.T) {
+	r := NewRegistry(func() time.Time { return t0 })
+	r.Add(Terminal{ID: "b", State: Idle})
+	r.Add(Terminal{ID: "a", State: Idle})
+	r.Add(Terminal{ID: "c", State: Idle, Order: -5})
+	if got := ids(r.List()); got != "c,b,a" {
+		t.Fatalf("order = %s", got)
+	}
+}
+
+func TestTerminalThatStopsRunningGoesToTheTopOfItsGroup(t *testing.T) {
+	r := NewRegistry(func() time.Time { return t0 })
+	for _, id := range []string{"i1", "i2", "a", "w1"} {
+		r.Add(Terminal{ID: id, State: Idle})
+	}
+	r.Apply(hooks.Event{Terminal: "w1", Name: "UserPromptSubmit"})
+	r.Apply(hooks.Event{Terminal: "w1", Name: "Notification"})
+	r.Apply(hooks.Event{Terminal: "a", Name: "UserPromptSubmit"})
+	if got := ids(r.List()); got != "w1,i1,i2,a" {
+		t.Fatalf("while running = %s", got)
+	}
+	r.Apply(hooks.Event{Terminal: "a", Name: "Stop"})
+	if got := ids(r.List()); got != "w1,a,i1,i2" {
+		t.Fatalf("after stop = %s", got)
+	}
+}
+
+func TestIdleTerminalDoesNotJumpOnRepeatedStop(t *testing.T) {
+	r := NewRegistry(func() time.Time { return t0 })
+	r.Add(Terminal{ID: "x", State: Idle})
+	r.Add(Terminal{ID: "y", State: Idle})
+	r.Apply(hooks.Event{Terminal: "y", Name: "Stop"})
+	if got := ids(r.List()); got != "x,y" {
+		t.Fatalf("order = %s", got)
+	}
+}
+
+func TestReorderFollowsGivenIDsAndKeepsTheRest(t *testing.T) {
+	r := NewRegistry(func() time.Time { return t0 })
+	for _, id := range []string{"a", "b", "c", "d"} {
+		r.Add(Terminal{ID: id, State: Idle})
+	}
+	changed := r.Reorder([]string{"c", "a", "ghost"})
+	if got := ids(r.List()); got != "c,a,b,d" {
+		t.Fatalf("order = %s", got)
+	}
+	if len(changed) != 4 {
+		t.Fatalf("changed = %v", changed)
+	}
+	r.Add(Terminal{ID: "e", State: Idle})
+	if got := ids(r.List()); got != "c,a,b,d,e" {
+		t.Fatalf("after add = %s", got)
+	}
+}
+
+func TestReorderCannotMoveAcrossStateGroups(t *testing.T) {
+	r := NewRegistry(func() time.Time { return t0 })
+	r.Add(Terminal{ID: "w", State: Waiting})
+	r.Add(Terminal{ID: "i", State: Idle})
+	r.Reorder([]string{"i", "w"})
+	if got := ids(r.List()); got != "w,i" {
+		t.Fatalf("order = %s", got)
+	}
+}
