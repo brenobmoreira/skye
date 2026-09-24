@@ -10,6 +10,7 @@ export interface Terminal {
   title: string;
   ask?: string;
   createdAt: string;
+  since?: string;
   order: number;
 }
 

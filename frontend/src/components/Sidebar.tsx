@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../bridge';
 import { base, itemLabel } from '../lib/label';
 import { filterConversations } from '../lib/filter';
+import { elapsed } from '../lib/duration';
 import { moveWithinGroup } from '../lib/order';
 import { DogIcon } from './DogIcon';
 import { stateLabel } from '../lib/states';
@@ -20,8 +21,9 @@ function storedEndedOpen(): boolean {
 
 type Drag = { dragging: string | null; start: (id: string) => void; over: (id: string) => boolean; drop: (id: string) => void; end: () => void };
 
-function TerminalItem({ t, active, unread, onSelect, drag }: { t: Terminal; active: boolean; unread: boolean; onSelect: () => void; drag: Drag }) {
+function TerminalItem({ t, active, unread, now, onSelect, drag }: { t: Terminal; active: boolean; unread: boolean; now: number; onSelect: () => void; drag: Drag }) {
   const label = itemLabel(t);
+  const time = elapsed(t.since, t.state, now);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(label.name);
   const confirm = () => {
@@ -60,7 +62,10 @@ function TerminalItem({ t, active, unread, onSelect, drag }: { t: Terminal; acti
           {unread && <span className="badge" title="não lido" />}
           <button className="x" title="fechar terminal" onClick={(e) => { e.stopPropagation(); api().Close(t.id); }}>×</button>
         </div>
-        <div className="sub">{label.sub}</div>
+        <div className="sub">
+          <span>{label.sub}</span>
+          {time && <span className="time">{time}</span>}
+        </div>
       </div>
     </div>
   );
@@ -98,6 +103,11 @@ export function Sidebar(props: {
   const [dragging, setDragging] = useState<string | null>(null);
   const [endedOpen, setEndedOpen] = useState(storedEndedOpen);
   const [query, setQuery] = useState('');
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const tick = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(tick);
+  }, []);
   const ended = filterConversations(props.conversations, query);
   const toggleEnded = () => {
     setEndedOpen(!endedOpen);
@@ -121,7 +131,7 @@ export function Sidebar(props: {
       <div className="list">
       <h3>Terminais</h3>
       {props.terminals.map((t) => (
-        <TerminalItem key={t.id} t={t} active={t.id === props.activeId} unread={props.unread.has(t.id)} onSelect={() => props.onSelect(t.id)} drag={drag} />
+        <TerminalItem key={t.id} t={t} active={t.id === props.activeId} unread={props.unread.has(t.id)} now={now} onSelect={() => props.onSelect(t.id)} drag={drag} />
       ))}
       {props.conversations.length > 0 && (
         <h3 className="toggle" onClick={toggleEnded} title={endedOpen ? 'recolher' : 'mostrar'}>
@@ -146,7 +156,7 @@ export function Sidebar(props: {
               <div className="name">{c.title}</div>
               <button className="x" title="esquecer" onClick={(e) => { e.stopPropagation(); api().Forget(c.sessionId); }}>×</button>
             </div>
-            <div className="sub">{base(c.cwd)} · retomar</div>
+            <div className="sub"><span>{base(c.cwd)} · retomar</span></div>
           </div>
         </div>
       ))}
