@@ -4,7 +4,8 @@ import { windowControls } from '../windowControls';
 import type { Place, Preset, Repo } from '../lib/types';
 import { NewMenu } from './NewMenu';
 import { Logo } from './DogIcon';
-import { FONTS, type TerminalFont } from '../lib/fonts';
+import { SettingsMenu } from './SettingsMenu';
+import type { TerminalFont } from '../lib/fonts';
 
 const controls = windowControls(mode, api, runtime, () => connection().kind === 'ready');
 
@@ -21,12 +22,14 @@ export function TitleBar(props: {
   onNew: (preset: string) => void;
   onToggleSound: () => void;
   font: TerminalFont;
+  customFonts: TerminalFont[];
   onPickFont: (font: TerminalFont) => void;
+  onAddFont: (name: string) => void;
+  onRemoveFont: (font: TerminalFont) => void;
   monitor: boolean;
   onToggleMonitor: () => void;
 }) {
   const [maximised, setMaximised] = useState(false);
-  const [settings, setSettings] = useState(false);
   const windowed = isWindow();
 
   useEffect(() => {
@@ -64,19 +67,13 @@ export function TitleBar(props: {
       {windowed && sound}
       <span className="spacer" />
       <button className={props.monitor ? 'flat on' : 'flat'} disabled={!props.ready} onClick={props.onToggleMonitor} title="monitor: memória e processos">monitor</button>
-      <div className="menu">
-        <button className="flat" onClick={() => setSettings(!settings)} title="configurações">⚙</button>
-        {settings && (
-          <div className="menu-list right" onMouseLeave={() => setSettings(false)}>
-            <h4>fonte do terminal</h4>
-            {FONTS.map((f) => (
-              <button key={f.id} onClick={() => { setSettings(false); props.onPickFont(f); }} style={{ fontFamily: f.family }}>
-                {f.id === props.font.id ? '✓ ' : ''}{f.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <SettingsMenu
+        font={props.font}
+        customFonts={props.customFonts}
+        onPickFont={props.onPickFont}
+        onAddFont={props.onAddFont}
+        onRemoveFont={props.onRemoveFont}
+      />
       {!windowed && sound}
       <button className="flat quit" onClick={() => { controls.quitAll().catch(() => {}); }} title="sair e encerrar todos os terminais">sair</button>
       {windowed && (

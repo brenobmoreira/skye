@@ -157,3 +157,19 @@ button:hover { background: var(--line); }
 .mon-servers { margin: 0; padding-left: 18px; font-size: 12px; color: var(--muted); }
 .mon-servers summary { cursor: pointer; }
 .mon-servers details div { padding-left: 14px; }
+.settings-menu { min-width: 180px; }
+.settings-menu .section { display: flex; justify-content: space-between; }
+.settings-menu .section span { color: var(--muted); }
+.settings-menu .section.on { background: rgba(255, 255, 255, 0.06); }
+.settings-panel { top: -5px; left: auto; right: calc(100% - 2px); min-width: 260px; }
+.settings-panel .place { display: flex; align-items: center; }
+.settings-panel .place > button:first-child { flex: 1; min-width: 0; }
+.settings-panel .remove { width: auto; flex: none; color: var(--muted); visibility: hidden; }
+.settings-panel .place:hover .remove, .settings-panel .remove.armed { visibility: visible; }
+.settings-panel .remove.armed { color: var(--waiting); }
+.settings-panel .add { color: var(--accent); }
+.settings-panel .empty { padding: 4px 8px 8px; }
+.shortcuts { margin: 0; padding: 2px 8px 6px; display: grid; gap: 6px; width: 320px; }
+.shortcuts div { display: grid; gap: 2px; }
+.shortcuts dd { margin: 0; color: var(--muted); font-size: 12px; }
+.shortcuts kbd { font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 1px 5px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
