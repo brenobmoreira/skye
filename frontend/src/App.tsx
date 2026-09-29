@@ -11,10 +11,11 @@ import { shortcut } from './lib/shortcuts';
 import { active, closeSplit, prune, select, selectSide, slotOf, visible, type Panes } from './lib/panes';
 import type { ConnectionState } from './windowsTransport';
 import { applyZoom, parseFontSize, zoomKey, type ZoomAction } from './lib/zoom';
-import { parseFont, type TerminalFont } from './lib/fonts';
+import { customFont, DEFAULT_FONT, FONTS, parseCustomFonts, parseFont, type TerminalFont } from './lib/fonts';
 
 const FONT_KEY = 'skye:fontSize';
 const FAMILY_KEY = 'skye:font';
+const CUSTOM_FONTS_KEY = 'skye:customFonts';
 
 function storedFontSize(): number {
   try {
@@ -37,9 +38,17 @@ function ConnectionScreen({ state }: { state: ConnectionState }) {
   return <div className="connection">iniciando a skye no WSL…</div>;
 }
 
+function storedCustomFonts(): TerminalFont[] {
+  try {
+    return parseCustomFonts(localStorage.getItem(CUSTOM_FONTS_KEY));
+  } catch {
+    return [];
+  }
+}
+
 function storedFont(): TerminalFont {
   try {
-    return parseFont(localStorage.getItem(FAMILY_KEY));
+    return parseFont(localStorage.getItem(FAMILY_KEY), storedCustomFonts());
   } catch {
     return parseFont(null);
   }
@@ -68,6 +77,7 @@ export function App() {
   const [problems, setProblems] = useState<string[]>([]);
   const [fontSize, setFontSize] = useState(storedFontSize);
   const [font, setFont] = useState(storedFont);
+  const [customFonts, setCustomFonts] = useState(storedCustomFonts);
   const [epoch, setEpoch] = useState(0);
   const [link, setLink] = useState(connection);
   const [focused, setFocused] = useState(windowFocused);
@@ -213,11 +223,27 @@ export function App() {
       localStorage.setItem(FAMILY_KEY, next.id);
     } catch {}
   };
+  const saveCustomFonts = (list: TerminalFont[]) => {
+    setCustomFonts(list);
+    try {
+      localStorage.setItem(CUSTOM_FONTS_KEY, JSON.stringify(list.map((f) => f.label)));
+    } catch {}
+  };
+  const addFont = (name: string) => {
+    const list = parseCustomFonts(JSON.stringify([...customFonts.map((f) => f.label), name]));
+    saveCustomFonts(list);
+    const added = customFont(name);
+    pickFont(FONTS.find((f) => f.label === added.label) ?? parseFont(added.id, list));
+  };
+  const removeFont = (gone: TerminalFont) => {
+    saveCustomFonts(customFonts.filter((f) => f.id !== gone.id));
+    if (font.id === gone.id) pickFont(DEFAULT_FONT);
+  };
 
   return (
     <div className={isWindow() ? 'app windowed' : 'app'}>
       {link.kind !== 'ready' && <ConnectionScreen state={link} />}
-      <TitleBar presets={presets} repos={repos} places={places} onOpenPlace={openPlace} onAddPlace={addPlace} onRemovePlace={removePlace} onNewWorktree={newWorktree} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} onPickFont={pickFont} monitor={monitor} onToggleMonitor={() => setMonitor(!monitor)} />
+      <TitleBar presets={presets} repos={repos} places={places} onOpenPlace={openPlace} onAddPlace={addPlace} onRemovePlace={removePlace} onNewWorktree={newWorktree} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} customFonts={customFonts} onPickFont={pickFont} onAddFont={addFont} onRemoveFont={removeFont} monitor={monitor} onToggleMonitor={() => setMonitor(!monitor)} />
       <div className="body">
         <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={unread} shown={visible(panes, room)} onSelect={pickFromList} onReorder={reorder} onResume={resume} usage={usage} />
         <main className="main">

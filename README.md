@@ -151,8 +151,9 @@ O monitor só mostra; para encerrar algo, `kill <PID>` num terminal.
 | terminal | `Ctrl+clique` num link | abre no navegador padrão do Windows |
 
 Numa aba do navegador, `Ctrl+1..9` fica com o navegador; no app do Windows e no app instalado
-funciona. A fonte do terminal (JetBrains Mono ou Cascadia Mono) muda no ⚙; fonte e tamanho ficam
-lembrados por aparelho.
+funciona. O ⚙ tem três seções: **Atalhos** (esta tabela), **Fonte** (JetBrains Mono, Cascadia Mono
+ou qualquer fonte instalada, em `+ Adicionar`) e **Configurações** (vazia por enquanto). Fonte,
+fontes adicionadas e tamanho ficam lembrados por aparelho.
 
 ## Configurar
 
