@@ -246,7 +246,7 @@ export function App() {
       <TitleBar presets={presets} repos={repos} places={places} onOpenPlace={openPlace} onAddPlace={addPlace} onRemovePlace={removePlace} onNewWorktree={newWorktree} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} customFonts={customFonts} onPickFont={pickFont} onAddFont={addFont} onRemoveFont={removeFont} monitor={monitor} onToggleMonitor={() => setMonitor(!monitor)} />
       <div className="body">
         <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={unread} shown={visible(panes, room)} onSelect={pickFromList} onReorder={reorder} onResume={resume} usage={usage} />
-        <main className="main">
+        <main className="main island">
           {monitor && <Monitor terminals={terminals} onOpen={show} />}
           <div className="terminals" hidden={monitor}>
             {problems.length > 0 && <div className="problems">{problems.join('\n')}</div>}

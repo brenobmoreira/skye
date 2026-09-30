@@ -83,7 +83,7 @@ function UsagePanel({ usage }: { usage: Usage | null }) {
   const panel = usagePanel(usage, Date.now());
   if (!panel) return null;
   return (
-    <div className={panel.stale ? 'usage stale' : 'usage'} title={`atualizado às ${panel.updated}`}>
+    <div className={panel.stale ? 'usage island stale' : 'usage island'} title={`atualizado às ${panel.updated}`}>
       {panel.rows.map((r) => (
         <div className="usage-row" key={r.label}>
           <span className="label">{r.label}</span>
@@ -135,7 +135,7 @@ export function Sidebar(props: {
   };
   return (
     <aside className="sidebar">
-      <div className="list">
+      <div className="list island">
       <h3>Terminais</h3>
       {props.terminals.map((t) => (
         <TerminalItem key={t.id} t={t} active={t.id === props.activeId} shown={props.shown.includes(t.id)} unread={props.unread.has(t.id)} now={now} onSelect={(side) => props.onSelect(t.id, side)} drag={drag} />
