@@ -71,7 +71,8 @@ Cada item é um terminal. O cachorro mostra o estado, e a lista agrupa nesta ord
 - **Ordem:** quem acaba de terminar ou pedir algo sobe para o topo do seu grupo. Arraste um item
   para mudar a ordem dentro do grupo; a ordem fica salva.
 - **Nome:** um terminal aberto sem nome leva a 1ª linha do 1º prompt do claude; sem sessão, o
-  nome da pasta. Duplo clique renomeia; o × ao lado do nome fecha o terminal.
+  nome da pasta. Duplo clique renomeia; o × no canto direito fecha o terminal. O nome dado vale
+  também para a sessão do claude: é com ele que ela aparece em *Encerradas* e no `claude --resume`.
 - **Linha de baixo:** o que o claude pede quando espera você (ex.: `Bash: git push`); se está
   compactando ou quantos subagentes tem rodando quando trabalha; senão, o título ou a pasta.
 - **À direita:** há quanto tempo está no estado ("12 min"). Depois de reiniciar a skye, volta no
@@ -303,3 +304,4 @@ Janela, reinício e monitor:
 21. `pkill -x skye` e reabrir: terminais reencontrados com os nomes.
 22. **monitor**: a caixa do Windows bate com o Gerenciador de Tarefas; os terminais aparecem com processos e memória; `setsid sleep 600 &` num terminal aparece em *Em segundo plano* desse terminal; fechar o terminal o move para *Fora da lista*.
 23. Um prompt que começa com texto colado: o nome do item é a primeira linha escrita por você, não `<pasted_content …>`.
+24. Renomear um terminal com claude e fechá-lo: aparece em *Encerradas* com o nome dado, e o `claude --resume` o lista com esse nome. Um nome curto deixa o × no canto direito.

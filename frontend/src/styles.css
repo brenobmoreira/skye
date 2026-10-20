@@ -21,6 +21,14 @@ html, body, #root { margin: 0; height: 100%; background: var(--bg); overflow: hi
 button { font: inherit; color: var(--text); background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 3px 9px; cursor: pointer; }
 button:hover { background: var(--line); }
 
+/* Scrollbars as a thin rounded thumb over no track, the same pill as the islands and bars. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line); background-clip: padding-box; border: 3px solid transparent; border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--shell); }
+/* xterm draws its own scrollbar and sizes it inline; the colors come from the terminal theme. */
+.xterm .xterm-scrollable-element > .scrollbar.vertical > .slider { width: 4px !important; left: 7px !important; border-radius: 2px; }
+
 .app { display: grid; grid-template-rows: 36px 1fr; height: 100%; }
 .titlebar { display: flex; align-items: center; gap: 8px; padding: 0 8px; background: var(--panel); border-bottom: 1px solid var(--line); --wails-draggable: drag; }
 .titlebar button, .titlebar .menu { --wails-draggable: no-drag; }
@@ -93,7 +101,7 @@ button:hover { background: var(--line); }
 .item .x { border: 0; color: var(--muted); padding: 0 4px; }
 .item > div { min-width: 0; }
 .item .row { display: flex; align-items: center; gap: 4px; min-width: 0; }
-.item .row .name { min-width: 0; }
+.item .row .name { flex: 1; min-width: 0; }
 .item .row input { flex: 1; min-width: 0; }
 .item .row .x { flex: none; line-height: 1; }
 .item.unread .name { font-weight: 600; }

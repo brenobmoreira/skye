@@ -95,7 +95,7 @@ func (a *App) Recover() error {
 			a.o.Logf("recover %s: %v", w.SkyeID, err)
 			spec = launch.Spec{Name: "shell"}
 		}
-		a.reg.Add(terminals.Terminal{ID: w.SkyeID, Name: spec.Name, Preset: spec.Preset, Cwd: spec.Cwd, Window: w.ID, Pane: w.Pane, Order: spec.Order})
+		a.reg.Add(terminals.Terminal{ID: w.SkyeID, Name: spec.Name, Renamed: spec.Renamed, Preset: spec.Preset, Cwd: spec.Cwd, Window: w.ID, Pane: w.Pane, Order: spec.Order})
 	}
 	ids, err := launch.List(a.o.Paths.LaunchDir)
 	if err != nil {
@@ -313,23 +313,40 @@ func sameWindow(x, y *hooks.Window) bool {
 }
 
 func (a *App) Rename(id, name string) error {
-	if _, ok := a.reg.Rename(id, name); !ok {
+	t, ok := a.reg.Rename(id, name)
+	if !ok {
 		return fmt.Errorf("nome inválido ou terminal desconhecido")
 	}
 	if spec, err := launch.Read(a.o.Paths.LaunchDir, id); err == nil {
-		spec.Name = strings.TrimSpace(name)
+		spec.Name = t.Name
+		spec.Renamed = true
 		if err := launch.Write(a.o.Paths.LaunchDir, id, spec); err != nil {
 			a.o.Logf("rename %s: %v", id, err)
 		}
 	}
+	if t.SessionID != "" {
+		a.titleSession(t.SessionID, t.Name)
+	}
 	a.emitTerminals()
 	return nil
+}
+
+// titleSession puts a renamed terminal's name on its claude session, so claude --resume lists it
+// under the same name the sidebar showed.
+func (a *App) titleSession(sessionID, name string) {
+	if err := resume.SetTitle(a.o.Paths.ClaudeProjects, sessionID, name); err != nil {
+		a.o.Logf("title session %s: %v", sessionID, err)
+	}
 }
 
 func (a *App) archive(t terminals.Terminal) {
 	c, ok := t.Conversation(a.o.Now())
 	if !ok {
 		return
+	}
+	// Again at the end: the terminal may have been renamed before claude had a session.
+	if t.Renamed {
+		a.titleSession(c.SessionID, c.Title)
 	}
 	if err := a.o.Store.Add(c); err != nil {
 		a.o.Logf("archive %s: %v", t.ID, err)
@@ -412,6 +429,9 @@ func (a *App) HandleHook(ev hooks.Event) {
 		return
 	}
 	if ch.Ended != nil {
+		if ch.Terminal.Renamed {
+			a.titleSession(ch.Ended.SessionID, ch.Ended.Title)
+		}
 		if err := a.o.Store.Add(*ch.Ended); err != nil {
 			a.o.Logf("archive: %v", err)
 		}
