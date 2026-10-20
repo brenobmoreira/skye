@@ -18,6 +18,7 @@ type Spec struct {
 	Cwd     string `json:"cwd"`
 	Command string `json:"command"`
 	Order   int    `json:"order,omitempty"`
+	Renamed bool   `json:"renamed,omitempty"`
 }
 
 func file(dir, id string) string {

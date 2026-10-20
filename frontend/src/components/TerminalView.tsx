@@ -26,7 +26,12 @@ export function TerminalView({ id, slot, focused, onFocus, fontSize, fontFamily 
       lineHeight: LINE_HEIGHT,
       cursorBlink: true,
       scrollback: 5000,
-      theme: { background: '#0e0e12' },
+      theme: {
+        background: '#0e0e12',
+        scrollbarSliderBackground: '#2a2a33',
+        scrollbarSliderHoverBackground: '#565f89',
+        scrollbarSliderActiveBackground: '#565f89',
+      },
       linkHandler: { activate: (e, uri) => open(e, uri) },
     });
     const f = new FitAddon();

@@ -144,6 +144,8 @@ type Paths struct {
 	Socket        string
 	WebToken      string
 	Places        string
+	// ClaudeProjects holds claude's session transcripts, one folder per project.
+	ClaudeProjects string
 }
 
 func DefaultPaths(getenv func(string) string) Paths {
@@ -158,18 +160,23 @@ func DefaultPaths(getenv func(string) string) Paths {
 	}
 	configDir := filepath.Join(configHome, "skye")
 	stateDir := filepath.Join(stateHome, "skye")
+	claudeDir := getenv("CLAUDE_CONFIG_DIR")
+	if claudeDir == "" {
+		claudeDir = filepath.Join(home, ".claude")
+	}
 	runtimeDir := getenv("XDG_RUNTIME_DIR")
 	if runtimeDir == "" {
 		runtimeDir = stateDir
 	}
 	return Paths{
-		ConfigFile:    filepath.Join(configDir, "config.toml"),
-		TmuxConf:      filepath.Join(configDir, "tmux.conf"),
-		StateDir:      stateDir,
-		LaunchDir:     filepath.Join(stateDir, "launch"),
-		Conversations: filepath.Join(stateDir, "conversations.json"),
-		Socket:        filepath.Join(runtimeDir, "skye.sock"),
-		WebToken:      filepath.Join(configDir, "web-token"),
-		Places:        filepath.Join(configDir, "paths.json"),
+		ConfigFile:     filepath.Join(configDir, "config.toml"),
+		TmuxConf:       filepath.Join(configDir, "tmux.conf"),
+		StateDir:       stateDir,
+		LaunchDir:      filepath.Join(stateDir, "launch"),
+		Conversations:  filepath.Join(stateDir, "conversations.json"),
+		Socket:         filepath.Join(runtimeDir, "skye.sock"),
+		WebToken:       filepath.Join(configDir, "web-token"),
+		Places:         filepath.Join(configDir, "paths.json"),
+		ClaudeProjects: filepath.Join(claudeDir, "projects"),
 	}
 }

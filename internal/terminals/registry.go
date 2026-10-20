@@ -53,6 +53,8 @@ type Terminal struct {
 	State     State  `json:"state"`
 	SessionID string `json:"sessionId"`
 	Title     string `json:"title"`
+	// Renamed says the user named the terminal, so its sessions go by that name once they end.
+	Renamed bool `json:"renamed,omitempty"`
 	// Ask is what claude said it needs while the terminal waits for the user.
 	Ask       string    `json:"ask"`
 	CreatedAt time.Time `json:"createdAt"`
@@ -73,7 +75,7 @@ func (t Terminal) Conversation(now time.Time) (resume.Conversation, bool) {
 		return resume.Conversation{}, false
 	}
 	title := t.Title
-	if title == "" {
+	if title == "" || t.Renamed {
 		title = t.Name
 	}
 	return resume.Conversation{SessionID: t.SessionID, Cwd: t.Cwd, Title: title, Preset: t.Preset, EndedAt: now}, true
@@ -201,6 +203,7 @@ func (r *Registry) Rename(id, name string) (Terminal, bool) {
 		return Terminal{}, false
 	}
 	t.Name = name
+	t.Renamed = true
 	return *t, true
 }
 

@@ -160,7 +160,7 @@ func TestListOrderLookupRenameRemove(t *testing.T) {
 	if _, ok := r.Rename("run1", "   "); ok {
 		t.Fatal("blank rename accepted")
 	}
-	if tt, ok := r.Rename("run1", "  api  "); !ok || tt.Name != "api" {
+	if tt, ok := r.Rename("run1", "  api  "); !ok || tt.Name != "api" || !tt.Renamed {
 		t.Fatalf("rename = %+v", tt)
 	}
 	if _, ok := r.Remove("run1"); !ok {
@@ -436,5 +436,16 @@ func TestTitleSkipsPastedContent(t *testing.T) {
 		if got, _ := r.Get("a"); got.Title != want {
 			t.Errorf("title of %q = %q, want %q", prompt, got.Title, want)
 		}
+	}
+}
+
+func TestRenamedTerminalNamesItsEndedConversation(t *testing.T) {
+	term := Terminal{Name: "api", SessionID: "s1", Title: "fix the login bug"}
+	if c, _ := term.Conversation(t0); c.Title != "fix the login bug" {
+		t.Fatalf("not renamed: title = %q", c.Title)
+	}
+	term.Renamed = true
+	if c, _ := term.Conversation(t0); c.Title != "api" {
+		t.Fatalf("renamed: title = %q", c.Title)
 	}
 }

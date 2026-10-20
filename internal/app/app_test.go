@@ -77,9 +77,10 @@ func newHarness(t *testing.T, cfg config.Config) *harness {
 	t.Helper()
 	dir := t.TempDir()
 	paths := config.Paths{
-		LaunchDir:     filepath.Join(dir, "launch"),
-		Conversations: filepath.Join(dir, "conversations.json"),
-		Socket:        filepath.Join(dir, "skye.sock"),
+		LaunchDir:      filepath.Join(dir, "launch"),
+		Conversations:  filepath.Join(dir, "conversations.json"),
+		Socket:         filepath.Join(dir, "skye.sock"),
+		ClaudeProjects: filepath.Join(dir, "claude", "projects"),
 	}
 	store, _ := resume.Open(paths.Conversations)
 	h := &harness{tmux: &fakeTmux{keys: map[string]string{}}, notif: &fakeNotifier{}, store: store, paths: paths}
@@ -323,6 +324,43 @@ func TestOutputRoutingAndRename(t *testing.T) {
 	}
 	if err := h.app.Rename(term.ID, " "); err == nil {
 		t.Fatal("blank rename accepted")
+	}
+}
+
+func TestRenameTitlesTheClaudeSessionAndTheEndedConversation(t *testing.T) {
+	h := newHarness(t, config.Default())
+	term, _ := h.app.NewTerminal("")
+	h.hook(term.ID, "UserPromptSubmit", func(e *hooks.Event) { e.SessionID = "s1"; e.Prompt = "fix the login bug" })
+	transcript := filepath.Join(h.paths.ClaudeProjects, "-home-demo", "s1.jsonl")
+	os.MkdirAll(filepath.Dir(transcript), 0o700)
+	os.WriteFile(transcript, nil, 0o600)
+	if err := h.app.Rename(term.ID, "login"); err != nil {
+		t.Fatal(err)
+	}
+	if data, _ := os.ReadFile(transcript); !strings.Contains(string(data), `"customTitle":"login"`) {
+		t.Fatalf("transcript = %q", data)
+	}
+	spec, _ := launch.Read(h.paths.LaunchDir, term.ID)
+	if !spec.Renamed {
+		t.Fatalf("renamed not persisted: %+v", spec)
+	}
+	if err := h.app.Close(term.ID); err != nil {
+		t.Fatal(err)
+	}
+	if c, ok := h.store.Get("s1"); !ok || c.Title != "login" {
+		t.Fatalf("ended = %+v", c)
+	}
+}
+
+func TestRecoverKeepsRename(t *testing.T) {
+	h := newHarness(t, config.Default())
+	h.tmux.windows = []tmuxctl.Window{{ID: "@1", Pane: "%1", SkyeID: "kept"}}
+	launch.Write(h.paths.LaunchDir, "kept", launch.Spec{Name: "api", Renamed: true})
+	if err := h.app.Recover(); err != nil {
+		t.Fatal(err)
+	}
+	if !h.app.List()[0].Renamed {
+		t.Fatalf("terminal = %+v", h.app.List()[0])
 	}
 }
 
