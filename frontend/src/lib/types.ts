@@ -117,3 +117,43 @@ export interface MonitorReport {
   background: Stray[] | null;
   servers: TmuxServer[] | null;
 }
+
+export type CompareMode = 'work' | 'branch';
+
+export interface FileChange {
+  path: string;
+  status: string;
+  added: number;
+  removed: number;
+  binary?: boolean;
+}
+
+export interface Changes {
+  root: string;
+  branch: string;
+  base: string;
+  files: FileChange[];
+}
+
+export interface FileDiff {
+  path: string;
+  old: string;
+  new: string;
+  binary?: boolean;
+  tooBig?: boolean;
+}
+
+export interface DirEntry {
+  name: string;
+  dir: boolean;
+  size: number;
+}
+
+export interface FileContent {
+  path: string;
+  content: string;
+  version: string;
+  size: number;
+  binary?: boolean;
+  tooBig?: boolean;
+}

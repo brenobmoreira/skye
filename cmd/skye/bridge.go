@@ -14,6 +14,7 @@ import (
 
 	"github.com/brenobmoreira/skye/internal/app"
 	"github.com/brenobmoreira/skye/internal/config"
+	"github.com/brenobmoreira/skye/internal/files"
 	"github.com/brenobmoreira/skye/internal/hooks"
 	"github.com/brenobmoreira/skye/internal/notify"
 	"github.com/brenobmoreira/skye/internal/opener"
@@ -331,6 +332,54 @@ func (b *Bridge) NewWorktree(repo, branch string) (terminals.Terminal, error) {
 		return terminals.Terminal{}, err
 	}
 	return a.NewWorktree(repo, branch)
+}
+
+func (b *Bridge) Changes(id, mode string) (files.Changes, error) {
+	a, err := b.ready()
+	if err != nil {
+		return files.Changes{}, err
+	}
+	return a.Changes(id, mode)
+}
+
+func (b *Bridge) Diff(id, path, mode string) (files.Diff, error) {
+	a, err := b.ready()
+	if err != nil {
+		return files.Diff{}, err
+	}
+	return a.Diff(id, path, mode)
+}
+
+func (b *Bridge) ListDir(id, path string) ([]files.Entry, error) {
+	a, err := b.ready()
+	if err != nil {
+		return nil, err
+	}
+	return a.ListDir(id, path)
+}
+
+func (b *Bridge) ReadFile(id, path string) (files.File, error) {
+	a, err := b.ready()
+	if err != nil {
+		return files.File{}, err
+	}
+	return a.ReadFile(id, path)
+}
+
+func (b *Bridge) WriteFile(id, path, content, version string) (files.File, error) {
+	a, err := b.ready()
+	if err != nil {
+		return files.File{}, err
+	}
+	return a.WriteFile(id, path, content, version)
+}
+
+func (b *Bridge) OpenInEditor(id, path string) error {
+	a, err := b.ready()
+	if err != nil {
+		return err
+	}
+	return a.OpenInEditor(id, path)
 }
 
 func (b *Bridge) Resume(sessionID string) (terminals.Terminal, error) {

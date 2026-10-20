@@ -183,3 +183,59 @@ button:hover { background: var(--line); }
 .shortcuts div { display: grid; gap: 2px; }
 .shortcuts dd { margin: 0; color: var(--muted); font-size: 12px; }
 .shortcuts kbd { font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 1px 5px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
+
+/* Files panel: the changed files or the folder on the left, the diff or the file on the right. */
+.files { display: grid; grid-template-rows: auto 1fr; min-height: 0; min-width: 0; background: var(--bg); }
+.files > .empty { grid-row: 1 / -1; }
+.files-head { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--line); min-width: 0; }
+.files .flat { border: 0; border-radius: 4px; padding: 2px 8px; color: var(--muted); }
+.files .flat:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); }
+.files .flat.on { color: var(--text); background: var(--line); }
+.files .spacer { flex: 1; }
+.files-head .where { display: flex; align-items: baseline; gap: 8px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.files-head .branch { font-weight: normal; font-size: 12px; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+.files-body { display: grid; grid-template-columns: minmax(200px, 300px) minmax(0, 1fr); min-height: 0; }
+.files-side { overflow-y: auto; padding: 6px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 1px; }
+.files .seg { display: flex; gap: 2px; }
+.files-side .seg { margin-bottom: 6px; }
+.files-side .seg button { flex: 1; }
+.files-side .modes button { font-size: 11px; }
+.files-side .none { padding: 4px 8px; font-size: 12px; color: var(--muted); white-space: pre-wrap; }
+.files-side .crumbs { display: flex; flex-wrap: wrap; align-items: center; color: var(--muted); margin-bottom: 4px; font-size: 12px; }
+.files-side .crumbs .flat { padding: 1px 4px; }
+.file { display: grid; grid-template-columns: 16px auto minmax(0, 1fr) auto; gap: 6px; align-items: baseline; padding: 3px 6px; border-radius: 4px; cursor: pointer; white-space: nowrap; font-size: 12.5px; }
+.file:hover { background: rgba(255, 255, 255, 0.05); }
+.file.active { background: var(--line); }
+.file .name { overflow: hidden; text-overflow: ellipsis; }
+.file .name.folder { color: var(--text); font-weight: 500; }
+.file .icon { color: var(--muted); text-align: center; }
+.file .dir { overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-size: 11px; direction: rtl; text-align: left; }
+.file .count { display: flex; gap: 4px; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.file .add { color: var(--idle); }
+.file .del { color: #f7768e; }
+.files .status { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; text-align: center; }
+.files .s-M { color: var(--waiting); }
+.files .s-A, .files .s-u { color: var(--idle); }
+.files .s-D { color: #f7768e; }
+.files-bar .status { font-family: inherit; font-weight: normal; }
+.files-view { display: grid; grid-template-rows: auto auto 1fr; min-height: 0; min-width: 0; }
+.files-view > .empty { grid-row: 1 / -1; }
+.files-bar { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-bottom: 1px solid var(--line); min-width: 0; }
+.files-bar .path { font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left; }
+.files-error { color: var(--waiting); font-size: 12px; max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.files-error.block { max-width: none; white-space: pre-wrap; padding: 4px 10px; border-bottom: 1px solid var(--line); background: #3b2a12; }
+.files-content { min-height: 0; overflow: hidden; background: var(--term-bg); }
+.files-content > .empty { height: 100%; }
+.code { height: 100%; }
+.md { height: 100%; overflow: auto; padding: 16px 28px 40px; line-height: 1.6; font-size: 14px; max-width: 920px; }
+.md h1, .md h2 { border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+.md h1 { font-size: 22px; } .md h2 { font-size: 18px; } .md h3 { font-size: 15px; }
+.md a { color: var(--accent); }
+.md code { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+.md pre { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; overflow: auto; }
+.md pre code { background: none; border: 0; padding: 0; }
+.md table { border-collapse: collapse; }
+.md th, .md td { border: 1px solid var(--line); padding: 4px 8px; }
+.md blockquote { margin: 0; padding: 0 12px; border-left: 3px solid var(--line); color: var(--muted); }
+.md img { max-width: 100%; }
+.md hr { border: 0; border-top: 1px solid var(--line); }

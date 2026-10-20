@@ -111,6 +111,28 @@ fora de foco, mostra um aviso do Windows com o que o claude pede.
 o teclado (clique dentro do outro para trocar); o × no canto de cima volta a um terminal só. Com
 a janela abaixo de 1100 px, só o painel em foco aparece.
 
+### Arquivos
+
+O botão **arquivos** na barra de cima troca os terminais pelos arquivos do terminal ativo. Mostra
+o repositório git em que ele está ou, fora de um, a pasta dele. Com a aba aberta, clicar em
+outro terminal da lista mostra os arquivos dele; **← terminal** volta.
+
+- **Mudanças:** os arquivos alterados, com linhas a mais e a menos. *Não commitadas* compara com o
+  último commit. *Na branch* compara com o ponto onde a branch saiu da base: a `base` do
+  `[[repo]]` ou, sem ela, `origin/develop`, `develop`, `origin/main`, `main`, `origin/master` ou
+  `master`, nessa ordem. A lista recarrega quando o claude termina ou para esperando você.
+- **Arquivos:** navegar pelas pastas, incluindo arquivos ocultos como o `.env`.
+- **Ver:** clicar mostra o diff do arquivo ou o arquivo inteiro. Um `.md` aparece formatado (*ver
+  código* mostra o texto), e um link para outro arquivo do repo abre aqui mesmo.
+- **Editar:** *editar*, mudar e *salvar* (ou `Ctrl+S`). Para edições curtas, como trocar uma
+  linha do `.env`. Se o arquivo mudou no disco depois de aberto, por exemplo porque o claude
+  mexeu nele, a skye não salva e pede para recarregar. Não cria arquivo novo nem edita nada dentro
+  do `.git`.
+- **VS Code:** abre a pasta, ou o arquivo nela, no VS Code. Usa o comando `code` do WSL.
+
+Só abre o que está dentro da pasta do terminal: um caminho que sai dela, mesmo por um link
+simbólico, é recusado.
+
 ### Monitor
 
 O botão **monitor** na barra de cima troca os terminais por uma aba que atualiza a cada 3 s:
@@ -305,3 +327,4 @@ Janela, reinício e monitor:
 22. **monitor**: a caixa do Windows bate com o Gerenciador de Tarefas; os terminais aparecem com processos e memória; `setsid sleep 600 &` num terminal aparece em *Em segundo plano* desse terminal; fechar o terminal o move para *Fora da lista*.
 23. Um prompt que começa com texto colado: o nome do item é a primeira linha escrita por você, não `<pasted_content …>`.
 24. Renomear um terminal com claude e fechá-lo: aparece em *Encerradas* com o nome dado, e o `claude --resume` o lista com esse nome. Um nome curto deixa o × no canto direito.
+25. **arquivos** num terminal de um repo com mudanças: aparecem em *Mudanças* com +/−; *na branch* mostra a base usada; clicar mostra o diff; um `.md` aparece formatado; *editar* + `Ctrl+S` grava; editar de novo depois de mudar o arquivo por fora recusa e pede para recarregar; **VS Code** abre o VS Code na pasta.

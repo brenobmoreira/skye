@@ -6,6 +6,7 @@ import (
 
 	"github.com/brenobmoreira/skye/internal/app"
 	"github.com/brenobmoreira/skye/internal/config"
+	"github.com/brenobmoreira/skye/internal/files"
 	"github.com/brenobmoreira/skye/internal/hooks"
 	"github.com/brenobmoreira/skye/internal/places"
 	"github.com/brenobmoreira/skye/internal/resume"
@@ -39,6 +40,12 @@ type rpcTarget interface {
 	RemovePlace(name string) error
 	OpenPlace(name string) (terminals.Terminal, error)
 	NewWorktree(repo, branch string) (terminals.Terminal, error)
+	Changes(id, mode string) (files.Changes, error)
+	Diff(id, path, mode string) (files.Diff, error)
+	ListDir(id, path string) ([]files.Entry, error)
+	ReadFile(id, path string) (files.File, error)
+	WriteFile(id, path, content, version string) (files.File, error)
+	OpenInEditor(id, path string) error
 }
 
 func decodeArgs(method string, args []json.RawMessage, dst ...any) error {
@@ -56,7 +63,7 @@ func decodeArgs(method string, args []json.RawMessage, dst ...any) error {
 func dispatcher(t rpcTarget) web.Dispatch {
 	return func(method string, args []json.RawMessage) (any, error) {
 		var (
-			a, b       string
+			a, b, c, d string
 			cols, rows int
 			flag       bool
 			list       []string
@@ -178,6 +185,36 @@ func dispatcher(t rpcTarget) web.Dispatch {
 				return nil, err
 			}
 			return nil, t.Resize(a, cols, rows)
+		case "Changes":
+			if err := decode(&a, &b); err != nil {
+				return nil, err
+			}
+			return t.Changes(a, b)
+		case "Diff":
+			if err := decode(&a, &b, &c); err != nil {
+				return nil, err
+			}
+			return t.Diff(a, b, c)
+		case "ListDir":
+			if err := decode(&a, &b); err != nil {
+				return nil, err
+			}
+			return t.ListDir(a, b)
+		case "ReadFile":
+			if err := decode(&a, &b); err != nil {
+				return nil, err
+			}
+			return t.ReadFile(a, b)
+		case "WriteFile":
+			if err := decode(&a, &b, &c, &d); err != nil {
+				return nil, err
+			}
+			return t.WriteFile(a, b, c, d)
+		case "OpenInEditor":
+			if err := decode(&a, &b); err != nil {
+				return nil, err
+			}
+			return nil, t.OpenInEditor(a, b)
 		case "SetSound":
 			if err := decode(&flag); err != nil {
 				return nil, err

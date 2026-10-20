@@ -57,6 +57,8 @@ type Options struct {
 	Places *places.Store
 	// CreateWorktree adds a git worktree and returns its path (worktree.Create outside tests).
 	CreateWorktree func(repo, base, dir, branch string) (string, error)
+	// OpenEditor opens a folder, or a file in it, in VS Code (files.OpenInEditor outside tests).
+	OpenEditor func(root, rel string) error
 }
 
 type ProcSource interface {

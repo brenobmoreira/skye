@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { api, connection, isWindow, on, onConnection, retryConnection } from './bridge';
 import { bark } from './sound';
 import { TitleBar } from './components/TitleBar';
@@ -12,6 +12,9 @@ import { active, closeSplit, prune, select, selectSide, slotOf, visible, type Pa
 import type { ConnectionState } from './windowsTransport';
 import { applyZoom, parseFontSize, zoomKey, type ZoomAction } from './lib/zoom';
 import { customFont, DEFAULT_FONT, FONTS, parseCustomFonts, parseFont, type TerminalFont } from './lib/fonts';
+
+// The editor behind the files panel is large; it loads the first time the panel opens.
+const FilesPanel = lazy(() => import('./components/FilesPanel').then((m) => ({ default: m.FilesPanel })));
 
 const FONT_KEY = 'skye:fontSize';
 const FAMILY_KEY = 'skye:font';
@@ -83,7 +86,10 @@ export function App() {
   const [focused, setFocused] = useState(windowFocused);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [unread, setUnread] = useState<Set<string>>(() => new Set());
-  const [monitor, setMonitor] = useState(false);
+  // What the main area shows instead of the terminals: the monitor or the active terminal's files.
+  const [view, setView] = useState<'terminals' | 'monitor' | 'files'>('terminals');
+  const monitor = view === 'monitor';
+  const covered = view !== 'terminals';
   const lastStates = useRef<Record<string, State>>({});
   const jump = useRef({ terminals, activeId, unread });
   jump.current = { terminals, activeId, unread };
@@ -126,7 +132,7 @@ export function App() {
         e.preventDefault();
         e.stopPropagation();
         setPanes((p) => select(p, target));
-        setMonitor(false);
+        setView('terminals');
         return;
       }
       const action = zoomKey(e);
@@ -196,16 +202,21 @@ export function App() {
 
   useEffect(() => {
     const prev = lastStates.current;
-    const seen = focused && !monitor ? visible(panes, room) : [];
+    const seen = focused && !covered ? visible(panes, room) : [];
     setUnread((current) => nextUnread(prev, terminals, current, seen));
     lastStates.current = Object.fromEntries(terminals.map((t) => [t.id, t.state]));
-  }, [terminals, panes, room, focused, monitor]);
+  }, [terminals, panes, room, focused, covered]);
 
   const views = [...terminals].sort(byCreation);
 
-  const show = (id: string) => { setPanes((p) => select(p, id)); setMonitor(false); };
-  const pickFromList = (id: string, side: boolean) => { setPanes((p) => (side ? selectSide(p, id) : select(p, id))); setMonitor(false); };
-  const split = !monitor && panes.right !== null && room;
+  const show = (id: string) => { setPanes((p) => select(p, id)); setView('terminals'); };
+  // With the files open, picking another terminal shows its files.
+  const pickFromList = (id: string, side: boolean) => {
+    setPanes((p) => (side ? selectSide(p, id) : select(p, id)));
+    setView((v) => (v === 'files' ? v : 'terminals'));
+  };
+  const toggle = (next: 'monitor' | 'files') => setView((v) => (v === next ? 'terminals' : next));
+  const split = !covered && panes.right !== null && room;
   const open = async (preset: string) => show((await api().NewTerminal(preset)).id);
   const openPlace = async (name: string) => show((await api().OpenPlace(name)).id);
   const addPlace = (name: string, path: string) => api().AddPlace(name, path);
@@ -243,12 +254,17 @@ export function App() {
   return (
     <div className={isWindow() ? 'app windowed' : 'app'}>
       {link.kind !== 'ready' && <ConnectionScreen state={link} />}
-      <TitleBar presets={presets} repos={repos} places={places} onOpenPlace={openPlace} onAddPlace={addPlace} onRemovePlace={removePlace} onNewWorktree={newWorktree} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} customFonts={customFonts} onPickFont={pickFont} onAddFont={addFont} onRemoveFont={removeFont} monitor={monitor} onToggleMonitor={() => setMonitor(!monitor)} />
+      <TitleBar presets={presets} repos={repos} places={places} onOpenPlace={openPlace} onAddPlace={addPlace} onRemovePlace={removePlace} onNewWorktree={newWorktree} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} customFonts={customFonts} onPickFont={pickFont} onAddFont={addFont} onRemoveFont={removeFont} monitor={monitor} onToggleMonitor={() => toggle('monitor')} files={view === 'files'} canFiles={activeId !== null} onToggleFiles={() => toggle('files')} />
       <div className="body">
         <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={unread} shown={visible(panes, room)} onSelect={pickFromList} onReorder={reorder} onResume={resume} usage={usage} />
         <main className="main island">
           {monitor && <Monitor terminals={terminals} onOpen={show} />}
-          <div className="terminals" hidden={monitor}>
+          {view === 'files' && (
+            <Suspense fallback={<div className="empty">abrindo…</div>}>
+              <FilesPanel terminal={terminals.find((t) => t.id === activeId)} onBack={() => setView('terminals')} />
+            </Suspense>
+          )}
+          <div className="terminals" hidden={covered}>
             {problems.length > 0 && <div className="problems">{problems.join('\n')}</div>}
             {terminals.length === 0 && <div className="empty">Nenhum terminal. Abra um no +.</div>}
             {split && <button className="unsplit" onClick={() => setPanes(closeSplit)} title="voltar a um terminal só">×</button>}
@@ -256,8 +272,8 @@ export function App() {
               <TerminalView
                 key={`${t.id}:${epoch}`}
                 id={t.id}
-                slot={monitor ? null : slotOf(panes, t.id, room)}
-                focused={!monitor && t.id === activeId}
+                slot={covered ? null : slotOf(panes, t.id, room)}
+                focused={!covered && t.id === activeId}
                 onFocus={() => setPanes((p) => select(p, t.id))}
                 fontSize={fontSize}
                 fontFamily={font.family}
