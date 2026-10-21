@@ -71,7 +71,8 @@ Cada item é um terminal. O cachorro mostra o estado, e a lista agrupa nesta ord
 - **Ordem:** quem acaba de terminar ou pedir algo sobe para o topo do seu grupo. Arraste um item
   para mudar a ordem dentro do grupo; a ordem fica salva.
 - **Nome:** um terminal aberto sem nome leva a 1ª linha do 1º prompt do claude; sem sessão, o
-  nome da pasta. Duplo clique renomeia; o × ao lado do nome fecha o terminal.
+  nome da pasta. Duplo clique renomeia; o × no canto direito fecha o terminal. O nome dado vale
+  também para a sessão do claude: é com ele que ela aparece em *Encerradas* e no `claude --resume`.
 - **Linha de baixo:** o que o claude pede quando espera você (ex.: `Bash: git push`); se está
   compactando ou quantos subagentes tem rodando quando trabalha; senão, o título ou a pasta.
 - **À direita:** há quanto tempo está no estado ("12 min"). Depois de reiniciar a skye, volta no
@@ -109,6 +110,28 @@ fora de foco, mostra um aviso do Windows com o que o claude pede.
 `Ctrl+clique` num terminal da lista abre ele ao lado do atual. O painel com contorno azul recebe
 o teclado (clique dentro do outro para trocar); o × no canto de cima volta a um terminal só. Com
 a janela abaixo de 1100 px, só o painel em foco aparece.
+
+### Arquivos
+
+O botão **arquivos** na barra de cima troca os terminais pelos arquivos do terminal ativo. Mostra
+o repositório git em que ele está ou, fora de um, a pasta dele. Com a aba aberta, clicar em
+outro terminal da lista mostra os arquivos dele; **← terminal** volta.
+
+- **Mudanças:** os arquivos alterados, com linhas a mais e a menos. *Não commitadas* compara com o
+  último commit. *Na branch* compara com o ponto onde a branch saiu da base: a `base` do
+  `[[repo]]` ou, sem ela, `origin/develop`, `develop`, `origin/main`, `main`, `origin/master` ou
+  `master`, nessa ordem. A lista recarrega quando o claude termina ou para esperando você.
+- **Arquivos:** navegar pelas pastas, incluindo arquivos ocultos como o `.env`.
+- **Ver:** clicar mostra o diff do arquivo ou o arquivo inteiro. Um `.md` aparece formatado (*ver
+  código* mostra o texto), e um link para outro arquivo do repo abre aqui mesmo.
+- **Editar:** *editar*, mudar e *salvar* (ou `Ctrl+S`). Para edições curtas, como trocar uma
+  linha do `.env`. Se o arquivo mudou no disco depois de aberto, por exemplo porque o claude
+  mexeu nele, a skye não salva e pede para recarregar. Não cria arquivo novo nem edita nada dentro
+  do `.git`.
+- **VS Code:** abre a pasta, ou o arquivo nela, no VS Code. Usa o comando `code` do WSL.
+
+Só abre o que está dentro da pasta do terminal: um caminho que sai dela, mesmo por um link
+simbólico, é recusado.
 
 ### Monitor
 
@@ -303,3 +326,5 @@ Janela, reinício e monitor:
 21. `pkill -x skye` e reabrir: terminais reencontrados com os nomes.
 22. **monitor**: a caixa do Windows bate com o Gerenciador de Tarefas; os terminais aparecem com processos e memória; `setsid sleep 600 &` num terminal aparece em *Em segundo plano* desse terminal; fechar o terminal o move para *Fora da lista*.
 23. Um prompt que começa com texto colado: o nome do item é a primeira linha escrita por você, não `<pasted_content …>`.
+24. Renomear um terminal com claude e fechá-lo: aparece em *Encerradas* com o nome dado, e o `claude --resume` o lista com esse nome. Um nome curto deixa o × no canto direito.
+25. **arquivos** num terminal de um repo com mudanças: aparecem em *Mudanças* com +/−; *na branch* mostra a base usada; clicar mostra o diff; um `.md` aparece formatado; *editar* + `Ctrl+S` grava; editar de novo depois de mudar o arquivo por fora recusa e pede para recarregar; **VS Code** abre o VS Code na pasta.

@@ -1,4 +1,4 @@
-import type { Conversation, MonitorReport, OutputEvent, Place, Preset, Repo, Terminal, Usage } from './lib/types';
+import type { Changes, CompareMode, Conversation, DirEntry, FileContent, FileDiff, MonitorReport, OutputEvent, Place, Preset, Repo, Terminal, Usage } from './lib/types';
 import { createOutputHub } from './output';
 import { createSendQueue } from './sendQueue';
 import { createWsClient, type SocketLike } from './wsClient';
@@ -34,6 +34,12 @@ interface GoBridge {
   Usage(): Promise<Usage>;
   Monitor(): Promise<MonitorReport>;
   OpenURL(url: string): Promise<void>;
+  Changes(id: string, mode: CompareMode): Promise<Changes>;
+  Diff(id: string, path: string, mode: CompareMode): Promise<FileDiff>;
+  ListDir(id: string, path: string): Promise<DirEntry[]>;
+  ReadFile(id: string, path: string): Promise<FileContent>;
+  WriteFile(id: string, path: string, content: string, version: string): Promise<FileContent>;
+  OpenInEditor(id: string, path: string): Promise<void>;
 }
 
 interface GoShell {
@@ -136,6 +142,12 @@ function remoteBridge(connect: () => SocketLike): { bridge: GoBridge; on: (name:
     Usage: () => call('Usage'),
     Monitor: () => call('Monitor'),
     OpenURL: async () => {},
+    Changes: (id, mode) => call('Changes', id, mode),
+    Diff: (id, path, mode) => call('Diff', id, path, mode),
+    ListDir: (id, path) => call('ListDir', id, path),
+    ReadFile: (id, path) => call('ReadFile', id, path),
+    WriteFile: (id, path, content, version) => call('WriteFile', id, path, content, version),
+    OpenInEditor: (id, path) => call('OpenInEditor', id, path),
   };
   return { bridge, on: (name, cb) => client.on(name, cb) };
 }

@@ -28,6 +28,9 @@ export function TitleBar(props: {
   onRemoveFont: (font: TerminalFont) => void;
   monitor: boolean;
   onToggleMonitor: () => void;
+  files: boolean;
+  canFiles: boolean;
+  onToggleFiles: () => void;
 }) {
   const [maximised, setMaximised] = useState(false);
   const windowed = isWindow();
@@ -66,6 +69,7 @@ export function TitleBar(props: {
       />
       {windowed && sound}
       <span className="spacer" />
+      <button className={props.files ? 'flat on' : 'flat'} disabled={!props.ready || (!props.canFiles && !props.files)} onClick={props.onToggleFiles} title="arquivos do terminal: o que mudou, leitura e edição">arquivos</button>
       <button className={props.monitor ? 'flat on' : 'flat'} disabled={!props.ready} onClick={props.onToggleMonitor} title="monitor: memória e processos">monitor</button>
       <SettingsMenu
         font={props.font}

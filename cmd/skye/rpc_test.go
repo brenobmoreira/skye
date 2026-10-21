@@ -10,6 +10,7 @@ import (
 
 	"github.com/brenobmoreira/skye/internal/app"
 	"github.com/brenobmoreira/skye/internal/config"
+	"github.com/brenobmoreira/skye/internal/files"
 	"github.com/brenobmoreira/skye/internal/hooks"
 	"github.com/brenobmoreira/skye/internal/places"
 	"github.com/brenobmoreira/skye/internal/procs"
@@ -128,6 +129,30 @@ func (f *fakeTarget) Problems() []string {
 	f.record("Problems")
 	return []string{"p"}
 }
+func (f *fakeTarget) Changes(id, mode string) (files.Changes, error) {
+	f.record("Changes(%s,%s)", id, mode)
+	return files.Changes{Base: "main"}, nil
+}
+func (f *fakeTarget) Diff(id, path, mode string) (files.Diff, error) {
+	f.record("Diff(%s,%s,%s)", id, path, mode)
+	return files.Diff{Path: path}, nil
+}
+func (f *fakeTarget) ListDir(id, path string) ([]files.Entry, error) {
+	f.record("ListDir(%s,%s)", id, path)
+	return []files.Entry{{Name: "docs", Dir: true}}, nil
+}
+func (f *fakeTarget) ReadFile(id, path string) (files.File, error) {
+	f.record("ReadFile(%s,%s)", id, path)
+	return files.File{Path: path, Version: "v1"}, nil
+}
+func (f *fakeTarget) WriteFile(id, path, content, version string) (files.File, error) {
+	f.record("WriteFile(%s,%s,%s,%s)", id, path, content, version)
+	return files.File{Path: path, Version: "v2"}, nil
+}
+func (f *fakeTarget) OpenInEditor(id, path string) error {
+	f.record("OpenInEditor(%s,%s)", id, path)
+	return nil
+}
 
 func raw(t *testing.T, args string) []json.RawMessage {
 	t.Helper()
@@ -168,6 +193,12 @@ func TestDispatchCallsEachMethodWithDecodedArgs(t *testing.T) {
 		{"Repos", `[]`, "Repos", `[{"name":"livia"}]`, false},
 		{"NewWorktree", `["livia","feature/x"]`, "NewWorktree(livia,feature/x)", `{"id":"t4"`, false},
 		{"Monitor", `[]`, "Monitor", `{"machine":{"memTotalMb":0,"memAvailMb":1234`, false},
+		{"Changes", `["t1","work"]`, "Changes(t1,work)", `{"root":"","branch":"","base":"main"`, false},
+		{"Diff", `["t1","a.go","branch"]`, "Diff(t1,a.go,branch)", `{"path":"a.go"`, false},
+		{"ListDir", `["t1","docs"]`, "ListDir(t1,docs)", `[{"name":"docs","dir":true`, false},
+		{"ReadFile", `["t1",".env"]`, "ReadFile(t1,.env)", `{"path":".env","content":"","version":"v1"`, false},
+		{"WriteFile", `["t1",".env","A=2","v1"]`, "WriteFile(t1,.env,A=2,v1)", `{"path":".env","content":"","version":"v2"`, false},
+		{"OpenInEditor", `["t1",""]`, "OpenInEditor(t1,)", `null`, false},
 	}
 	for _, c := range cases {
 		f := &fakeTarget{}

@@ -97,14 +97,15 @@ func TestDefaultPaths(t *testing.T) {
 		return map[string]string{"HOME": "/home/demo", "XDG_RUNTIME_DIR": "/run/user/1000"}[k]
 	})
 	want := Paths{
-		ConfigFile:    "/home/demo/.config/skye/config.toml",
-		TmuxConf:      "/home/demo/.config/skye/tmux.conf",
-		StateDir:      "/home/demo/.local/state/skye",
-		LaunchDir:     "/home/demo/.local/state/skye/launch",
-		Conversations: "/home/demo/.local/state/skye/conversations.json",
-		Socket:        "/run/user/1000/skye.sock",
-		WebToken:      "/home/demo/.config/skye/web-token",
-		Places:        "/home/demo/.config/skye/paths.json",
+		ConfigFile:     "/home/demo/.config/skye/config.toml",
+		TmuxConf:       "/home/demo/.config/skye/tmux.conf",
+		StateDir:       "/home/demo/.local/state/skye",
+		LaunchDir:      "/home/demo/.local/state/skye/launch",
+		Conversations:  "/home/demo/.local/state/skye/conversations.json",
+		Socket:         "/run/user/1000/skye.sock",
+		WebToken:       "/home/demo/.config/skye/web-token",
+		Places:         "/home/demo/.config/skye/paths.json",
+		ClaudeProjects: "/home/demo/.claude/projects",
 	}
 	if p != want {
 		t.Fatalf("got %+v\nwant %+v", p, want)
@@ -119,6 +120,14 @@ func TestDefaultPathsHonorsXDGAndMissingRuntimeDir(t *testing.T) {
 			"XDG_STATE_HOME":  "/state",
 		}[k]
 	})
+	if p.ClaudeProjects != "/home/demo/.claude/projects" {
+		t.Fatalf("claude projects = %q", p.ClaudeProjects)
+	}
+	if p := DefaultPaths(func(k string) string {
+		return map[string]string{"HOME": "/home/demo", "CLAUDE_CONFIG_DIR": "/claude"}[k]
+	}); p.ClaudeProjects != "/claude/projects" {
+		t.Fatalf("claude projects with CLAUDE_CONFIG_DIR = %q", p.ClaudeProjects)
+	}
 	if p.WebToken != "/cfg/skye/web-token" {
 		t.Fatalf("web token = %q", p.WebToken)
 	}
