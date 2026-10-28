@@ -15,6 +15,8 @@ const SHORTCUTS: { keys: string; does: string }[] = [
   { keys: 'Ctrl+= / Ctrl+-', does: 'aumenta / diminui a fonte (também Ctrl+roda do mouse)' },
   { keys: 'Ctrl+0', does: 'volta a fonte ao tamanho padrão' },
   { keys: 'Ctrl+clique na lista', does: 'abre o terminal ao lado do atual' },
+  { keys: 'Clique do meio na lista', does: 'fecha o terminal (pergunta antes se estiver em andamento)' },
+  { keys: 'Clique direito na lista', does: 'marca o terminal como não lido (ou lido)' },
   { keys: 'Alt+Enter / Ctrl+Enter', does: 'quebra linha no claude' },
   { keys: 'Ctrl+Shift+V', does: 'cola no terminal' },
   { keys: 'Ctrl+clique num link', does: 'abre no navegador padrão do Windows' },

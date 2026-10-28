@@ -13,3 +13,12 @@ export function nextUnread(prev: Record<string, State>, list: Terminal[], unread
   const same = next.size === unread.size && [...next].every((id) => unread.has(id));
   return same ? unread : next;
 }
+
+// Terminals marked unread by hand stay marked, on screen or not, until they are picked; marks of
+// terminals that closed drop out.
+export function withMarks(unread: Set<string>, marked: Set<string>, list: Terminal[]): Set<string> {
+  if (marked.size === 0) return unread;
+  const next = new Set(unread);
+  for (const t of list) if (marked.has(t.id)) next.add(t.id);
+  return next;
+}

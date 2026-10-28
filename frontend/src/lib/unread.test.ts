@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextUnread } from './unread';
+import { nextUnread, withMarks } from './unread';
 import type { State, Terminal } from './types';
 
 const term = (id: string, state: State): Terminal => ({
@@ -39,5 +39,19 @@ describe('nextUnread', () => {
   });
   it('treats both terminals of a split as viewed', () => {
     expect([...nextUnread({ a: 'running', b: 'running' }, [term('a', 'idle'), term('b', 'idle')], new Set(['a', 'b']), ['a', 'b'])]).toEqual([]);
+  });
+});
+
+describe('withMarks', () => {
+  it('adds the terminals marked by hand', () => {
+    const next = withMarks(new Set(['a']), new Set(['b']), [term('a', 'idle'), term('b', 'idle')]);
+    expect([...next].sort()).toEqual(['a', 'b']);
+  });
+  it('drops marks of terminals that closed', () => {
+    expect([...withMarks(new Set(), new Set(['gone']), [term('a', 'idle')])]).toEqual([]);
+  });
+  it('returns the same set without marks', () => {
+    const unread = new Set(['a']);
+    expect(withMarks(unread, new Set(), [term('a', 'idle')])).toBe(unread);
   });
 });
