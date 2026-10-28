@@ -6,7 +6,7 @@ import { Sidebar } from './components/Sidebar';
 import { TerminalView } from './components/TerminalView';
 import { Monitor } from './components/Monitor';
 import type { Conversation, Place, Preset, Repo, State, Terminal, Usage } from './lib/types';
-import { nextUnread } from './lib/unread';
+import { nextUnread, withMarks } from './lib/unread';
 import { shortcut } from './lib/shortcuts';
 import { active, closeSplit, prune, select, selectSide, slotOf, visible, type Panes } from './lib/panes';
 import type { ConnectionState } from './windowsTransport';
@@ -86,13 +86,36 @@ export function App() {
   const [focused, setFocused] = useState(windowFocused);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [unread, setUnread] = useState<Set<string>>(() => new Set());
+  // Marked unread from the right-click menu; only picking the terminal clears these.
+  const [marked, setMarked] = useState<Set<string>>(() => new Set());
+  const shownUnread = withMarks(unread, marked, terminals);
   // What the main area shows instead of the terminals: the monitor or the active terminal's files.
   const [view, setView] = useState<'terminals' | 'monitor' | 'files'>('terminals');
   const monitor = view === 'monitor';
   const covered = view !== 'terminals';
   const lastStates = useRef<Record<string, State>>({});
+  const unmark = (id: string) =>
+    setMarked((m) => {
+      if (!m.has(id)) return m;
+      const next = new Set(m);
+      next.delete(id);
+      return next;
+    });
+  const mark = (id: string, on: boolean) => {
+    if (on) {
+      setMarked((m) => new Set(m).add(id));
+      return;
+    }
+    unmark(id);
+    setUnread((u) => {
+      if (!u.has(id)) return u;
+      const next = new Set(u);
+      next.delete(id);
+      return next;
+    });
+  };
   const jump = useRef({ terminals, activeId, unread });
-  jump.current = { terminals, activeId, unread };
+  jump.current = { terminals, activeId, unread: shownUnread };
 
   const load = () => {
     api().List().then(setTerminals).catch(() => {});
@@ -131,6 +154,7 @@ export function App() {
       if (target) {
         e.preventDefault();
         e.stopPropagation();
+        unmark(target);
         setPanes((p) => select(p, target));
         setView('terminals');
         return;
@@ -209,9 +233,10 @@ export function App() {
 
   const views = [...terminals].sort(byCreation);
 
-  const show = (id: string) => { setPanes((p) => select(p, id)); setView('terminals'); };
+  const show = (id: string) => { unmark(id); setPanes((p) => select(p, id)); setView('terminals'); };
   // With the files open, picking another terminal shows its files.
   const pickFromList = (id: string, side: boolean) => {
+    unmark(id);
     setPanes((p) => (side ? selectSide(p, id) : select(p, id)));
     setView((v) => (v === 'files' ? v : 'terminals'));
   };
@@ -256,7 +281,7 @@ export function App() {
       {link.kind !== 'ready' && <ConnectionScreen state={link} />}
       <TitleBar presets={presets} repos={repos} places={places} onOpenPlace={openPlace} onAddPlace={addPlace} onRemovePlace={removePlace} onNewWorktree={newWorktree} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} customFonts={customFonts} onPickFont={pickFont} onAddFont={addFont} onRemoveFont={removeFont} monitor={monitor} onToggleMonitor={() => toggle('monitor')} files={view === 'files'} canFiles={activeId !== null} onToggleFiles={() => toggle('files')} />
       <div className="body">
-        <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={unread} shown={visible(panes, room)} onSelect={pickFromList} onReorder={reorder} onResume={resume} usage={usage} />
+        <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={shownUnread} shown={visible(panes, room)} onSelect={pickFromList} onReorder={reorder} onResume={resume} onMark={mark} usage={usage} />
         <main className="main island">
           {monitor && <Monitor terminals={terminals} onOpen={show} />}
           {view === 'files' && (
@@ -274,7 +299,7 @@ export function App() {
                 id={t.id}
                 slot={covered ? null : slotOf(panes, t.id, room)}
                 focused={!covered && t.id === activeId}
-                onFocus={() => setPanes((p) => select(p, t.id))}
+                onFocus={() => { unmark(t.id); setPanes((p) => select(p, t.id)); }}
                 fontSize={fontSize}
                 fontFamily={font.family}
               />

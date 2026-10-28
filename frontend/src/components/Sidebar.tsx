@@ -7,6 +7,9 @@ import { contextBar, contextText } from '../lib/context';
 import { moveWithinGroup } from '../lib/order';
 import { DogIcon } from './DogIcon';
 import { stateLabel } from '../lib/states';
+import { asksBeforeClose } from '../lib/close';
+import { ConfirmDialog } from './ConfirmDialog';
+import { ContextMenu } from './ContextMenu';
 import type { Conversation, Terminal, Usage } from '../lib/types';
 import { usagePanel } from '../lib/usage';
 
@@ -20,9 +23,19 @@ function storedEndedOpen(): boolean {
   }
 }
 
+// How long a closing item takes to fade out of the list; the terminal is closed after it.
+const CLOSE_MS = 180;
+
+const calm = () => typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// A quick squeeze on the × so the click shows even when a question comes up instead.
+function press(el: HTMLElement) {
+  if (!calm()) el.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.65)' }, { transform: 'scale(1)' }], { duration: 160, easing: 'ease-out' });
+}
+
 type Drag = { dragging: string | null; start: (id: string) => void; over: (id: string) => boolean; drop: (id: string) => void; end: () => void };
 
-function TerminalItem({ t, active, shown, unread, now, onSelect, drag }: { t: Terminal; active: boolean; shown: boolean; unread: boolean; now: number; onSelect: (side: boolean) => void; drag: Drag }) {
+function TerminalItem({ t, active, shown, unread, closing, now, onSelect, onClose, onMenu, drag }: { t: Terminal; active: boolean; shown: boolean; unread: boolean; closing: boolean; now: number; onSelect: (side: boolean) => void; onClose: () => void; onMenu: (x: number, y: number) => void; drag: Drag }) {
   const label = itemLabel(t);
   const time = elapsed(t.since, t.state, now);
   const bar = contextBar(t.context);
@@ -38,8 +51,11 @@ function TerminalItem({ t, active, shown, unread, now, onSelect, drag }: { t: Te
   };
   return (
     <div
-      className={`item${active ? ' active' : shown ? ' shown' : ''}${unread ? ' unread' : ''}${drag.dragging === t.id ? ' dragging' : ''}`}
+      className={`item${active ? ' active' : shown ? ' shown' : ''}${unread ? ' unread' : ''}${drag.dragging === t.id ? ' dragging' : ''}${closing ? ' closing' : ''}`}
       onClick={(e) => onSelect(e.ctrlKey || e.metaKey)}
+      onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
+      onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); onClose(); } }}
+      onContextMenu={(e) => { e.preventDefault(); onMenu(e.clientX, e.clientY); }}
       title={hover}
       draggable={!editing}
       onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; drag.start(t.id); }}
@@ -65,7 +81,7 @@ function TerminalItem({ t, active, shown, unread, now, onSelect, drag }: { t: Te
             <div className="name" onDoubleClick={() => { setName(label.name); setEditing(true); }}>{label.name}</div>
           )}
           {unread && <span className="badge" title="não lido" />}
-          <button className="x" title="fechar terminal" onClick={(e) => { e.stopPropagation(); api().Close(t.id); }}>×</button>
+          <button className="x" title="fechar terminal (ou clique do meio)" onClick={(e) => { e.stopPropagation(); press(e.currentTarget); onClose(); }}>×</button>
         </div>
         <div className="sub">
           <span>{label.sub}</span>
@@ -105,9 +121,13 @@ export function Sidebar(props: {
   onSelect: (id: string, side: boolean) => void;
   onReorder: (list: Terminal[]) => void;
   onResume: (sessionId: string) => void;
+  onMark: (id: string, unread: boolean) => void;
   usage: Usage | null;
 }) {
   const [dragging, setDragging] = useState<string | null>(null);
+  const [asking, setAsking] = useState<string | null>(null);
+  const [closing, setClosing] = useState<Set<string>>(() => new Set());
+  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [endedOpen, setEndedOpen] = useState(storedEndedOpen);
   const [query, setQuery] = useState('');
   const [now, setNow] = useState(Date.now);
@@ -122,6 +142,14 @@ export function Sidebar(props: {
       localStorage.setItem(ENDED_KEY, String(!endedOpen));
     } catch {}
   };
+  const close = (id: string) => {
+    setClosing((s) => new Set(s).add(id));
+    const undo = () => setClosing((s) => { const next = new Set(s); next.delete(id); return next; });
+    setTimeout(() => api().Close(id).catch(undo), calm() ? 0 : CLOSE_MS);
+  };
+  const requestClose = (t: Terminal) => (asksBeforeClose(t.state) ? setAsking(t.id) : close(t.id));
+  const asked = props.terminals.find((t) => t.id === asking);
+  const menuFor = menu && props.terminals.find((t) => t.id === menu.id);
   const drag: Drag = {
     dragging,
     start: setDragging,
@@ -138,7 +166,7 @@ export function Sidebar(props: {
       <div className="list island">
       <h3>Terminais</h3>
       {props.terminals.map((t) => (
-        <TerminalItem key={t.id} t={t} active={t.id === props.activeId} shown={props.shown.includes(t.id)} unread={props.unread.has(t.id)} now={now} onSelect={(side) => props.onSelect(t.id, side)} drag={drag} />
+        <TerminalItem key={t.id} t={t} active={t.id === props.activeId} shown={props.shown.includes(t.id)} unread={props.unread.has(t.id)} closing={closing.has(t.id)} now={now} onSelect={(side) => props.onSelect(t.id, side)} onClose={() => requestClose(t)} onMenu={(x, y) => setMenu({ id: t.id, x, y })} drag={drag} />
       ))}
       {props.conversations.length > 0 && (
         <h3 className="toggle" onClick={toggleEnded} title={endedOpen ? 'recolher' : 'mostrar'}>
@@ -169,6 +197,25 @@ export function Sidebar(props: {
       ))}
       </div>
       <UsagePanel usage={props.usage} />
+      {menu && menuFor && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          items={[props.unread.has(menuFor.id)
+            ? { label: 'marcar como lido', run: () => props.onMark(menuFor.id, false) }
+            : { label: 'marcar como não lido', run: () => props.onMark(menuFor.id, true) }]}
+          onClose={() => setMenu(null)}
+        />
+      )}
+      {asked && (
+        <ConfirmDialog
+          title={`${itemLabel(asked).name} está em andamento`}
+          message={`Ele está ${stateLabel[asked.state]}. Fechar mesmo assim? O que estiver rodando será interrompido.`}
+          confirm="Fechar"
+          onConfirm={() => { setAsking(null); close(asked.id); }}
+          onCancel={() => setAsking(null)}
+        />
+      )}
     </aside>
   );
 }
