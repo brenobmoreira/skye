@@ -6,7 +6,7 @@ frontend:
 	cd frontend && npm ci && npm run build
 
 build: frontend
-	go build -tags $(TAGS) -o skye ./cmd/skye
+	CGO_ENABLED=1 go build -tags $(TAGS) -o skye ./cmd/skye
 
 windows: frontend
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -tags desktop,production -ldflags "-H windowsgui" -o skye.exe ./cmd/skye-win

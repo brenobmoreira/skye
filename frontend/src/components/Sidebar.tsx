@@ -149,6 +149,8 @@ export function Sidebar(props: {
   };
   const requestClose = (t: Terminal) => (asksBeforeClose(t.state) ? setAsking(t.id) : close(t.id));
   const asked = props.terminals.find((t) => t.id === asking);
+  const active = props.terminals.find((t) => t.id === props.activeId);
+  const shownUsage = active ? (active.usage ?? (active.provider ? null : props.usage)) : props.usage;
   const menuFor = menu && props.terminals.find((t) => t.id === menu.id);
   const drag: Drag = {
     dragging,
@@ -196,7 +198,7 @@ export function Sidebar(props: {
         </div>
       ))}
       </div>
-      <UsagePanel usage={props.usage} />
+      <UsagePanel usage={shownUsage} />
       {menu && menuFor && (
         <ContextMenu
           x={menu.x}

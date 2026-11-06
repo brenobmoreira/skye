@@ -43,7 +43,7 @@ func Listen(path string, handle func(Event), onShow func(), onStatus func(termin
 		if f, ok := w.(http.Flusher); ok {
 			f.Flush()
 		}
-		ev, err := Parse(r.URL.Query().Get("t"), body)
+		ev, err := ParseEvent(r.URL.Query().Get("t"), r.URL.Query().Get("e"), body)
 		if err != nil {
 			logf("hook ignored: %v", err)
 			return

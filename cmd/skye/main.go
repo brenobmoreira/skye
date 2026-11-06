@@ -69,17 +69,44 @@ func runInstallHooks() int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	path := filepath.Join(home, ".claude", "settings.json")
-	backup, err := hooks.Install(path)
+	claudePath := filepath.Join(home, ".claude", "settings.json")
+	backup, err := hooks.Install(claudePath)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "skye install-hooks:", err)
+		fmt.Fprintln(os.Stderr, "skye install-hooks (claude):", err)
 		return 1
 	}
-	fmt.Println("hooks e repasse do statusLine instalados em", path)
+	fmt.Println("hooks e repasse do statusLine instalados em", claudePath)
 	if backup != "" {
 		fmt.Println("backup do arquivo anterior:", backup)
 	}
-	fmt.Println("reinicie as sessões do claude para elas passarem a reportar")
+
+	agyHooksPath := filepath.Join(home, ".gemini", "config", "hooks.json")
+	if _, err := hooks.InstallAgyHooks(agyHooksPath); err != nil {
+		fmt.Fprintln(os.Stderr, "skye install-hooks (agy hooks):", err)
+		return 1
+	}
+	fmt.Println("hooks instalados em", agyHooksPath)
+
+	agySettingsPath := filepath.Join(home, ".gemini", "antigravity-cli", "settings.json")
+	if _, err := hooks.InstallAgySettings(agySettingsPath); err != nil {
+		fmt.Fprintln(os.Stderr, "skye install-hooks (agy settings):", err)
+		return 1
+	}
+	fmt.Println("repasse do statusLine instalado em", agySettingsPath)
+
+	codexHooksPath := filepath.Join(home, ".codex", "hooks.json")
+	if _, err := hooks.InstallCodexHooks(codexHooksPath); err != nil {
+		fmt.Fprintln(os.Stderr, "skye install-hooks (codex hooks):", err)
+		return 1
+	}
+	codexConfigPath := filepath.Join(home, ".codex", "config.toml")
+	if err := hooks.InstallCodexConfig(codexConfigPath); err != nil {
+		fmt.Fprintln(os.Stderr, "skye install-hooks (codex config):", err)
+		return 1
+	}
+	fmt.Println("hooks instalados em", codexHooksPath)
+
+	fmt.Println("reinicie as sessões do claude, agy e codex para elas passarem a reportar")
 	return 0
 }
 

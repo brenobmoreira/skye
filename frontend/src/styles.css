@@ -31,7 +31,7 @@ button:hover { background: var(--line); }
 
 .app { display: grid; grid-template-rows: 36px 1fr; height: 100%; }
 .titlebar { display: flex; align-items: center; gap: 8px; padding: 0 8px; background: var(--panel); border-bottom: 1px solid var(--line); --wails-draggable: drag; }
-.titlebar button, .titlebar .menu { --wails-draggable: no-drag; }
+.titlebar button, .titlebar .menu, .dialog-backdrop { --wails-draggable: no-drag; }
 .titlebar .brand { font-weight: 600; margin-right: 8px; }
 .titlebar .spacer { flex: 1; }
 .app.windowed { grid-template-rows: 30px 1fr; }
@@ -57,9 +57,11 @@ button:hover { background: var(--line); }
 .menu-list .form .actions button { width: auto; }
 .menu-list .error { color: var(--waiting); white-space: pre-wrap; word-break: break-word; padding: 0 8px 4px; }
 .menu-list hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
-.new-menu { min-width: 260px; }
-.new-menu .place { display: flex; align-items: center; }
-.new-menu .place > button:first-child { flex: 1; min-width: 0; }
+.new-menu { min-width: 280px; }
+.new-menu .place { display: flex; align-items: center; gap: 2px; }
+.new-menu .place > button:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.new-menu .place .tool { width: auto; flex: none; padding: 2px 5px; font-size: 11px; color: var(--muted); }
+.new-menu .place .tool:hover { color: var(--text); }
 .new-menu .remove { width: auto; flex: none; color: var(--muted); visibility: hidden; }
 .new-menu .place:hover .remove, .new-menu .remove.armed { visibility: visible; }
 .new-menu .remove.armed { color: var(--waiting); }

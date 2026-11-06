@@ -63,3 +63,14 @@ func TestParseReadsCompactionAndSubagents(t *testing.T) {
 		t.Fatalf("pre = %+v, sub = %+v", pre, sub)
 	}
 }
+
+func TestParseEventSupportsAgyPayloads(t *testing.T) {
+	body := []byte(`{"conversationId":"conv-9","workspacePaths":["/home/demo/skye"],"lastUserInput":"adicione agy","modelName":"Gemini 2.5 Pro"}`)
+	ev, err := ParseEvent("t1", "PreInvocation", body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ev.Name != "UserPromptSubmit" || ev.Provider != "agy" || ev.SessionID != "conv-9" || ev.Cwd != "/home/demo/skye" || ev.Prompt != "adicione agy" || ev.Context == nil || ev.Context.Model != "Gemini 2.5 Pro" {
+		t.Fatalf("got %+v", ev)
+	}
+}

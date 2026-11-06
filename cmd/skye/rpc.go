@@ -38,7 +38,7 @@ type rpcTarget interface {
 	Places() []places.Place
 	AddPlace(name, path string) error
 	RemovePlace(name string) error
-	OpenPlace(name string) (terminals.Terminal, error)
+	OpenPlace(name, command string) (terminals.Terminal, error)
 	NewWorktree(repo, branch string) (terminals.Terminal, error)
 	Changes(id, mode string) (files.Changes, error)
 	Diff(id, path, mode string) (files.Diff, error)
@@ -131,10 +131,16 @@ func dispatcher(t rpcTarget) web.Dispatch {
 			}
 			return nil, t.RemovePlace(a)
 		case "OpenPlace":
-			if err := decode(&a); err != nil {
+			if len(args) == 1 {
+				if err := decode(&a); err != nil {
+					return nil, err
+				}
+				return t.OpenPlace(a, "")
+			}
+			if err := decode(&a, &b); err != nil {
 				return nil, err
 			}
-			return t.OpenPlace(a)
+			return t.OpenPlace(a, b)
 		case "Repos":
 			if err := decode(); err != nil {
 				return nil, err

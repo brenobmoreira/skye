@@ -1,4 +1,4 @@
-import type { Changes, CompareMode, Conversation, DirEntry, FileContent, FileDiff, MonitorReport, OutputEvent, Place, Preset, Repo, Terminal, Usage } from './lib/types';
+import type { Changes, CompareMode, Conversation, DirEntry, FileContent, FileDiff, MonitorReport, OutputEvent, Place, PlaceCommand, Preset, Repo, Terminal, Usage } from './lib/types';
 import { createOutputHub } from './output';
 import { createSendQueue } from './sendQueue';
 import { createWsClient, type SocketLike } from './wsClient';
@@ -14,7 +14,7 @@ interface GoBridge {
   Places(): Promise<Place[]>;
   AddPlace(name: string, path: string): Promise<void>;
   RemovePlace(name: string): Promise<void>;
-  OpenPlace(name: string): Promise<Terminal>;
+  OpenPlace(name: string, command: PlaceCommand): Promise<Terminal>;
   NewWorktree(repo: string, branch: string): Promise<Terminal>;
   Resume(sessionId: string): Promise<Terminal>;
   Write(id: string, data: string): Promise<void>;
@@ -122,7 +122,7 @@ function remoteBridge(connect: () => SocketLike): { bridge: GoBridge; on: (name:
     Places: () => call('Places'),
     AddPlace: (name, path) => call('AddPlace', name, path),
     RemovePlace: (name) => call('RemovePlace', name),
-    OpenPlace: (name) => call('OpenPlace', name),
+    OpenPlace: (name, command) => call('OpenPlace', name, command),
     NewWorktree: (repo, branch) => call('NewWorktree', repo, branch),
     Resume: (sessionId) => call('Resume', sessionId),
     Write: (id, data) => call('Write', id, data),

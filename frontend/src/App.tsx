@@ -5,7 +5,7 @@ import { TitleBar } from './components/TitleBar';
 import { Sidebar } from './components/Sidebar';
 import { TerminalView } from './components/TerminalView';
 import { Monitor } from './components/Monitor';
-import type { Conversation, Place, Preset, Repo, State, Terminal, Usage } from './lib/types';
+import type { Conversation, Place, PlaceCommand, Preset, Repo, State, Terminal, Usage } from './lib/types';
 import { nextUnread, withMarks } from './lib/unread';
 import { shortcut } from './lib/shortcuts';
 import { active, closeSplit, prune, select, selectSide, slotOf, visible, type Panes } from './lib/panes';
@@ -243,7 +243,7 @@ export function App() {
   const toggle = (next: 'monitor' | 'files') => setView((v) => (v === next ? 'terminals' : next));
   const split = !covered && panes.right !== null && room;
   const open = async (preset: string) => show((await api().NewTerminal(preset)).id);
-  const openPlace = async (name: string) => show((await api().OpenPlace(name)).id);
+  const openPlace = async (name: string, command: PlaceCommand) => show((await api().OpenPlace(name, command)).id);
   const addPlace = (name: string, path: string) => api().AddPlace(name, path);
   const removePlace = (name: string) => api().RemovePlace(name);
   const newWorktree = async (repo: string, branch: string) => show((await api().NewWorktree(repo, branch)).id);

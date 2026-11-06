@@ -1,17 +1,19 @@
 import { useState, type KeyboardEvent } from 'react';
-import type { Place, Preset, Repo } from '../lib/types';
+import type { Place, PlaceCommand, Preset, Repo } from '../lib/types';
+
+const PLACE_COMMANDS: PlaceCommand[] = ['claude', 'agy', 'codex'];
 
 const message = (e: unknown) => String((e as Error)?.message ?? e);
 
-// The + menu: saved paths (claude in that folder), a new terminal, presets and worktrees from the
-// config, and a form to save another path.
+// The + menu: saved paths (claude, agy, or codex in that folder), a new terminal, presets and
+// worktrees from the config, and a form to save another path.
 export function NewMenu(props: {
   ready: boolean;
   places: Place[];
   presets: Preset[];
   repos: Repo[];
   onNew: (preset: string) => void;
-  onOpenPlace: (name: string) => void;
+  onOpenPlace: (name: string, command: PlaceCommand) => void;
   onAddPlace: (name: string, path: string) => Promise<void>;
   onRemovePlace: (name: string) => Promise<void>;
   onNewWorktree: (repo: string, branch: string) => Promise<void>;
@@ -92,9 +94,14 @@ export function NewMenu(props: {
         <div className="menu-list new-menu" onMouseLeave={() => { if (!picking && !adding) close(); }}>
           {props.places.map((p) => (
             <div key={p.name} className="place" onMouseLeave={() => { if (armed === p.name) setArmed(null); }}>
-              <button onClick={() => run(() => props.onOpenPlace(p.name))} title={`claude em ${p.path}`}>
+              <button onClick={() => run(() => props.onOpenPlace(p.name, 'claude'))} title={`claude em ${p.path}`}>
                 {p.name}
               </button>
+              {armed !== p.name && PLACE_COMMANDS.map((cmd) => (
+                <button key={cmd} className="tool" onClick={() => run(() => props.onOpenPlace(p.name, cmd))} title={`${cmd} em ${p.path}`}>
+                  {cmd}
+                </button>
+              ))}
               <button className={armed === p.name ? 'remove armed' : 'remove'} onClick={() => remove(p.name)} title="remover este path">
                 {armed === p.name ? 'remover?' : '×'}
               </button>

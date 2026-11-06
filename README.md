@@ -91,7 +91,7 @@ fora de foco, mostra um aviso do Windows com o que o claude pede.
 
 ### O menu +
 
-    LivIA                ← paths salvos: abrem o claude na pasta
+    LivIA  claude agy codex ← paths salvos: abrem claude, agy ou codex na pasta
     ───────────────
     Novo terminal        ← shell na home
     blog                 ← presets do config.toml
@@ -156,8 +156,8 @@ O monitor só mostra; para encerrar algo, `kill <PID>` num terminal.
 
 - **×** (ou ✕ no app do Windows) fecha só a janela: o `skye web` e os terminais continuam, e
   reabrir mostra tudo como estava. Na janela Linux, rodar `skye` de novo traz a janela.
-- **sair** encerra todos os terminais, o `skye web` e a janela. As conversas vão para
-  *Encerradas*.
+- **sair** pede confirmação e encerra todos os terminais, o `skye web` e a janela. As conversas vão
+  para *Encerradas*.
 
 ## Atalhos
 
@@ -315,7 +315,7 @@ Sessões e Encerradas:
 
 Menu +, atalhos e lado a lado:
 
-16. *+ Adicionar path* com uma pasta que não existe mostra o erro; com uma que existe, o nome aparece no topo e abre o claude nela; × e "remover?" o tiram.
+16. *+ Adicionar path* com uma pasta que não existe mostra o erro; com uma que existe, o nome aparece no topo e abre `claude`, `agy` ou `codex` nela; × e "remover?" o tiram.
 17. *nova worktree de…* com um `[[repo]]` configurado cria a pasta e abre o terminal na branch nova.
 18. `Ctrl+2` abre o 2º terminal; com um terminal esperando, `Ctrl+Shift+Espaço` pula para ele.
 19. `Ctrl+clique` num item abre lado a lado; clicar num painel move o contorno azul; o × volta a um só.

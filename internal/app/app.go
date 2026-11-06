@@ -53,7 +53,7 @@ type Options struct {
 	// Host is the Windows memory when skye runs in WSL; nil or not ok leaves it out.
 	Host       func() (winmem.Memory, bool)
 	TmuxSocket string
-	// Places are the folders the + menu opens claude in.
+	// Places are the folders the + menu opens claude, agy, or codex in.
 	Places *places.Store
 	// CreateWorktree adds a git worktree and returns its path (worktree.Create outside tests).
 	CreateWorktree func(repo, base, dir, branch string) (string, error)
@@ -72,16 +72,57 @@ type OutputEvent struct {
 }
 
 type App struct {
-	o       Options
-	reg     *terminals.Registry
-	mu      sync.Mutex
-	sound   bool
-	focused bool
-	usage   hooks.Usage
+	o             Options
+	reg           *terminals.Registry
+	mu            sync.Mutex
+	sound         bool
+	focused       bool
+	usage         hooks.Usage
+	providerUsage map[string]hooks.Usage
 }
 
 func New(o Options) *App {
-	return &App{o: o, reg: terminals.NewRegistry(o.Now), sound: o.Config.Sound}
+	return &App{o: o, reg: terminals.NewRegistry(o.Now), sound: o.Config.Sound, providerUsage: map[string]hooks.Usage{}}
+}
+
+func detectProvider(command string) string {
+	switch {
+	case strings.Contains(command, "agy"):
+		return "agy"
+	case strings.Contains(command, "codex"):
+		return "codex"
+	case strings.Contains(command, "claude"):
+		return "claude"
+	default:
+		return ""
+	}
+}
+
+func (a *App) initialUsage(provider string) *hooks.Usage {
+	if provider == "" {
+		return nil
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	u, ok := a.providerUsage[provider]
+	if !ok {
+		return nil
+	}
+	return &u
+}
+
+func (a *App) saveProviderUsage(terminal, provider string, u hooks.Usage) {
+	if provider == "" {
+		if t, ok := a.reg.Get(terminal); ok {
+			provider = t.Provider
+		}
+	}
+	if provider == "" {
+		return
+	}
+	a.mu.Lock()
+	a.providerUsage[provider] = u
+	a.mu.Unlock()
 }
 
 func (a *App) Recover() error {
@@ -97,7 +138,8 @@ func (a *App) Recover() error {
 			a.o.Logf("recover %s: %v", w.SkyeID, err)
 			spec = launch.Spec{Name: "shell"}
 		}
-		a.reg.Add(terminals.Terminal{ID: w.SkyeID, Name: spec.Name, Renamed: spec.Renamed, Preset: spec.Preset, Cwd: spec.Cwd, Window: w.ID, Pane: w.Pane, Order: spec.Order})
+		provider := detectProvider(spec.Command)
+		a.reg.Add(terminals.Terminal{ID: w.SkyeID, Name: spec.Name, Renamed: spec.Renamed, Preset: spec.Preset, Cwd: spec.Cwd, Window: w.ID, Pane: w.Pane, Order: spec.Order, Provider: provider, Usage: a.initialUsage(provider)})
 	}
 	ids, err := launch.List(a.o.Paths.LaunchDir)
 	if err != nil {
@@ -123,7 +165,8 @@ func (a *App) open(spec launch.Spec) (terminals.Terminal, error) {
 		_ = launch.Remove(a.o.Paths.LaunchDir, id)
 		return terminals.Terminal{}, err
 	}
-	a.reg.Add(terminals.Terminal{ID: id, Name: spec.Name, Preset: spec.Preset, Cwd: spec.Cwd, Window: w.ID, Pane: w.Pane})
+	provider := detectProvider(spec.Command)
+	a.reg.Add(terminals.Terminal{ID: id, Name: spec.Name, Preset: spec.Preset, Cwd: spec.Cwd, Window: w.ID, Pane: w.Pane, Provider: provider, Usage: a.initialUsage(provider)})
 	a.emitTerminals()
 	t, _ := a.reg.Get(id)
 	return t, nil
@@ -188,17 +231,24 @@ func (a *App) RemovePlace(name string) error {
 	return nil
 }
 
-// OpenPlace opens a terminal in a saved folder running claude. It is named like a plain shell,
-// so the list shows the session's first prompt, or the folder.
-func (a *App) OpenPlace(name string) (terminals.Terminal, error) {
+// OpenPlace opens a terminal in a saved folder running claude, agy, or codex. It is named like a
+// plain shell, so the list shows the session's first prompt, or the folder.
+func (a *App) OpenPlace(name, command string) (terminals.Terminal, error) {
 	if a.o.Places == nil {
 		return terminals.Terminal{}, fmt.Errorf("paths indisponíveis")
+	}
+	command = strings.TrimSpace(command)
+	if command == "" {
+		command = "claude"
+	}
+	if command != "claude" && command != "agy" && command != "codex" {
+		return terminals.Terminal{}, fmt.Errorf("comando desconhecido: %q", command)
 	}
 	p, ok := a.o.Places.Get(name)
 	if !ok {
 		return terminals.Terminal{}, fmt.Errorf("path desconhecido: %q", name)
 	}
-	return a.open(launch.Spec{Name: "shell", Cwd: a.o.Places.Expand(p.Path), Command: "claude"})
+	return a.open(launch.Spec{Name: "shell", Cwd: a.o.Places.Expand(p.Path), Command: command})
 }
 
 func (a *App) Repos() []config.Repo {
@@ -280,10 +330,26 @@ func (a *App) Reorder(ids []string) error {
 // HandleStatus takes one status line report: the plan usage for everybody and the session
 // details for the terminal that sent it.
 func (a *App) HandleStatus(terminal string, s hooks.Status) {
+	var changed bool
 	if s.HasUsage {
-		a.HandleUsage(s.Usage)
+		u := s.Usage
+		u.UpdatedAt = a.o.Now()
+		a.HandleUsage(u)
+		a.saveProviderUsage(terminal, s.Provider, u)
+		if a.reg.SetUsage(terminal, s.Provider, u) {
+			changed = true
+		}
 	}
-	if _, changed := a.reg.SetContext(terminal, s.Session); changed {
+	if _, ok := a.reg.SetContext(terminal, s.Session); ok {
+		changed = true
+	}
+	if ch, stateChanged := a.reg.ApplyStatus(terminal, s); stateChanged {
+		changed = true
+		if ch.Attention {
+			a.alert(ch.Terminal)
+		}
+	}
+	if changed {
 		a.emitTerminals()
 	}
 }
@@ -429,6 +495,13 @@ func (a *App) HandleHook(ev hooks.Event) {
 	if !ok {
 		a.o.Logf("hook ignored: %s for %s", ev.Name, ev.Terminal)
 		return
+	}
+	if ev.Usage != nil {
+		u := *ev.Usage
+		u.UpdatedAt = a.o.Now()
+		a.HandleUsage(u)
+		a.saveProviderUsage(ev.Terminal, ev.Provider, u)
+		a.reg.SetUsage(ev.Terminal, ev.Provider, u)
 	}
 	if ch.Ended != nil {
 		if ch.Terminal.Renamed {

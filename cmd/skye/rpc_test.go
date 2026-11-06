@@ -78,8 +78,8 @@ func (f *fakeTarget) RemovePlace(name string) error {
 	return nil
 }
 
-func (f *fakeTarget) OpenPlace(name string) (terminals.Terminal, error) {
-	f.record("OpenPlace(%s)", name)
+func (f *fakeTarget) OpenPlace(name, command string) (terminals.Terminal, error) {
+	f.record("OpenPlace(%s,%s)", name, command)
 	return terminals.Terminal{ID: "t5"}, nil
 }
 
@@ -189,7 +189,8 @@ func TestDispatchCallsEachMethodWithDecodedArgs(t *testing.T) {
 		{"Places", `[]`, "Places", `[{"name":"LivIA","path":"~/projects/ai_livia_copilot"}]`, false},
 		{"AddPlace", `["LivIA","~/x"]`, "AddPlace(LivIA,~/x)", `null`, false},
 		{"RemovePlace", `["LivIA"]`, "RemovePlace(LivIA)", `null`, false},
-		{"OpenPlace", `["LivIA"]`, "OpenPlace(LivIA)", `{"id":"t5"`, false},
+		{"OpenPlace", `["LivIA"]`, "OpenPlace(LivIA,)", `{"id":"t5"`, false},
+		{"OpenPlace", `["LivIA","agy"]`, "OpenPlace(LivIA,agy)", `{"id":"t5"`, false},
 		{"Repos", `[]`, "Repos", `[{"name":"livia"}]`, false},
 		{"NewWorktree", `["livia","feature/x"]`, "NewWorktree(livia,feature/x)", `{"id":"t4"`, false},
 		{"Monitor", `[]`, "Monitor", `{"machine":{"memTotalMb":0,"memAvailMb":1234`, false},

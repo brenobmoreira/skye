@@ -62,8 +62,11 @@ type Terminal struct {
 	Since time.Time `json:"since,omitzero"`
 	// Activity says what a running terminal is busy with: compacting, subagents.
 	Activity string `json:"activity,omitempty"`
-	// Context is what the status line last said about the claude session in the terminal.
-	Context    *hooks.Session `json:"context,omitempty"`
+	// Context is what the status line last said about the session in the terminal.
+	Context *hooks.Session `json:"context,omitempty"`
+	// Usage is the plan usage for the provider running in the terminal.
+	Usage      *hooks.Usage `json:"usage,omitempty"`
+	Provider   string       `json:"provider,omitempty"`
 	compacting bool
 	agents     map[string]bool
 	// Order sorts terminals inside the same state group; 0 means not placed yet.
@@ -231,6 +234,103 @@ func shown(s *hooks.Session) [3]string {
 	return [3]string{round(s.ContextPct, 1), s.Model, round(s.CostUSD, 100)}
 }
 
+func sameUsage(a, b *hooks.Usage) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	sameWin := func(x, y *hooks.Window) bool {
+		if x == nil || y == nil {
+			return x == y
+		}
+		return math.Round(x.UsedPct) == math.Round(y.UsedPct) && x.ResetsAt == y.ResetsAt
+	}
+	return sameWin(a.FiveHour, b.FiveHour) && sameWin(a.SevenDay, b.SevenDay)
+}
+
+// SetUsage sets the usage on a terminal and any other open terminal running the same provider.
+func (r *Registry) SetUsage(id, provider string, u hooks.Usage) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	t, ok := r.items[id]
+	if !ok {
+		return false
+	}
+	if provider != "" {
+		t.Provider = provider
+	} else {
+		provider = t.Provider
+	}
+	changed := !sameUsage(t.Usage, &u)
+	t.Usage = &u
+	if provider != "" {
+		for _, other := range r.items {
+			if other.ID != id && other.Provider == provider {
+				if !sameUsage(other.Usage, &u) {
+					changed = true
+				}
+				other.Usage = &u
+			}
+		}
+	}
+	return changed
+}
+
+// ApplyStatus updates a terminal's state and session fields when a status line report carries
+// agent_state (such as Antigravity's statusLine).
+func (r *Registry) ApplyStatus(id string, s hooks.Status) (Change, bool) {
+	if s.AgentState == "" {
+		return Change{}, false
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	t, ok := r.items[id]
+	if !ok {
+		return Change{}, false
+	}
+	if s.Provider != "" {
+		t.Provider = s.Provider
+	}
+	prev := t.State
+	var next State
+	switch strings.ToLower(s.AgentState) {
+	case "running", "working", "busy", "executing", "streaming":
+		next = Running
+	case "waiting", "asking", "confirming", "permission", "input":
+		next = Waiting
+	case "idle", "ready", "done":
+		next = Idle
+	default:
+		return Change{}, false
+	}
+	if s.SessionID != "" {
+		t.SessionID = s.SessionID
+	}
+	if s.Cwd != "" {
+		t.Cwd = s.Cwd
+	}
+	if t.Title == "" && s.Title != "" {
+		t.Title = titleFrom(s.Title)
+	}
+	if next == Waiting && s.Ask != "" {
+		t.Ask = firstLine(s.Ask, AskLimit)
+	} else if next != Waiting {
+		t.Ask = ""
+	}
+	if next == prev {
+		return Change{Terminal: *t, Prev: prev}, false
+	}
+	t.State = next
+	t.Since = r.now()
+	if prev == Running && (next == Waiting || next == Idle) {
+		t.Order = r.edge(-1)
+	}
+	return Change{
+		Terminal:  *t,
+		Prev:      prev,
+		Attention: prev == Running && (next == Waiting || next == Idle),
+	}, true
+}
+
 func (r *Registry) List() []Terminal {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -361,6 +461,25 @@ func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
 	}
 	if ev.SessionID != "" {
 		t.SessionID = ev.SessionID
+	}
+	if ev.Provider != "" {
+		t.Provider = ev.Provider
+	}
+	if ev.Context != nil {
+		if t.Context == nil {
+			cp := *ev.Context
+			t.Context = &cp
+		} else {
+			if ev.Context.ContextPct != nil {
+				t.Context.ContextPct = ev.Context.ContextPct
+			}
+			if ev.Context.Model != "" {
+				t.Context.Model = ev.Context.Model
+			}
+			if ev.Context.CostUSD != nil {
+				t.Context.CostUSD = ev.Context.CostUSD
+			}
+		}
 	}
 	if prev == Running && (t.State == Waiting || t.State == Idle) {
 		t.Order = r.edge(-1)

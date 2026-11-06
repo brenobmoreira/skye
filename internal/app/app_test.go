@@ -521,13 +521,22 @@ func TestSavedPlacesOpenClaudeInTheirFolder(t *testing.T) {
 	if got := h.app.Places(); len(got) != 1 || got[0].Name != "LivIA" {
 		t.Fatalf("places = %+v", got)
 	}
-	term, err := h.app.OpenPlace("LivIA")
-	if err != nil {
-		t.Fatal(err)
+	for _, cmd := range []string{"", "claude", "agy", "codex"} {
+		term, err := h.app.OpenPlace("LivIA", cmd)
+		if err != nil {
+			t.Fatalf("%q: %v", cmd, err)
+		}
+		want := cmd
+		if want == "" {
+			want = "claude"
+		}
+		spec, _ := launch.Read(h.paths.LaunchDir, term.ID)
+		if spec.Cwd != filepath.Join(dir, "projects", "livia") || spec.Command != want || term.Name != "shell" || term.Preset != "" {
+			t.Fatalf("%q: term = %+v spec = %+v", cmd, term, spec)
+		}
 	}
-	spec, _ := launch.Read(h.paths.LaunchDir, term.ID)
-	if spec.Cwd != filepath.Join(dir, "projects", "livia") || spec.Command != "claude" || term.Name != "shell" || term.Preset != "" {
-		t.Fatalf("term = %+v spec = %+v", term, spec)
+	if _, err := h.app.OpenPlace("LivIA", "rm -rf /"); err == nil {
+		t.Fatal("accepted unknown command")
 	}
 	if err := h.app.RemovePlace("LivIA"); err != nil || len(h.app.Places()) != 0 {
 		t.Fatalf("remove: %v %+v", err, h.app.Places())
@@ -541,7 +550,7 @@ func TestSavedPlacesOpenClaudeInTheirFolder(t *testing.T) {
 	if count != 2 {
 		t.Fatalf("places events = %d", count)
 	}
-	if _, err := h.app.OpenPlace("LivIA"); err == nil {
+	if _, err := h.app.OpenPlace("LivIA", "claude"); err == nil {
 		t.Fatal("opened a removed place")
 	}
 }

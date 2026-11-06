@@ -1,10 +1,11 @@
 import { useEffect, useState, type MouseEvent } from 'react';
 import { api, connection, isWindow, mode, runtime } from '../bridge';
 import { windowControls } from '../windowControls';
-import type { Place, Preset, Repo } from '../lib/types';
+import type { Place, PlaceCommand, Preset, Repo } from '../lib/types';
 import { NewMenu } from './NewMenu';
 import { Logo } from './DogIcon';
 import { SettingsMenu } from './SettingsMenu';
+import { ConfirmDialog } from './ConfirmDialog';
 import type { TerminalFont } from '../lib/fonts';
 
 const controls = windowControls(mode, api, runtime, () => connection().kind === 'ready');
@@ -14,7 +15,7 @@ export function TitleBar(props: {
   repos: Repo[];
   places: Place[];
   onNewWorktree: (repo: string, branch: string) => Promise<void>;
-  onOpenPlace: (name: string) => void;
+  onOpenPlace: (name: string, command: PlaceCommand) => void;
   onAddPlace: (name: string, path: string) => Promise<void>;
   onRemovePlace: (name: string) => Promise<void>;
   sound: boolean;
@@ -33,6 +34,7 @@ export function TitleBar(props: {
   onToggleFiles: () => void;
 }) {
   const [maximised, setMaximised] = useState(false);
+  const [quitting, setQuitting] = useState(false);
   const windowed = isWindow();
 
   useEffect(() => {
@@ -48,7 +50,7 @@ export function TitleBar(props: {
   );
 
   const onDoubleClick = (e: MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button, .menu')) return;
+    if ((e.target as HTMLElement).closest('button, .menu, .dialog-backdrop')) return;
     controls.toggleMaximise();
   };
 
@@ -79,13 +81,22 @@ export function TitleBar(props: {
         onRemoveFont={props.onRemoveFont}
       />
       {!windowed && sound}
-      <button className="flat quit" onClick={() => { controls.quitAll().catch(() => {}); }} title="sair e encerrar todos os terminais">sair</button>
+      <button className="flat quit" onClick={() => setQuitting(true)} title="sair e encerrar todos os terminais">sair</button>
       {windowed && (
         <div className="window-controls">
           <button onClick={controls.minimise} title="minimizar">—</button>
           <button onClick={controls.toggleMaximise} title={maximised ? 'restaurar' : 'maximizar'}>{maximised ? '❐' : '☐'}</button>
           <button className="close" onClick={controls.close} title={mode === 'windows-app' ? 'fechar a janela (os terminais continuam)' : 'esconder (os terminais continuam)'}>✕</button>
         </div>
+      )}
+      {quitting && (
+        <ConfirmDialog
+          title="Sair da skye?"
+          message="Tem certeza que deseja sair? Todos os terminais abertos serão encerrados."
+          confirm="Sair"
+          onConfirm={() => { setQuitting(false); controls.quitAll().catch(() => {}); }}
+          onCancel={() => setQuitting(false)}
+        />
       )}
     </header>
   );

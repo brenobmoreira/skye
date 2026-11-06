@@ -311,12 +311,12 @@ func (b *Bridge) RemovePlace(name string) error {
 	return a.RemovePlace(name)
 }
 
-func (b *Bridge) OpenPlace(name string) (terminals.Terminal, error) {
+func (b *Bridge) OpenPlace(name, command string) (terminals.Terminal, error) {
 	a, err := b.ready()
 	if err != nil {
 		return terminals.Terminal{}, err
 	}
-	return a.OpenPlace(name)
+	return a.OpenPlace(name, command)
 }
 
 func (b *Bridge) Repos() []config.Repo {

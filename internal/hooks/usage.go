@@ -29,37 +29,109 @@ type Session struct {
 
 // Status is one status line report: the account usage, when it came, and the session.
 type Status struct {
-	Usage    Usage
-	HasUsage bool
-	Session  Session
+	Provider   string
+	Usage      Usage
+	HasUsage   bool
+	Session    Session
+	AgentState string
+	SessionID  string
+	Cwd        string
+	Title      string
+	Ask        string
 }
 
 type statusPayload struct {
-	Model struct {
+	ConversationID    string `json:"conversation_id"`
+	SessionID         string `json:"session_id"`
+	Cwd               string `json:"cwd"`
+	AgentState        string `json:"agent_state"`
+	Ask               string `json:"ask"`
+	InitialPrompt     string `json:"initial_prompt"`
+	ConversationTitle string `json:"conversation_title"`
+	Model             struct {
 		DisplayName string `json:"display_name"`
 	} `json:"model"`
 	ContextWindow struct {
-		UsedPercentage *float64 `json:"used_percentage"`
+		UsedPercentage      *float64 `json:"used_percentage"`
+		RemainingPercentage *float64 `json:"remaining_percentage"`
 	} `json:"context_window"`
 	Cost struct {
 		TotalCostUSD *float64 `json:"total_cost_usd"`
+		TotalUSD     *float64 `json:"total_usd"`
 	} `json:"cost"`
 	RateLimits struct {
-		FiveHour *rawWindow `json:"five_hour"`
-		SevenDay *rawWindow `json:"seven_day"`
+		FiveHour  *rawWindow `json:"five_hour"`
+		SevenDay  *rawWindow `json:"seven_day"`
+		Primary   *rawWindow `json:"primary"`
+		Secondary *rawWindow `json:"secondary"`
 	} `json:"rate_limits"`
+	Quota map[string]rawQuotaBucket `json:"quota"`
 }
 
 type rawWindow struct {
 	UsedPercentage *float64 `json:"used_percentage"`
+	UsedPercent    *float64 `json:"used_percent"`
 	ResetsAt       float64  `json:"resets_at"`
 }
 
 func (w *rawWindow) window() *Window {
-	if w == nil || w.UsedPercentage == nil {
+	if w == nil {
 		return nil
 	}
-	return &Window{UsedPct: *w.UsedPercentage, ResetsAt: int64(w.ResetsAt)}
+	pct := w.UsedPercentage
+	if pct == nil {
+		pct = w.UsedPercent
+	}
+	if pct == nil {
+		return nil
+	}
+	return &Window{UsedPct: *pct, ResetsAt: int64(w.ResetsAt)}
+}
+
+type rawQuotaBucket struct {
+	UsedPercentage     *float64 `json:"used_percentage"`
+	RemainingFraction  *float64 `json:"remaining_fraction"`
+	ResetsAt           float64  `json:"resets_at"`
+	ResetTime          string   `json:"reset_time"`
+	ResetInSeconds     *float64 `json:"reset_in_seconds"`
+	Window             string   `json:"window"`
+	RefreshWindowLabel string   `json:"refresh_window_label"`
+	Disabled           bool     `json:"disabled"`
+}
+
+func (b rawQuotaBucket) window(now time.Time) (*Window, bool) {
+	if b.Disabled {
+		return nil, false
+	}
+	var used float64
+	switch {
+	case b.UsedPercentage != nil:
+		used = *b.UsedPercentage
+	case b.RemainingFraction != nil:
+		used = (1.0 - *b.RemainingFraction) * 100
+	default:
+		return nil, false
+	}
+	var resets int64
+	switch {
+	case b.ResetsAt > 0:
+		resets = int64(b.ResetsAt)
+	case b.ResetTime != "":
+		if t, err := time.Parse(time.RFC3339, b.ResetTime); err == nil {
+			resets = t.Unix()
+		}
+	case b.ResetInSeconds != nil && *b.ResetInSeconds > 0:
+		resets = now.Unix() + int64(*b.ResetInSeconds)
+	}
+	return &Window{UsedPct: used, ResetsAt: resets}, true
+}
+
+func isWeeklyBucket(key string, b rawQuotaBucket) bool {
+	label := strings.ToLower(key + " " + b.Window + " " + b.RefreshWindowLabel)
+	if strings.Contains(label, "7d") || strings.Contains(label, "seven") || strings.Contains(label, "week") {
+		return true
+	}
+	return b.ResetInSeconds != nil && *b.ResetInSeconds > 86400
 }
 
 func ParseUsage(body []byte) (Usage, bool) {
@@ -72,11 +144,67 @@ func ParseStatus(body []byte) (Status, bool) {
 	if err := json.Unmarshal(body, &p); err != nil {
 		return Status{}, false
 	}
-	u := Usage{FiveHour: p.RateLimits.FiveHour.window(), SevenDay: p.RateLimits.SevenDay.window()}
+	fh := p.RateLimits.FiveHour.window()
+	if fh == nil {
+		fh = p.RateLimits.Primary.window()
+	}
+	sd := p.RateLimits.SevenDay.window()
+	if sd == nil {
+		sd = p.RateLimits.Secondary.window()
+	}
+	now := time.Now()
+	for k, b := range p.Quota {
+		w, ok := b.window(now)
+		if !ok {
+			continue
+		}
+		if isWeeklyBucket(k, b) {
+			if sd == nil || w.UsedPct > sd.UsedPct {
+				sd = w
+			}
+		} else {
+			if fh == nil || w.UsedPct > fh.UsedPct {
+				fh = w
+			}
+		}
+	}
+	u := Usage{FiveHour: fh, SevenDay: sd}
+	ctxPct := p.ContextWindow.UsedPercentage
+	if ctxPct == nil && p.ContextWindow.RemainingPercentage != nil {
+		v := 100.0 - *p.ContextWindow.RemainingPercentage
+		ctxPct = &v
+	}
+	cost := p.Cost.TotalCostUSD
+	if cost == nil {
+		cost = p.Cost.TotalUSD
+	}
+	var provider string
+	switch {
+	case len(p.Quota) > 0 || p.AgentState != "" || p.ConversationID != "":
+		provider = "agy"
+	case p.RateLimits.Primary != nil || p.RateLimits.Secondary != nil:
+		provider = "codex"
+	case p.RateLimits.FiveHour != nil || p.RateLimits.SevenDay != nil || p.Cost.TotalCostUSD != nil:
+		provider = "claude"
+	}
+	sessionID := p.ConversationID
+	if sessionID == "" {
+		sessionID = p.SessionID
+	}
+	title := p.ConversationTitle
+	if title == "" {
+		title = p.InitialPrompt
+	}
 	return Status{
-		Usage:    u,
-		HasUsage: u.FiveHour != nil || u.SevenDay != nil,
-		Session:  Session{ContextPct: p.ContextWindow.UsedPercentage, Model: p.Model.DisplayName, CostUSD: p.Cost.TotalCostUSD},
+		Provider:   provider,
+		Usage:      u,
+		HasUsage:   u.FiveHour != nil || u.SevenDay != nil,
+		Session:    Session{ContextPct: ctxPct, Model: p.Model.DisplayName, CostUSD: cost},
+		AgentState: p.AgentState,
+		SessionID:  sessionID,
+		Cwd:        p.Cwd,
+		Title:      title,
+		Ask:        p.Ask,
 	}, true
 }
 

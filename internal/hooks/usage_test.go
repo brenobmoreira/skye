@@ -60,3 +60,20 @@ func TestParseStatusWithoutUsageOrSession(t *testing.T) {
 		t.Fatal("bad json parsed")
 	}
 }
+
+func TestParseStatusReadsAgyQuotaAndCodexLimits(t *testing.T) {
+	agyBody := []byte(`{"conversation_id":"c1","agent_state":"running","model":{"display_name":"Gemini 2.5 Pro"},"context_window":{"remaining_percentage":80},"cost":{"total_usd":0.25},"quota":{"gemini-5h":{"remaining_fraction":0.75,"reset_time":"2026-11-05T18:00:00Z"},"gemini-weekly":{"remaining_fraction":0.5,"reset_time":"2026-11-10T00:00:00Z"}}}`)
+	s, ok := ParseStatus(agyBody)
+	if !ok || s.Provider != "agy" || !s.HasUsage || s.Usage.FiveHour == nil || s.Usage.FiveHour.UsedPct != 25 || s.Usage.SevenDay == nil || s.Usage.SevenDay.UsedPct != 50 {
+		t.Fatalf("agy status = %+v ok=%v", s, ok)
+	}
+	if s.Session.ContextPct == nil || *s.Session.ContextPct != 20 || s.Session.CostUSD == nil || *s.Session.CostUSD != 0.25 || s.AgentState != "running" {
+		t.Fatalf("agy session = %+v", s.Session)
+	}
+
+	codexBody := []byte(`{"rate_limits":{"primary":{"used_percent":33,"resets_at":1790000000},"secondary":{"used_percent":12,"resets_at":1790500000}}}`)
+	cs, ok := ParseStatus(codexBody)
+	if !ok || cs.Provider != "codex" || !cs.HasUsage || cs.Usage.FiveHour == nil || cs.Usage.FiveHour.UsedPct != 33 || cs.Usage.SevenDay == nil || cs.Usage.SevenDay.UsedPct != 12 {
+		t.Fatalf("codex status = %+v ok=%v", cs, ok)
+	}
+}

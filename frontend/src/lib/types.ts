@@ -11,6 +11,8 @@ export interface Terminal {
   ask?: string;
   activity?: string;
   context?: SessionContext;
+  usage?: Usage;
+  provider?: string;
   createdAt: string;
   since?: string;
   order: number;
@@ -40,6 +42,8 @@ export interface Usage {
   sevenDay: UsageWindow | null;
   updatedAt: string;
 }
+
+export type PlaceCommand = 'claude' | 'agy' | 'codex';
 
 export interface Place {
   name: string;

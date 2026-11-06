@@ -100,3 +100,121 @@ func upsert(v any) ([]any, error) {
 	}
 	return append(groups, map[string]any{"hooks": []any{cmd}}), nil
 }
+
+func AgyCommand(event string) string {
+	return `([ -n "$SKYE_TERMINAL_ID" ] && curl -s -m 2 --unix-socket "$SKYE_SOCKET" -X POST "` + marker +
+		`?t=$SKYE_TERMINAL_ID&e=` + event + `" -H 'Content-Type: application/json' -d @- >/dev/null 2>&1 || true); printf '{}\n'`
+}
+
+func InstallAgyHooks(path string) (string, error) {
+	root, data, existed, err := readJSONMap(path)
+	if err != nil {
+		return "", err
+	}
+	handler := func(ev string) map[string]any {
+		return map[string]any{"type": "command", "command": AgyCommand(ev), "timeout": 5}
+	}
+	root["skye"] = map[string]any{
+		"enabled":       true,
+		"SessionStart":  []any{handler("SessionStart")},
+		"PreInvocation": []any{handler("PreInvocation")},
+		"PostToolUse":   []any{map[string]any{"matcher": "*", "hooks": []any{handler("PostToolUse")}}},
+		"Stop":          []any{handler("Stop")},
+	}
+	return writeJSONMap(path, root, data, existed)
+}
+
+func InstallAgySettings(path string) (string, error) {
+	settings, data, existed, err := readJSONMap(path)
+	if err != nil {
+		return "", err
+	}
+	sl, _ := wrapStatusLine(settings["statusLine"]).(map[string]any)
+	if sl != nil {
+		sl["enabled"] = true
+		sl["stack_with_default"] = true
+		settings["statusLine"] = sl
+	}
+	return writeJSONMap(path, settings, data, existed)
+}
+
+var CodexEvents = []string{"SessionStart", "UserPromptSubmit", "PostToolUse", "Stop"}
+
+func InstallCodexHooks(path string) (string, error) {
+	root, data, existed, err := readJSONMap(path)
+	if err != nil {
+		return "", err
+	}
+	hooksMap := root
+	if raw, ok := root["hooks"].(map[string]any); ok {
+		hooksMap = raw
+	}
+	for _, ev := range CodexEvents {
+		groups, err := upsert(hooksMap[ev])
+		if err != nil {
+			return "", fmt.Errorf("%s: %s: %w", path, ev, err)
+		}
+		hooksMap[ev] = groups
+	}
+	return writeJSONMap(path, root, data, existed)
+}
+
+func InstallCodexConfig(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	text := string(data)
+	if strings.Contains(text, "hooks = true") || strings.Contains(text, "hooks=true") {
+		return nil
+	}
+	if strings.Contains(text, "[features]") {
+		text = strings.Replace(text, "[features]", "[features]\nhooks = true", 1)
+	} else {
+		if text != "" && !strings.HasSuffix(text, "\n") {
+			text += "\n"
+		}
+		text += "\n[features]\nhooks = true\n"
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(strings.TrimLeft(text, "\n")), 0o600)
+}
+
+func readJSONMap(path string) (map[string]any, []byte, bool, error) {
+	m := map[string]any{}
+	data, err := os.ReadFile(path)
+	existed := err == nil
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return nil, nil, false, err
+	}
+	if existed && len(bytes.TrimSpace(data)) > 0 {
+		if err := json.Unmarshal(data, &m); err != nil {
+			return nil, nil, false, fmt.Errorf("%s não é JSON válido: %w", path, err)
+		}
+	}
+	return m, data, existed, nil
+}
+
+func writeJSONMap(path string, m map[string]any, oldData []byte, existed bool) (string, error) {
+	out, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	backup := ""
+	if existed {
+		backup = path + ".bak"
+		if err := os.WriteFile(backup, oldData, 0o600); err != nil {
+			return "", err
+		}
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return "", err
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, append(out, '\n'), 0o600); err != nil {
+		return "", err
+	}
+	return backup, os.Rename(tmp, path)
+}
