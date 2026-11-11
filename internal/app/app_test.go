@@ -107,6 +107,7 @@ func newHarness(t *testing.T, cfg config.Config) *harness {
 		Home:     "/home/demo",
 		NewID:    func() string { ids++; return fmt.Sprintf("t%d", ids) },
 		Now:      func() time.Time { return time.Date(2026, 9, 23, 12, 0, 0, 0, time.UTC) },
+		Pause:    func(d time.Duration) { h.tmux.sends = append(h.tmux.sends, "pause "+d.String()) },
 	})
 	return h
 }
@@ -566,7 +567,7 @@ func TestAnswerTypesTextThenEnter(t *testing.T) {
 	if err := h.app.Answer(term.ID, 1, "sim"); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(h.tmux.sends, []string{"sim", "\r"}) {
+	if !reflect.DeepEqual(h.tmux.sends, []string{"sim", "pause 150ms", "\r"}) {
 		t.Fatalf("sends = %q", h.tmux.sends)
 	}
 	if got, _ := h.app.reg.Get(term.ID); got.Answered != "sim" {
