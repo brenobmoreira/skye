@@ -173,6 +173,12 @@ export function App() {
       .catch(() => {});
   };
 
+  // The window showed its built-in copy while the server was down; now that it answers, load the
+  // interface the server serves.
+  useEffect(() => {
+    if (link.kind === 'ready' && document.documentElement.dataset.fallback) window.location.reload();
+  }, [link.kind]);
+
   useEffect(() => {
     let previous = connection().kind;
     const off = onConnection((state) => {
