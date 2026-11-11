@@ -5,7 +5,9 @@ import { TitleBar } from './components/TitleBar';
 import { Sidebar } from './components/Sidebar';
 import { TerminalView } from './components/TerminalView';
 import { Monitor } from './components/Monitor';
-import type { Conversation, Place, PlaceCommand, Preset, Repo, State, Terminal, Usage } from './lib/types';
+import { FocusPanel } from './components/FocusPanel';
+import { pillLabel } from './lib/pomodoro';
+import type { Conversation, Notes, Place, PlaceCommand, PomodoroSettings, PomodoroState, Preset, Repo, State, Terminal, Usage } from './lib/types';
 import { nextUnread, withMarks } from './lib/unread';
 import { shortcut } from './lib/shortcuts';
 import { active, closeSplit, prune, select, selectSide, slotOf, visible, type Panes } from './lib/panes';
@@ -19,6 +21,15 @@ const FilesPanel = lazy(() => import('./components/FilesPanel').then((m) => ({ d
 const FONT_KEY = 'skye:fontSize';
 const FAMILY_KEY = 'skye:font';
 const CUSTOM_FONTS_KEY = 'skye:customFonts';
+const FOCUS_KEY = 'skye:focusOpen';
+
+function storedFocusOpen(): boolean {
+  try {
+    return localStorage.getItem(FOCUS_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 
 function storedFontSize(): number {
   try {
@@ -59,10 +70,13 @@ function storedFont(): TerminalFont {
 
 const windowFocused = () => document.visibilityState === 'visible' && document.hasFocus();
 
-// Two terminals side by side need room for both next to the sidebar; narrower, only the focused
-// one shows.
+// Two terminals side by side need room for both next to the sidebar, and next to the focus panel
+// when it is open; narrower, only the focused one shows.
 const SPLIT_QUERY = '(min-width: 1100px)';
-const splitRoom = () => typeof window.matchMedia === 'function' && window.matchMedia(SPLIT_QUERY).matches;
+const SPLIT_QUERY_WITH_FOCUS = '(min-width: 1360px)';
+const splitQuery = (focus: boolean) => (focus ? SPLIT_QUERY_WITH_FOCUS : SPLIT_QUERY);
+const splitRoom = (focus: boolean) => typeof window.matchMedia === 'function' && window.matchMedia(splitQuery(focus)).matches;
+const NO_NOTES: Notes = { items: [], done: [] };
 
 const byCreation = (a: Terminal, b: Terminal) =>
   Date.parse(a.createdAt) - Date.parse(b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
@@ -74,7 +88,8 @@ export function App() {
   const [repos, setRepos] = useState<Repo[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
   const [panes, setPanes] = useState<Panes>({ left: null, right: null, focus: 'left' });
-  const [room, setRoom] = useState(splitRoom);
+  const [focusOpen, setFocusOpen] = useState(storedFocusOpen);
+  const [room, setRoom] = useState(() => splitRoom(storedFocusOpen()));
   const activeId = active(panes);
   const [sound, setSound] = useState(true);
   const [problems, setProblems] = useState<string[]>([]);
@@ -85,6 +100,11 @@ export function App() {
   const [link, setLink] = useState(connection);
   const [focused, setFocused] = useState(windowFocused);
   const [usage, setUsage] = useState<Usage | null>(null);
+  const [notes, setNotes] = useState<Notes>(NO_NOTES);
+  // The timer as the Go side last sent it, and when it arrived: the time left is counted from there.
+  const [pomodoro, setPomodoroState] = useState<{ state: PomodoroState; at: number } | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const receivePomodoro = (state: PomodoroState) => { setPomodoroState({ state, at: Date.now() }); setNow(Date.now()); };
   const [unread, setUnread] = useState<Set<string>>(() => new Set());
   // Marked unread from the right-click menu; only picking the terminal clears these.
   const [marked, setMarked] = useState<Set<string>>(() => new Set());
@@ -126,6 +146,8 @@ export function App() {
     api().Sound().then(setSound).catch(() => {});
     api().Problems().then(setProblems).catch(() => {});
     api().Usage().then(setUsage).catch(() => {});
+    api().Notes().then(setNotes).catch(() => {});
+    api().Pomodoro().then(receivePomodoro).catch(() => {});
   };
 
   useEffect(() => {
@@ -191,6 +213,8 @@ export function App() {
       on('problems', (list: string[]) => setProblems(list)),
       on('usage', (u: Usage) => setUsage(u)),
       on('places', (list: Place[]) => setPlaces(list)),
+      on('notes', (n: Notes) => setNotes(n)),
+      on('pomodoro', (st: PomodoroState) => receivePomodoro(st)),
       on('reconnected', () => {
         load();
         report();
@@ -218,11 +242,21 @@ export function App() {
 
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return;
-    const query = window.matchMedia(SPLIT_QUERY);
+    const query = window.matchMedia(splitQuery(focusOpen));
     const change = () => setRoom(query.matches);
+    change();
     query.addEventListener('change', change);
     return () => query.removeEventListener('change', change);
-  }, []);
+  }, [focusOpen]);
+
+  // The countdown ticks every second while a phase runs; otherwise a slower tick is enough to move
+  // notes into Atrasadas when their time comes.
+  const ticking = pomodoro !== null && pomodoro.state.phase !== 'idle' && !pomodoro.state.paused;
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), ticking ? 1000 : 30_000);
+    return () => window.clearInterval(id);
+  }, [ticking]);
+  const remainingMs = pomodoro === null ? 0 : ticking ? Math.max(0, pomodoro.state.remainingMs - (now - pomodoro.at)) : pomodoro.state.remainingMs;
 
   useEffect(() => {
     const prev = lastStates.current;
@@ -252,6 +286,14 @@ export function App() {
     setTerminals(list);
     api().Reorder(list.map((t) => t.id)).catch(() => {});
   };
+  const toggleFocus = () =>
+    setFocusOpen((open) => {
+      try {
+        localStorage.setItem(FOCUS_KEY, open ? '0' : '1');
+      } catch {}
+      return !open;
+    });
+  const savePomodoro = (s: PomodoroSettings) => api().SetPomodoroSettings(s);
   const toggleSound = () => { api().SetSound(!sound); setSound(!sound); };
   const pickFont = (next: TerminalFont) => {
     setFont(next);
@@ -279,8 +321,8 @@ export function App() {
   return (
     <div className={isWindow() ? 'app windowed' : 'app'}>
       {link.kind !== 'ready' && <ConnectionScreen state={link} />}
-      <TitleBar presets={presets} repos={repos} places={places} onOpenPlace={openPlace} onAddPlace={addPlace} onRemovePlace={removePlace} onNewWorktree={newWorktree} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} customFonts={customFonts} onPickFont={pickFont} onAddFont={addFont} onRemoveFont={removeFont} monitor={monitor} onToggleMonitor={() => toggle('monitor')} files={view === 'files'} canFiles={activeId !== null} onToggleFiles={() => toggle('files')} />
-      <div className="body">
+      <TitleBar presets={presets} repos={repos} places={places} onOpenPlace={openPlace} onAddPlace={addPlace} onRemovePlace={removePlace} onNewWorktree={newWorktree} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} customFonts={customFonts} onPickFont={pickFont} onAddFont={addFont} onRemoveFont={removeFont} monitor={monitor} onToggleMonitor={() => toggle('monitor')} files={view === 'files'} canFiles={activeId !== null} onToggleFiles={() => toggle('files')} focus={focusOpen} onToggleFocus={toggleFocus} pill={pomodoro ? pillLabel(pomodoro.state, remainingMs) : ''} pomodoro={pomodoro?.state.settings ?? null} onSavePomodoro={savePomodoro} />
+      <div className={focusOpen ? 'body with-focus' : 'body'}>
         <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={shownUnread} shown={visible(panes, room)} onSelect={pickFromList} onReorder={reorder} onResume={resume} onMark={mark} usage={usage} />
         <main className="main island">
           {monitor && <Monitor terminals={terminals} onOpen={show} />}
@@ -306,6 +348,7 @@ export function App() {
             ))}
           </div>
         </main>
+        {focusOpen && <FocusPanel notes={notes} pomodoro={pomodoro?.state ?? null} remainingMs={remainingMs} now={new Date(now)} />}
       </div>
     </div>
   );

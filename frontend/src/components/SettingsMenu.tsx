@@ -1,11 +1,13 @@
 import { useState, type KeyboardEvent } from 'react';
 import { FONTS, type TerminalFont } from '../lib/fonts';
+import type { PomodoroSettings } from '../lib/types';
 
-type Section = 'shortcuts' | 'font' | 'settings';
+type Section = 'shortcuts' | 'font' | 'focus' | 'settings';
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: 'shortcuts', label: 'Atalhos' },
   { id: 'font', label: 'Fonte' },
+  { id: 'focus', label: 'Foco' },
   { id: 'settings', label: 'Configurações' },
 ];
 
@@ -29,12 +31,16 @@ export function SettingsMenu(props: {
   onPickFont: (font: TerminalFont) => void;
   onAddFont: (name: string) => void;
   onRemoveFont: (font: TerminalFont) => void;
+  pomodoro: PomodoroSettings | null;
+  onSavePomodoro: (s: PomodoroSettings) => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
   const [section, setSection] = useState<Section | null>(null);
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
   const [armed, setArmed] = useState<string | null>(null);
+  const [times, setTimes] = useState<PomodoroSettings | null>(null);
+  const [timesError, setTimesError] = useState('');
 
   const close = () => {
     setOpen(false);
@@ -42,7 +48,27 @@ export function SettingsMenu(props: {
     setAdding(false);
     setName('');
     setArmed(null);
+    setTimes(null);
+    setTimesError('');
   };
+
+  const openSection = (next: Section) => {
+    setSection(section === next ? null : next);
+    if (next === 'focus') { setTimes(props.pomodoro); setTimesError(''); }
+  };
+
+  const saveTimes = () => {
+    if (!times) return;
+    props.onSavePomodoro(times).then(close).catch((e) => setTimesError(e instanceof Error ? e.message : String(e)));
+  };
+
+  const timeField = (key: keyof PomodoroSettings, label: string, unit: string) => times && (
+    <label className="time-field">
+      <span>{label}</span>
+      <input type="number" min={1} value={times[key]} onChange={(e) => setTimes({ ...times, [key]: Number(e.target.value) })} onKeyDown={(e) => { if (e.key === 'Enter') saveTimes(); }} />
+      <small>{unit}</small>
+    </label>
+  );
 
   const saveFont = () => {
     if (!name.trim()) return;
@@ -75,9 +101,9 @@ export function SettingsMenu(props: {
     <div className="menu">
       <button className="flat" onClick={() => (open ? close() : setOpen(true))} title="configurações">⚙</button>
       {open && (
-        <div className="menu-list right settings-menu" onMouseLeave={() => { if (!adding) close(); }}>
+        <div className="menu-list right settings-menu" onMouseLeave={() => { if (!adding && section !== 'focus') close(); }}>
           {SECTIONS.map((s) => (
-            <button key={s.id} className={section === s.id ? 'section on' : 'section'} onClick={() => setSection(section === s.id ? null : s.id)}>
+            <button key={s.id} className={section === s.id ? 'section on' : 'section'} onClick={() => openSection(s.id)}>
               {s.label}<span>›</span>
             </button>
           ))}
@@ -118,6 +144,28 @@ export function SettingsMenu(props: {
                 </div>
               ) : (
                 <button className="add" onClick={() => setAdding(true)}>+ Adicionar</button>
+              )}
+            </div>
+          )}
+          {section === 'focus' && (
+            <div className="menu-list settings-panel">
+              <h4>pomodoro</h4>
+              {times ? (
+                <div className="form">
+                  {timeField('focus', 'foco', 'min')}
+                  {timeField('break', 'pausa', 'min')}
+                  {timeField('long', 'pausa longa', 'min')}
+                  {timeField('every', 'pausa longa a cada', 'focos')}
+                  {timesError && <div className="error">{timesError}</div>}
+                  <div className="actions">
+                    <button onClick={saveTimes}>salvar</button>
+                    <button onClick={() => setTimes({ focus: 25, break: 5, long: 15, every: 4 })} title="25 / 5 / 15 / 4">padrão</button>
+                    <button onClick={close}>fechar</button>
+                  </div>
+                  <small>vale a partir da próxima fase</small>
+                </div>
+              ) : (
+                <small className="empty">o timer ainda não respondeu</small>
               )}
             </div>
           )}

@@ -1,7 +1,7 @@
 import { useEffect, useState, type MouseEvent } from 'react';
 import { api, connection, isWindow, mode, runtime } from '../bridge';
 import { windowControls } from '../windowControls';
-import type { Place, PlaceCommand, Preset, Repo } from '../lib/types';
+import type { Place, PlaceCommand, PomodoroSettings, Preset, Repo } from '../lib/types';
 import { NewMenu } from './NewMenu';
 import { Logo } from './DogIcon';
 import { SettingsMenu } from './SettingsMenu';
@@ -32,6 +32,12 @@ export function TitleBar(props: {
   files: boolean;
   canFiles: boolean;
   onToggleFiles: () => void;
+  focus: boolean;
+  onToggleFocus: () => void;
+  // The phase and time left, shown while the focus panel is closed; empty when the timer is idle.
+  pill: string;
+  pomodoro: PomodoroSettings | null;
+  onSavePomodoro: (s: PomodoroSettings) => Promise<void>;
 }) {
   const [maximised, setMaximised] = useState(false);
   const [quitting, setQuitting] = useState(false);
@@ -71,6 +77,10 @@ export function TitleBar(props: {
       />
       {windowed && sound}
       <span className="spacer" />
+      {props.pill && !props.focus && (
+        <button className="pill" onClick={props.onToggleFocus} title="abrir o painel de foco">{props.pill}</button>
+      )}
+      <button className={props.focus ? 'flat on' : 'flat'} disabled={!props.ready} onClick={props.onToggleFocus} title="foco: pomodoro e anotações">foco</button>
       <button className={props.files ? 'flat on' : 'flat'} disabled={!props.ready || (!props.canFiles && !props.files)} onClick={props.onToggleFiles} title="arquivos do terminal: o que mudou, leitura e edição">arquivos</button>
       <button className={props.monitor ? 'flat on' : 'flat'} disabled={!props.ready} onClick={props.onToggleMonitor} title="monitor: memória e processos">monitor</button>
       <SettingsMenu
@@ -79,6 +89,8 @@ export function TitleBar(props: {
         onPickFont={props.onPickFont}
         onAddFont={props.onAddFont}
         onRemoveFont={props.onRemoveFont}
+        pomodoro={props.pomodoro}
+        onSavePomodoro={props.onSavePomodoro}
       />
       {!windowed && sound}
       <button className="flat quit" onClick={() => setQuitting(true)} title="sair e encerrar todos os terminais">sair</button>
