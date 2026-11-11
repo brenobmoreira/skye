@@ -92,7 +92,7 @@ export function groupNotes(notes: Notes, now: Date, historyDays = 30): Groups {
 }
 
 const WEEKDAYS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
-const SHORT = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export function repeatLabel(r: Repeat): string {
   switch (r.kind) {
@@ -113,9 +113,9 @@ export function dueLabel(item: NoteItem, now: Date): string {
   if (!item.date) return '';
   const today = dayOf(now);
   const time = item.time ? ` ${item.time}` : '';
-  if (item.date === today) return `hoje${time}`;
-  if (item.date === shiftDay(today, 1)) return `amanhã${time}`;
-  if (item.date === shiftDay(today, -1)) return `ontem${time}`;
+  if (item.date === today) return `Hoje${time}`;
+  if (item.date === shiftDay(today, 1)) return `Amanhã${time}`;
+  if (item.date === shiftDay(today, -1)) return `Ontem${time}`;
   const [y, m, d] = item.date.split('-').map(Number);
   if (item.date > today && item.date <= shiftDay(today, 6)) return `${SHORT[new Date(y, m - 1, d).getDay()]}${time}`;
   return `${pad(d)}/${pad(m)}${time}`;

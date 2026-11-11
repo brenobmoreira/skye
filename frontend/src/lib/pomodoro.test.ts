@@ -16,11 +16,11 @@ describe('clock', () => {
 
 describe('phaseLabel', () => {
   it('names the phase and where in the cycle', () => {
-    expect(phaseLabel(state({ phase: 'focus', count: 1 }))).toBe('foco · 2 de 4');
-    expect(phaseLabel(state({ phase: 'focus', count: 4 }))).toBe('foco · 1 de 4');
-    expect(phaseLabel(state({ phase: 'break' }))).toBe('pausa');
-    expect(phaseLabel(state({ phase: 'long' }))).toBe('pausa longa');
-    expect(phaseLabel(state({ count: 0 }))).toBe('pronto para focar');
+    expect(phaseLabel(state({ phase: 'focus', count: 1 }))).toBe('Foco · 2 de 4');
+    expect(phaseLabel(state({ phase: 'focus', count: 4 }))).toBe('Foco · 1 de 4');
+    expect(phaseLabel(state({ phase: 'break' }))).toBe('Pausa');
+    expect(phaseLabel(state({ phase: 'long' }))).toBe('Pausa longa');
+    expect(phaseLabel(state({ count: 0 }))).toBe('Pronto para focar');
     expect(phaseLabel(state({ count: 1 }))).toBe('1 foco hoje');
     expect(phaseLabel(state({ count: 5 }))).toBe('5 focos hoje');
   });
@@ -29,8 +29,8 @@ describe('phaseLabel', () => {
 describe('pillLabel', () => {
   it('is empty when idle and names the phase otherwise', () => {
     expect(pillLabel(state({}), 0)).toBe('');
-    expect(pillLabel(state({ phase: 'focus' }), 760_000)).toBe('foco 12:40');
-    expect(pillLabel(state({ phase: 'break' }), 190_000)).toBe('pausa 3:10');
-    expect(pillLabel(state({ phase: 'long' }), 899_000)).toBe('pausa longa 14:59');
+    expect(pillLabel(state({ phase: 'focus' }), 760_000)).toBe('Foco 12:40');
+    expect(pillLabel(state({ phase: 'break' }), 190_000)).toBe('Pausa 3:10');
+    expect(pillLabel(state({ phase: 'long' }), 899_000)).toBe('Pausa longa 14:59');
   });
 });

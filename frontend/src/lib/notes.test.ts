@@ -69,13 +69,13 @@ describe('repeatLabel', () => {
 
 describe('dueLabel', () => {
   it('says when, the short way', () => {
-    expect(dueLabel(item({ date: '2026-11-11', time: '14:00' }), now)).toBe('hoje 14:00');
-    expect(dueLabel(item({ date: '2026-11-11' }), now)).toBe('hoje');
-    expect(dueLabel(item({ date: '2026-11-12' }), now)).toBe('amanhã');
-    expect(dueLabel(item({ date: '2026-11-12', time: '09:00' }), now)).toBe('amanhã 09:00');
-    expect(dueLabel(item({ date: '2026-11-13' }), now)).toBe('sex');
+    expect(dueLabel(item({ date: '2026-11-11', time: '14:00' }), now)).toBe('Hoje 14:00');
+    expect(dueLabel(item({ date: '2026-11-11' }), now)).toBe('Hoje');
+    expect(dueLabel(item({ date: '2026-11-12' }), now)).toBe('Amanhã');
+    expect(dueLabel(item({ date: '2026-11-12', time: '09:00' }), now)).toBe('Amanhã 09:00');
+    expect(dueLabel(item({ date: '2026-11-13' }), now)).toBe('Sex');
     expect(dueLabel(item({ date: '2026-12-11' }), now)).toBe('11/12');
-    expect(dueLabel(item({ date: '2026-11-10' }), now)).toBe('ontem');
+    expect(dueLabel(item({ date: '2026-11-10' }), now)).toBe('Ontem');
     expect(dueLabel(item({}), now)).toBe('');
   });
 });
