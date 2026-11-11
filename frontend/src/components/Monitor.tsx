@@ -97,7 +97,7 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
             <span className="value">{size(host.availMb)}</span>
             <span className="meter"><span className={hostLevel === 'ok' ? '' : 'warn'} style={{ width: `${hostUsedPct}%` }} /></span>
             <span className="note">
-              {hostLevel !== 'ok' && <strong className="warn">⚠ memória {hostLevel} · </strong>}
+              {hostLevel !== 'ok' && <strong className="warn">⚠ Memória {hostLevel} · </strong>}
               {hostUsedPct}% usada de {size(host.totalMb)}
             </span>
           </div>
@@ -107,7 +107,7 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
           <span className="value">{size(m.memAvailMb)}</span>
           <span className="meter"><span className={level === 'ok' ? '' : 'warn'} style={{ width: `${usedPct}%` }} /></span>
           <span className="note">
-            {level !== 'ok' && <strong className="warn">⚠ memória {level} · </strong>}
+            {level !== 'ok' && <strong className="warn">⚠ Memória {level} · </strong>}
             {usedPct}% usada de {size(m.memTotalMb)}{host ? ' (teto do WSL)' : ''}
           </span>
         </div>

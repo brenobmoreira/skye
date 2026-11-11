@@ -1,4 +1,4 @@
-import type { PomodoroState } from './types';
+import type { PomodoroPhase, PomodoroState } from './types';
 
 export function clock(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -24,4 +24,13 @@ const NAMES = { focus: 'Foco', break: 'Pausa', long: 'Pausa longa' } as const;
 export function pillLabel(s: PomodoroState, remainingMs: number): string {
   if (s.phase === 'idle') return '';
   return `${NAMES[s.phase]} ${clock(remainingMs)}`;
+}
+
+// pillPhase is the phase alone, for the pill when the time left is hidden.
+export function pillPhase(s: PomodoroState): string {
+  return s.phase === 'idle' ? '' : NAMES[s.phase];
+}
+
+export function endedLabel(phase: PomodoroPhase): string {
+  return phase === 'focus' ? 'Foco acabou' : 'Pausa acabou';
 }

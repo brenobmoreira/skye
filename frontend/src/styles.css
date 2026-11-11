@@ -11,15 +11,20 @@
   --shell: #565f89;
   --term-bg: #0e0e12;
   --titlebar: #0b0b0e;
-  font-family: system-ui, sans-serif;
-  font-size: 13px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --hover: rgba(255, 255, 255, 0.05);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13.5px;
+  -webkit-font-smoothing: antialiased;
   color: var(--text);
 }
 
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
-button { font: inherit; color: var(--text); background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 3px 9px; cursor: pointer; }
+button { font: inherit; color: var(--text); background: transparent; border: 1px solid var(--line); border-radius: 7px; padding: 3px 10px; cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s var(--ease), box-shadow 0.15s; }
 button:hover { background: var(--line); }
+button:active:not(:disabled) { transform: scale(0.96); }
+button:disabled { cursor: default; }
 
 /* Scrollbars as a thin rounded thumb over no track, the same pill as the islands and bars. */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -34,20 +39,24 @@ button:hover { background: var(--line); }
 .titlebar button, .titlebar .menu, .dialog-backdrop { --wails-draggable: no-drag; }
 .titlebar .brand { font-weight: 600; margin-right: 8px; }
 .titlebar .spacer { flex: 1; }
-.app.windowed { grid-template-rows: 30px 1fr; }
+.app.windowed { grid-template-rows: 36px 1fr; }
 .titlebar.windowed { gap: 4px; padding: 0 0 0 10px; background: var(--titlebar); border-bottom: 0; user-select: none; }
 .titlebar.windowed .brand { font-size: 12px; color: var(--muted); margin-right: 6px; }
 .titlebar.windowed .flat { border: 0; border-radius: 4px; padding: 2px 8px; }
 .titlebar.windowed .flat:hover { background: rgba(255, 255, 255, 0.08); }
 .titlebar.windowed .quit { color: var(--muted); margin-right: 6px; font-size: 12px; }
-.titlebar.windowed .menu-list { top: 26px; }
+.titlebar.windowed .menu-list { top: 34px; }
 .window-controls { display: flex; align-self: stretch; }
-.window-controls button { width: 46px; height: 30px; padding: 0; border: 0; border-radius: 0; font-size: 12px; line-height: 30px; color: var(--muted); }
+.window-controls button { width: 46px; height: 36px; padding: 0; border: 0; border-radius: 0; font-size: 12px; line-height: 36px; color: var(--muted); }
+.window-controls button:active:not(:disabled) { transform: none; }
 .window-controls button:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); }
 .window-controls button.close:hover { background: #e81123; color: #fff; }
 .menu { position: relative; }
-.menu-list { position: absolute; top: 30px; left: 0; z-index: 10; min-width: 220px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 4px; }
-.menu-list button { display: block; width: 100%; text-align: left; border: 0; }
+.menu-list { position: absolute; top: 34px; left: 0; z-index: 10; min-width: 220px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 4px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); transform-origin: top left; animation: pop-in 140ms var(--ease); }
+.menu-list button { display: block; width: 100%; text-align: left; border: 0; border-radius: 5px; }
+.menu-list button:hover { background: rgba(122, 162, 247, 0.16); }
+.menu-list button:active:not(:disabled) { transform: none; }
+.menu-list.right { transform-origin: top right; }
 .menu-list small { color: var(--muted); display: block; }
 .menu-list.right { left: auto; right: 0; }
 .menu-list .form { display: grid; gap: 4px; padding: 6px 8px; max-width: 320px; }
@@ -343,4 +352,73 @@ button:hover { background: var(--line); }
 @media (prefers-reduced-motion: reduce) {
   .pomodoro .fill, .note .check, .note .text, .pomodoro .controls button { transition: none; }
   .note .check.on::after { animation: none; }
+}
+
+/* Title bar, new style: the + Novo button, the views as icons with a sliding marker, the pill and
+   the icon group on the right. Every icon names itself in a tooltip under it. */
+.titlebar .logo { transition: transform 0.25s var(--ease); }
+.titlebar .logo:hover { transform: rotate(-12deg) scale(1.1); }
+.titlebar .new-button { background: var(--accent); border-color: var(--accent); color: #0b0b0e; font-weight: 600; font-size: 12.5px; padding: 2px 11px; }
+.titlebar .new-button:hover { background: #8fb2ff; box-shadow: 0 4px 16px rgba(122, 162, 247, 0.35); }
+.titlebar .new-button:disabled { opacity: 0.4; box-shadow: none; }
+
+.views { position: relative; display: flex; gap: 2px; padding: 3px; margin-left: 4px; background: var(--panel); border-radius: 8px; }
+.views-ind { position: absolute; top: 3px; left: 3px; width: 30px; height: 24px; border-radius: 6px; background: var(--line); transition: transform 0.25s var(--ease); }
+.views button { position: relative; z-index: 1; width: 30px; height: 24px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--muted); }
+.views button:hover { background: none; color: var(--text); }
+.views button.on { color: var(--accent); }
+.views button svg { width: 16px; height: 16px; transition: transform 0.15s var(--ease); }
+.views button:hover:not(:disabled) svg { transform: scale(1.1); }
+.views button:disabled { opacity: 0.35; }
+
+.icons { display: flex; gap: 2px; margin-left: 2px; }
+.icons > .menu { display: flex; }
+.titlebar .icon { position: relative; width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 7px; background: none; color: var(--muted); }
+.titlebar .icon:hover { background: var(--hover); color: var(--text); }
+.titlebar .icon.on { color: var(--accent); background: rgba(122, 162, 247, 0.12); }
+.titlebar .icon svg { width: 17px; height: 17px; }
+.titlebar .icon.quit:hover { color: #f7768e; background: rgba(247, 118, 142, 0.12); }
+.titlebar .icon.gear svg { transition: transform 0.4s var(--ease); }
+.titlebar .icon.gear:hover svg { transform: rotate(60deg); }
+.titlebar .icon.bell:hover svg { animation: ding 0.5s var(--ease); }
+@keyframes ding { 20% { transform: rotate(14deg); } 45% { transform: rotate(-10deg); } 70% { transform: rotate(5deg); } }
+
+[data-tip]::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); left: 50%; z-index: 40; transform: translateX(-50%) translateY(-3px); opacity: 0; pointer-events: none; white-space: nowrap; padding: 5px 9px; border: 1px solid var(--line); border-radius: 6px; background: #000; color: var(--text); font-size: 12px; font-weight: 500; transition: opacity 0.12s, transform 0.12s var(--ease); }
+[data-tip]:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); transition-delay: 0.25s; }
+[data-tip].tip-end::after { left: auto; right: 0; transform: translateY(-3px); }
+[data-tip].tip-end:hover::after { transform: translateY(0); }
+
+.titlebar .pill { --wails-draggable: no-drag; display: flex; align-items: center; height: 26px; padding: 0 3px 0 0; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); transition: border-color 0.2s, box-shadow 0.2s; }
+.titlebar .pill:hover { border-color: #3a3a46; }
+.titlebar .pill::before { content: none; }
+.pill .pill-main { display: flex; align-items: center; gap: 8px; height: 100%; padding: 0 8px 0 11px; border: 0; border-radius: 999px; background: none; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pill .pill-main:hover { background: none; }
+.pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.pill .left { display: inline-block; overflow: hidden; max-width: 50px; transition: max-width 0.25s var(--ease), opacity 0.2s; }
+.pill.hidden .left { max-width: 0; opacity: 0; }
+.pill .eye { position: relative; width: 20px; height: 20px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; color: var(--muted); }
+.pill .eye:hover { background: var(--line); color: var(--text); }
+.pill .eye svg { width: 14px; height: 14px; }
+/* The phase ran out: the pill breathes blue until it is clicked. */
+.pill.ended { padding-right: 0; border-color: var(--accent); animation: pill-ring 1.6s ease-in-out infinite; }
+.pill.ended .pill-main { color: var(--accent); }
+.pill.ended .dot { animation: pill-dot 1.6s ease-in-out infinite; }
+@keyframes pill-ring { 0%, 100% { box-shadow: 0 0 0 0 rgba(122, 162, 247, 0.55); background: var(--panel); } 50% { box-shadow: 0 0 0 6px rgba(122, 162, 247, 0); background: rgba(122, 162, 247, 0.14); } }
+@keyframes pill-dot { 50% { transform: scale(1.5); } }
+
+/* Focus panel, new style. */
+.pomodoro .fill { stroke: url(#pomodoro-fill); }
+.pomodoro.break .fill, .pomodoro.long .fill { stroke: var(--idle); }
+.pomodoro.idle .fill { stroke: var(--shell); }
+.pomodoro .time { font-size: 27px; font-weight: 700; }
+.pomodoro .controls .primary { background: var(--accent); border-color: var(--accent); color: #0b0b0e; font-weight: 600; }
+.pomodoro .controls .primary:hover { background: #8fb2ff; box-shadow: 0 4px 16px rgba(122, 162, 247, 0.3); }
+.pomodoro.break .controls .primary, .pomodoro.long .controls .primary { background: var(--idle); border-color: var(--idle); }
+.note .check { width: 16px; height: 16px; border-radius: 5px; }
+.note-add input { border-radius: 8px; padding: 7px 10px; }
+.note-add input:hover { border-color: #3a3a46; }
+
+@media (prefers-reduced-motion: reduce) {
+  button, .views-ind, .pill .left, .titlebar .logo, .titlebar .icon.gear svg { transition: none; }
+  .pill.ended, .pill.ended .dot, .titlebar .icon.bell:hover svg, .menu-list { animation: none; }
 }

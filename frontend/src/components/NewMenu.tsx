@@ -89,7 +89,7 @@ export function NewMenu(props: {
 
   return (
     <div className="menu">
-      <button className="flat" disabled={!props.ready} onClick={() => (open ? close() : setOpen(true))} title="Novo terminal">+</button>
+      <button className="new-button" disabled={!props.ready} onClick={() => (open ? close() : setOpen(true))} title="Novo terminal">+ Novo</button>
       {open && props.ready && (
         <div className="menu-list new-menu" onMouseLeave={() => { if (!picking && !adding) close(); }}>
           {props.places.map((p) => (

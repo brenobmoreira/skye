@@ -191,7 +191,7 @@ export function NoteList({ notes, now }: { notes: Notes; now: Date }) {
         )}
       </div>
       <div className="note-add">
-        <input placeholder="+ anotar…" value={add} onChange={(e) => setAdd(e.target.value)} onKeyDown={addKeys} />
+        <input placeholder="+ Anotar…" value={add} onChange={(e) => setAdd(e.target.value)} onKeyDown={addKeys} />
         {addError && <div className="note-error">{addError}</div>}
       </div>
     </div>

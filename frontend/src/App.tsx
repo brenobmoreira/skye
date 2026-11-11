@@ -6,8 +6,8 @@ import { Sidebar } from './components/Sidebar';
 import { TerminalView } from './components/TerminalView';
 import { Monitor } from './components/Monitor';
 import { FocusPanel } from './components/FocusPanel';
-import { pillLabel } from './lib/pomodoro';
-import type { Conversation, Notes, Place, PlaceCommand, PomodoroSettings, PomodoroState, Preset, Repo, State, Terminal, Usage } from './lib/types';
+import { clock, endedLabel, pillPhase } from './lib/pomodoro';
+import type { Conversation, Notes, Place, PlaceCommand, PomodoroPhase, PomodoroSettings, PomodoroState, Preset, Repo, State, Terminal, Usage } from './lib/types';
 import { nextUnread, withMarks } from './lib/unread';
 import { shortcut } from './lib/shortcuts';
 import { active, closeSplit, prune, select, selectSide, slotOf, visible, type Panes } from './lib/panes';
@@ -22,14 +22,23 @@ const FONT_KEY = 'skye:fontSize';
 const FAMILY_KEY = 'skye:font';
 const CUSTOM_FONTS_KEY = 'skye:customFonts';
 const FOCUS_KEY = 'skye:focusOpen';
+const PILL_HIDDEN_KEY = 'skye:pillHidden';
 
-function storedFocusOpen(): boolean {
+function storedFlag(key: string): boolean {
   try {
-    return localStorage.getItem(FOCUS_KEY) === '1';
+    return localStorage.getItem(key) === '1';
   } catch {
     return false;
   }
 }
+
+function storeFlag(key: string, on: boolean) {
+  try {
+    localStorage.setItem(key, on ? '1' : '0');
+  } catch {}
+}
+
+const storedFocusOpen = () => storedFlag(FOCUS_KEY);
 
 function storedFontSize(): number {
   try {
@@ -104,6 +113,9 @@ export function App() {
   // The timer as the Go side last sent it, and when it arrived: the time left is counted from there.
   const [pomodoro, setPomodoroState] = useState<{ state: PomodoroState; at: number } | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [pillHidden, setPillHidden] = useState(() => storedFlag(PILL_HIDDEN_KEY));
+  // The phase that last ran out on its own, until the pill is clicked or the panel opened.
+  const [ended, setEnded] = useState('');
   const receivePomodoro = (state: PomodoroState) => { setPomodoroState({ state, at: Date.now() }); setNow(Date.now()); };
   const [unread, setUnread] = useState<Set<string>>(() => new Set());
   // Marked unread from the right-click menu; only picking the terminal clears these.
@@ -215,6 +227,7 @@ export function App() {
       on('places', (list: Place[]) => setPlaces(list)),
       on('notes', (n: Notes) => setNotes(n)),
       on('pomodoro', (st: PomodoroState) => receivePomodoro(st)),
+      on('pomodoroEnded', (phase: PomodoroPhase) => setEnded(endedLabel(phase))),
       on('reconnected', () => {
         load();
         report();
@@ -239,6 +252,11 @@ export function App() {
   useEffect(() => {
     setPanes((p) => prune(p, terminals.map((t) => t.id)));
   }, [terminals]);
+
+  // With the panel open the end of a phase is already in view; nothing is left to acknowledge.
+  useEffect(() => {
+    if (focusOpen && ended) setEnded('');
+  }, [focusOpen, ended]);
 
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return;
@@ -288,11 +306,20 @@ export function App() {
   };
   const toggleFocus = () =>
     setFocusOpen((open) => {
-      try {
-        localStorage.setItem(FOCUS_KEY, open ? '0' : '1');
-      } catch {}
+      storeFlag(FOCUS_KEY, !open);
+      if (!open) setEnded('');
       return !open;
     });
+  const togglePillHidden = () =>
+    setPillHidden((hidden) => {
+      storeFlag(PILL_HIDDEN_KEY, !hidden);
+      return !hidden;
+    });
+  // A pulsing pill is only acknowledged by the click; otherwise the pill opens the panel.
+  const clickPill = () => (ended ? setEnded('') : toggleFocus());
+  const pickView = (next: 'terminals' | 'monitor' | 'files') => setView(next);
+  const running = pomodoro !== null && pomodoro.state.phase !== 'idle';
+
   const savePomodoro = (s: PomodoroSettings) => api().SetPomodoroSettings(s);
   const toggleSound = () => { api().SetSound(!sound); setSound(!sound); };
   const pickFont = (next: TerminalFont) => {
@@ -321,7 +348,7 @@ export function App() {
   return (
     <div className={isWindow() ? 'app windowed' : 'app'}>
       {link.kind !== 'ready' && <ConnectionScreen state={link} />}
-      <TitleBar presets={presets} repos={repos} places={places} onOpenPlace={openPlace} onAddPlace={addPlace} onRemovePlace={removePlace} onNewWorktree={newWorktree} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} customFonts={customFonts} onPickFont={pickFont} onAddFont={addFont} onRemoveFont={removeFont} monitor={monitor} onToggleMonitor={() => toggle('monitor')} files={view === 'files'} canFiles={activeId !== null} onToggleFiles={() => toggle('files')} focus={focusOpen} onToggleFocus={toggleFocus} pill={pomodoro ? pillLabel(pomodoro.state, remainingMs) : ''} pomodoro={pomodoro?.state.settings ?? null} onSavePomodoro={savePomodoro} />
+      <TitleBar presets={presets} repos={repos} places={places} onOpenPlace={openPlace} onAddPlace={addPlace} onRemovePlace={removePlace} onNewWorktree={newWorktree} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} customFonts={customFonts} onPickFont={pickFont} onAddFont={addFont} onRemoveFont={removeFont} view={view} onView={pickView} canFiles={activeId !== null} focus={focusOpen} onToggleFocus={toggleFocus} pill={running && pomodoro ? { phase: pillPhase(pomodoro.state), time: clock(remainingMs) } : null} pillHidden={pillHidden} onTogglePillHidden={togglePillHidden} ended={ended} onPill={clickPill} pomodoro={pomodoro?.state.settings ?? null} onSavePomodoro={savePomodoro} />
       <div className={focusOpen ? 'body with-focus' : 'body'}>
         <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={shownUnread} shown={visible(panes, room)} onSelect={pickFromList} onReorder={reorder} onResume={resume} onMark={mark} usage={usage} />
         <main className="main island">

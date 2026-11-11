@@ -1,6 +1,7 @@
 import { useState, type KeyboardEvent } from 'react';
 import { FONTS, type TerminalFont } from '../lib/fonts';
 import type { PomodoroSettings } from '../lib/types';
+import { GearIcon } from './icons';
 
 type Section = 'shortcuts' | 'font' | 'focus' | 'settings';
 
@@ -99,7 +100,9 @@ export function SettingsMenu(props: {
 
   return (
     <div className="menu">
-      <button className="flat" onClick={() => (open ? close() : setOpen(true))} title="Configurações">⚙</button>
+      <button className={open ? 'icon gear on' : 'icon gear'} onClick={() => (open ? close() : setOpen(true))} aria-label="Configurações" data-tip={open ? undefined : 'Configurações'}>
+        <GearIcon />
+      </button>
       {open && (
         <div className="menu-list right settings-menu" onMouseLeave={() => { if (!adding && section !== 'focus') close(); }}>
           {SECTIONS.map((s) => (

@@ -20,6 +20,12 @@ export function PomodoroCard({ state, remainingMs }: { state: PomodoroState; rem
     <section className={`pomodoro ${state.phase}${state.paused ? ' paused' : ''}`}>
       <div className="ring">
         <svg viewBox="0 0 128 128" aria-hidden="true">
+          <defs>
+            <linearGradient id="pomodoro-fill" x1="0" x2="1">
+              <stop offset="0" stopColor="#7aa2f7" />
+              <stop offset="1" stopColor="#bb9af7" />
+            </linearGradient>
+          </defs>
           <circle className="track" cx="64" cy="64" r={R} />
           <circle className="fill" cx="64" cy="64" r={R} strokeDasharray={C} strokeDashoffset={C * (1 - done)} />
         </svg>

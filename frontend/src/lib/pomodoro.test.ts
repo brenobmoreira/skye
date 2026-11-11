@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clock, phaseLabel, pillLabel } from './pomodoro';
+import { clock, endedLabel, phaseLabel, pillLabel, pillPhase } from './pomodoro';
 import type { PomodoroState } from './types';
 
 const settings = { focus: 25, break: 5, long: 15, every: 4 };
@@ -32,5 +32,21 @@ describe('pillLabel', () => {
     expect(pillLabel(state({ phase: 'focus' }), 760_000)).toBe('Foco 12:40');
     expect(pillLabel(state({ phase: 'break' }), 190_000)).toBe('Pausa 3:10');
     expect(pillLabel(state({ phase: 'long' }), 899_000)).toBe('Pausa longa 14:59');
+  });
+});
+
+describe('pillPhase', () => {
+  it('names the running phase without the time', () => {
+    expect(pillPhase(state({ phase: 'focus' }))).toBe('Foco');
+    expect(pillPhase(state({ phase: 'long' }))).toBe('Pausa longa');
+    expect(pillPhase(state({}))).toBe('');
+  });
+});
+
+describe('endedLabel', () => {
+  it('says which phase ran out', () => {
+    expect(endedLabel('focus')).toBe('Foco acabou');
+    expect(endedLabel('break')).toBe('Pausa acabou');
+    expect(endedLabel('long')).toBe('Pausa acabou');
   });
 });
