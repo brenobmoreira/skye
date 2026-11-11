@@ -34,17 +34,23 @@ var item = regexp.MustCompile(`^(\d)[.)]\s+(.+)$`)
 // ParseReply reads the closing block of a reply: the last run of non-empty lines. A closing list
 // of 2 to 4 numbered items is a choice; a closing line ending in "?" is a question.
 func ParseReply(text string) Reply {
-	lines := closingBlock(text)
-	if len(lines) == 0 {
+	blocks := splitBlocks(text)
+	if len(blocks) == 0 {
 		return Reply{}
+	}
+	lines := blocks[len(blocks)-1]
+	// A list in a block of its own takes the paragraph above it, where the question usually is.
+	if _, first := choices(lines); first == 0 && len(blocks) > 1 && item.MatchString(lines[0]) {
+		lines = append(append([]string{}, blocks[len(blocks)-2]...), lines...)
 	}
 	r := Reply{Full: cut(strings.Join(lines, "\n"), ReplyFullLimit)}
 	if opts, first := choices(lines); opts != nil {
 		r.Options = opts
-		lines = lines[:first]
-		if len(lines) == 0 {
-			lines = []string{opts[0].Label}
+		r.Line = opts[0].Label
+		if first > 0 {
+			r.Line = cut(lines[first-1], ReplyLineLimit)
 		}
+		return r
 	} else if last := lines[len(lines)-1]; strings.HasSuffix(last, "?") {
 		r.Question = true
 		r.Line = cut(last, ReplyLineLimit)
@@ -54,10 +60,11 @@ func ParseReply(text string) Reply {
 	return r
 }
 
-// closingBlock returns the cleaned lines of the last block, blocks being split by blank lines.
-// Code fences are dropped so a reply ending in a code block shows its code, not the fence.
-func closingBlock(text string) []string {
-	var block, current []string
+// splitBlocks returns the cleaned lines of each block, blocks being split by blank lines. Code
+// fences are dropped so a reply ending in a code block shows its code, not the fence.
+func splitBlocks(text string) [][]string {
+	var blocks [][]string
+	var current []string
 	for _, raw := range strings.Split(text, "\n") {
 		line := strings.TrimSpace(raw)
 		if strings.HasPrefix(line, "```") {
@@ -65,16 +72,16 @@ func closingBlock(text string) []string {
 		}
 		if line == "" {
 			if len(current) > 0 {
-				block, current = current, nil
+				blocks, current = append(blocks, current), nil
 			}
 			continue
 		}
 		current = append(current, clean(line))
 	}
 	if len(current) > 0 {
-		block = current
+		blocks = append(blocks, current)
 	}
-	return block
+	return blocks
 }
 
 // choices finds the numbered list that ends the block, counted from 1; it returns the options
