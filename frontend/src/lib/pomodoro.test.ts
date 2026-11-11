@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { breakLabel, clock, endedLabel, phaseLabel, pillLabel, pillPhase } from './pomodoro';
+import { breakLabel, clock, collapsedLabel, endedLabel, phaseLabel, pillLabel, pillPhase } from './pomodoro';
 import type { PomodoroState } from './types';
 
 const settings = { focus: 25, break: 5, long: 15, every: 4 };
@@ -56,5 +56,17 @@ describe('breakLabel', () => {
     expect(breakLabel(1, 4)).toBe('Começar pausa');
     expect(breakLabel(3, 4)).toBe('Começar pausa');
     expect(breakLabel(4, 4)).toBe('Começar pausa longa');
+  });
+});
+
+describe('collapsedLabel', () => {
+  it('names the phase and whether it runs, ended or has not started', () => {
+    expect(collapsedLabel(state({}), null)).toBe('Foco – Não iniciado');
+    expect(collapsedLabel(state({ phase: 'focus' }), null)).toBe('Foco – Em andamento');
+    expect(collapsedLabel(state({ phase: 'break' }), null)).toBe('Pausa – Em andamento');
+    expect(collapsedLabel(state({ phase: 'long' }), null)).toBe('Pausa longa – Em andamento');
+    expect(collapsedLabel(state({ phase: 'break' }), 'focus')).toBe('Foco – Concluído');
+    expect(collapsedLabel(state({}), 'break')).toBe('Pausa – Concluída');
+    expect(collapsedLabel(state({}), 'long')).toBe('Pausa longa – Concluída');
   });
 });

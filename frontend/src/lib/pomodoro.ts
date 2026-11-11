@@ -39,3 +39,13 @@ export function endedLabel(phase: PomodoroPhase): string {
 export function breakLabel(n: number, every: number): string {
   return n >= every ? 'Começar pausa longa' : 'Começar pausa';
 }
+
+const PHASE_NAMES = { idle: 'Foco', focus: 'Foco', break: 'Pausa', long: 'Pausa longa' } as const;
+
+// collapsedLabel is the one line the timer island shows when collapsed: the phase, and whether
+// it runs, ran out (until acknowledged) or has not started. Pausa takes the feminine ending.
+export function collapsedLabel(s: PomodoroState, ended: PomodoroPhase | null): string {
+  if (ended) return `${PHASE_NAMES[ended]} – ${ended === 'focus' ? 'Concluído' : 'Concluída'}`;
+  if (s.phase === 'idle') return 'Foco – Não iniciado';
+  return `${PHASE_NAMES[s.phase]} – Em andamento`;
+}

@@ -44,10 +44,50 @@ function repeatOf(d: Draft): Repeat | null {
   return { kind: d.kind };
 }
 
+type When = Pick<Draft, 'date' | 'time' | 'kind' | 'weekday' | 'day'>;
+
+// WhenFields: date, time and repetition, the same in the note editor and under the add field.
+function WhenFields({ value, onChange }: { value: When; onChange: (w: When) => void }) {
+  return (
+    <>
+      <div className="when">
+        <input type="date" value={value.date} onChange={(e) => onChange({ ...value, date: e.target.value })} title="Data" />
+        <input type="time" value={value.time} disabled={!value.date} onChange={(e) => onChange({ ...value, time: e.target.value })} title="Hora (avisa nesse horário)" />
+      </div>
+      <div className="when">
+        <select value={value.kind} disabled={!value.date} onChange={(e) => onChange({ ...value, kind: e.target.value as Draft['kind'] })} title={value.date ? 'Repetição' : 'Repetir precisa de data'}>
+          <option value="">Não repete</option>
+          <option value="daily">Todo dia</option>
+          <option value="weekdays">Dias úteis</option>
+          <option value="weekly">Toda semana</option>
+          <option value="monthly">Todo mês</option>
+        </select>
+        {value.kind === 'weekly' && (
+          <select value={value.weekday} onChange={(e) => onChange({ ...value, weekday: Number(e.target.value) })}>
+            {WEEKDAYS.map((w, i) => <option key={w} value={i}>{w}</option>)}
+          </select>
+        )}
+        {value.kind === 'monthly' && (
+          <input type="number" min={1} max={31} value={value.day} onChange={(e) => onChange({ ...value, day: Number(e.target.value) })} title="Dia do mês" />
+        )}
+      </div>
+    </>
+  );
+}
+
+const CalendarIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="5" width="18" height="16" rx="3" />
+    <path d="M3 10h18M8 3v4M16 3v4" />
+  </svg>
+);
+
 const rowId = (r: Row) => (r.kind === 'item' ? r.item.id : r.record.id);
 
 export function NoteList({ notes, now }: { notes: Notes; now: Date }) {
   const [add, setAdd] = useState('');
+  // The date, time and repetition for the note being added, behind the calendar button.
+  const [addWhen, setAddWhen] = useState<When | null>(null);
   const [addError, setAddError] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -74,11 +114,20 @@ export function NoteList({ notes, now }: { notes: Notes; now: Date }) {
 
   const submitAdd = () => {
     if (!add.trim()) return;
-    api().AddNote(add).then(() => { setAdd(''); setAddError(''); }).catch((e) => setAddError(errText(e)));
+    const when = addWhen;
+    api()
+      .AddNote(add)
+      .then((item) =>
+        when && when.date
+          ? api().EditNote(item.id, { text: item.text, date: when.date, time: when.time, repeat: repeatOf({ ...when, text: '' }) })
+          : item,
+      )
+      .then(() => { setAdd(''); setAddError(''); setAddWhen(null); })
+      .catch((e) => setAddError(errText(e)));
   };
   const addKeys = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') submitAdd();
-    if (e.key === 'Escape') { setAdd(''); setAddError(''); }
+    if (e.key === 'Escape') { setAdd(''); setAddError(''); setAddWhen(null); }
   };
 
   const toggle = (r: Row) => {
@@ -116,27 +165,7 @@ export function NoteList({ notes, now }: { notes: Notes; now: Date }) {
   const editor = (id: string) => draft && (
     <div className="note-edit" onBlur={editBlur} onKeyDown={editKeys}>
       <input autoFocus className="text" value={draft.text} onChange={(e) => setDraft({ ...draft, text: e.target.value })} />
-      <div className="when">
-        <input type="date" value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} title="Data" />
-        <input type="time" value={draft.time} disabled={!draft.date} onChange={(e) => setDraft({ ...draft, time: e.target.value })} title="Hora (avisa nesse horário)" />
-      </div>
-      <div className="when">
-        <select value={draft.kind} disabled={!draft.date} onChange={(e) => setDraft({ ...draft, kind: e.target.value as Draft['kind'] })} title={draft.date ? 'Repetição' : 'Repetir precisa de data'}>
-          <option value="">Não repete</option>
-          <option value="daily">Todo dia</option>
-          <option value="weekdays">Dias úteis</option>
-          <option value="weekly">Toda semana</option>
-          <option value="monthly">Todo mês</option>
-        </select>
-        {draft.kind === 'weekly' && (
-          <select value={draft.weekday} onChange={(e) => setDraft({ ...draft, weekday: Number(e.target.value) })}>
-            {WEEKDAYS.map((w, i) => <option key={w} value={i}>{w}</option>)}
-          </select>
-        )}
-        {draft.kind === 'monthly' && (
-          <input type="number" min={1} max={31} value={draft.day} onChange={(e) => setDraft({ ...draft, day: Number(e.target.value) })} title="Dia do mês" />
-        )}
-      </div>
+      <WhenFields value={draft} onChange={(w) => setDraft({ ...draft, ...w })} />
       <div className="actions">
         <button onMouseDown={(e) => e.preventDefault()} onClick={saveEdit}>Salvar</button>
         <button onMouseDown={(e) => e.preventDefault()} onClick={cancelEdit}>Cancelar</button>
@@ -202,6 +231,11 @@ export function NoteList({ notes, now }: { notes: Notes; now: Date }) {
         </div>
         <div className="note-tools">
           {movable && r.kind === 'item' && (
+            <button className="pin" onClick={() => startEdit(r.item)} aria-label="Data e repetição" title="Data e repetição">
+              <CalendarIcon />
+            </button>
+          )}
+          {movable && r.kind === 'item' && (
             <button className={r.item.pinned ? 'pin on' : 'pin'} onClick={() => pin(r.item)} aria-label={r.item.pinned ? 'Desafixar' : 'Fixar'} title={r.item.pinned ? 'Desafixar' : 'Fixar no topo'}>
               <PinIcon />
             </button>
@@ -238,7 +272,7 @@ export function NoteList({ notes, now }: { notes: Notes; now: Date }) {
           Pendentes <span className="count">{openCount}</span>
         </button>
         <button role="tab" aria-selected={tab === 'done'} className={tab === 'done' ? 'on' : ''} onClick={() => setTab('done')}>
-          Completas <span className="count">{doneCount}</span>
+          Completas
         </button>
       </div>
       <div className="note-scroll" ref={scrollRef}>
@@ -267,7 +301,22 @@ export function NoteList({ notes, now }: { notes: Notes; now: Date }) {
       </div>
       {tab === 'open' && (
         <div className="note-add">
-          <input placeholder="+ Anotar…" value={add} onChange={(e) => setAdd(e.target.value)} onKeyDown={addKeys} />
+          <div className="add-row">
+            <input placeholder="+ Anotar…" value={add} onChange={(e) => setAdd(e.target.value)} onKeyDown={addKeys} />
+            <button
+              className={addWhen ? 'when-toggle on' : 'when-toggle'}
+              onClick={() => setAddWhen(addWhen ? null : { date: dayOf(now), time: '', kind: '', weekday: now.getDay(), day: now.getDate() })}
+              aria-label="Data e repetição"
+              title="Data e repetição"
+            >
+              <CalendarIcon />
+            </button>
+          </div>
+          {addWhen && (
+            <div className="note-edit add-when" onKeyDown={(e) => { if (e.key === 'Enter') submitAdd(); }}>
+              <WhenFields value={addWhen} onChange={setAddWhen} />
+            </div>
+          )}
           {addError && <div className="note-error">{addError}</div>}
         </div>
       )}

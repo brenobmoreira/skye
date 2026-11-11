@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '../bridge';
-import { breakLabel, clock, phaseLabel } from '../lib/pomodoro';
-import type { PomodoroState } from '../lib/types';
+import { breakLabel, clock, collapsedLabel, phaseLabel } from '../lib/pomodoro';
+import { EyeIcon } from './icons';
+import type { PomodoroPhase, PomodoroState } from '../lib/types';
 
 const R = 54;
 const C = 2 * Math.PI * R;
@@ -10,7 +11,15 @@ type Action = 'start' | 'pause' | 'resume' | 'skip' | 'reset';
 
 // The timer at the top of the focus panel: a ring that fills as the phase runs, the time left and
 // where in the cycle it is.
-export function PomodoroCard({ state, remainingMs }: { state: PomodoroState; remainingMs: number }) {
+export function PomodoroCard(props: {
+  state: PomodoroState;
+  remainingMs: number;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+  ended: PomodoroPhase | null;
+  onAck: () => void;
+}) {
+  const { state, remainingMs } = props;
   const act = (a: Action) => { api().PomodoroAction(a).catch(() => {}); };
   const running = state.phase !== 'idle';
   const total = running ? state.totalMs : state.settings.focus * 60_000;
@@ -22,8 +31,28 @@ export function PomodoroCard({ state, remainingMs }: { state: PomodoroState; rem
   useEffect(() => setStage(Math.min(state.stage + 1, every)), [state.stage, every]);
   const begin = (phase: 'focus' | 'break') => { api().PomodoroBegin(phase, stage).catch(() => {}); };
 
+  const eye = (
+    <button className="collapse" onClick={props.onToggleCollapsed} aria-label={props.collapsed ? 'Mostrar o timer' : 'Esconder o timer'} data-tip={props.collapsed ? 'Mostrar o timer' : 'Esconder o timer'}>
+      <EyeIcon shut={props.collapsed} />
+    </button>
+  );
+
+  // Folded: one line with the phase and its status, pulsing when a phase ran out until clicked.
+  if (props.collapsed) {
+    return (
+      <section className={`pomodoro-line ${state.phase}${props.ended ? ' ended' : ''}`}>
+        <button className="line-main" onClick={props.ended ? props.onAck : props.onToggleCollapsed} title={props.ended ? 'Ok' : 'Mostrar o timer'}>
+          <span className="dot" />
+          {collapsedLabel(state, props.ended)}
+        </button>
+        {eye}
+      </section>
+    );
+  }
+
   return (
     <section className={`pomodoro ${state.phase}${state.paused ? ' paused' : ''}`}>
+      {eye}
       <div className="ring">
         <svg viewBox="0 0 128 128" aria-hidden="true">
           <defs>
