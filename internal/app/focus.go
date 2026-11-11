@@ -32,12 +32,11 @@ func (a *App) pomodoroChanged(s pomodoro.State) { a.o.Emit("pomodoro", s) }
 // only signal the phase is over.
 func (a *App) pomodoroEnded(e pomodoro.Ended) {
 	body := "hora de focar"
-	if e.Phase == pomodoro.Focus {
-		if e.Next.Phase == pomodoro.Long {
-			body = fmt.Sprintf("pausa longa de %d min", e.Next.Settings.Long)
-		} else {
-			body = fmt.Sprintf("pausa de %d min", e.Next.Settings.Break)
-		}
+	switch e.Next.Pending {
+	case pomodoro.Long:
+		body = fmt.Sprintf("hora da pausa longa de %d min", e.Next.Settings.Long)
+	case pomodoro.Break:
+		body = fmt.Sprintf("hora da pausa de %d min", e.Next.Settings.Break)
 	}
 	a.toast("skye", body)
 	// Tells the windows a phase ran out on its own, so the closed panel's pill can pulse.

@@ -23,6 +23,8 @@ describe('phaseLabel', () => {
     expect(phaseLabel(state({ count: 0 }))).toBe('Pronto para focar');
     expect(phaseLabel(state({ count: 1 }))).toBe('1 foco hoje');
     expect(phaseLabel(state({ count: 5 }))).toBe('5 focos hoje');
+    expect(phaseLabel(state({ count: 1, pending: 'break' }))).toBe('Hora da pausa');
+    expect(phaseLabel(state({ count: 4, pending: 'long' }))).toBe('Hora da pausa longa');
   });
 });
 
@@ -68,6 +70,9 @@ describe('collapsedLabel', () => {
     expect(collapsedLabel(state({ phase: 'break' }), 'focus')).toBe('Foco – Concluído');
     expect(collapsedLabel(state({}), 'break')).toBe('Pausa – Concluída');
     expect(collapsedLabel(state({}), 'long')).toBe('Pausa longa – Concluída');
+    expect(collapsedLabel(state({ pending: 'break' }), null)).toBe('Pausa – Não iniciada');
+    expect(collapsedLabel(state({ pending: 'long' }), null)).toBe('Pausa longa – Não iniciada');
+    expect(collapsedLabel(state({ pending: 'break' }), 'focus')).toBe('Foco – Concluído');
   });
 });
 

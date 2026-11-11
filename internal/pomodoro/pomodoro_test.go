@@ -69,26 +69,89 @@ func TestStartRunsAFocus(t *testing.T) {
 	}
 }
 
-func TestFocusEndStartsABreak(t *testing.T) {
+func TestFocusEndWaitsForStartWithTheBreakDue(t *testing.T) {
 	r := newRig(t, Default)
 	r.do(t, "start")
 	r.fire(t)
+	jobs := len(r.jobs)
 	st := r.t.State()
-	if st.Count != 1 || st.Phase != "break" || st.RemainingMs != 5*60_000 {
+	if st.Count != 1 || st.Phase != Idle || st.Pending != Break || st.RemainingMs != 0 {
 		t.Fatalf("state %+v", st)
 	}
-	if len(r.ends) != 1 || r.ends[0].Phase != "focus" || r.ends[0].Next.Phase != "break" {
+	if len(r.jobs) != jobs {
+		t.Fatal("the break started on its own")
+	}
+	if len(r.ends) != 1 || r.ends[0].Phase != Focus || r.ends[0].Next.Pending != Break {
 		t.Fatalf("ends %+v", r.ends)
+	}
+	r.do(t, "start")
+	if st := r.t.State(); st.Phase != Break || st.RemainingMs != 5*60_000 || st.Pending != "" || st.Count != 1 {
+		t.Fatalf("started %+v", st)
+	}
+}
+
+func TestSkipDropsTheBreakDue(t *testing.T) {
+	r := newRig(t, Default)
+	r.do(t, "start")
+	r.fire(t)
+	r.do(t, "skip")
+	if st := r.t.State(); st.Phase != Idle || st.Pending != "" || st.Count != 1 || st.Stage != 1 {
+		t.Fatalf("state %+v", st)
+	}
+	r.do(t, "start")
+	if st := r.t.State(); st.Phase != Focus {
+		t.Fatalf("start after skipping the break %+v", st)
+	}
+	if err := r.t.Do("skip"); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.t.Do("skip"); err == nil {
+		t.Fatal("skip with nothing due accepted")
+	}
+}
+
+func TestBeginAndResetDropTheBreakDue(t *testing.T) {
+	r := newRig(t, Default)
+	r.do(t, "start")
+	r.fire(t)
+	if err := r.t.Begin(Focus, 2); err != nil {
+		t.Fatal(err)
+	}
+	r.do(t, "skip")
+	if st := r.t.State(); st.Pending != "" {
+		t.Fatalf("after begin %+v", st)
+	}
+	r.do(t, "start")
+	r.fire(t)
+	r.do(t, "reset")
+	if st := r.t.State(); st.Pending != "" {
+		t.Fatalf("after reset %+v", st)
+	}
+}
+
+func TestSetRemainingWhileTheBreakIsDueAppliesToIt(t *testing.T) {
+	r := newRig(t, Default)
+	r.do(t, "start")
+	r.fire(t)
+	r.t.SetRemaining(2 * time.Minute)
+	r.do(t, "start")
+	if st := r.t.State(); st.Phase != Break || st.RemainingMs != 2*60_000 {
+		t.Fatalf("state %+v", st)
 	}
 }
 
 func TestEveryNthFocusGetsTheLongBreak(t *testing.T) {
 	r := newRig(t, Settings{Focus: 25, Break: 5, Long: 15, Every: 2})
 	r.do(t, "start")
-	r.fire(t) // focus 1 → break
+	r.fire(t) // focus 1 → break due
+	r.do(t, "start")
 	r.fire(t) // break → idle
 	r.do(t, "start")
-	r.fire(t) // focus 2 → long
+	r.fire(t) // focus 2 → long due
+	if st := r.t.State(); st.Pending != Long {
+		t.Fatalf("due %+v", st)
+	}
+	r.do(t, "start")
 	st := r.t.State()
 	if st.Phase != "long" || st.RemainingMs != 15*60_000 || st.Count != 2 {
 		t.Fatalf("state %+v", st)
@@ -99,10 +162,11 @@ func TestBreakEndWaitsForStart(t *testing.T) {
 	r := newRig(t, Default)
 	r.do(t, "start")
 	r.fire(t)
+	r.do(t, "start")
 	jobs := len(r.jobs)
 	r.fire(t)
 	st := r.t.State()
-	if st.Phase != "idle" || st.RemainingMs != 0 {
+	if st.Phase != "idle" || st.RemainingMs != 0 || st.Pending != "" {
 		t.Fatalf("state %+v", st)
 	}
 	if r.ends[len(r.ends)-1].Phase != "break" {
@@ -253,7 +317,7 @@ func TestBeginFocusAtAStage(t *testing.T) {
 		t.Fatalf("state %+v", st)
 	}
 	r.fire(t)
-	if st := r.t.State(); st.Phase != Break || st.Stage != 3 || st.Count != 1 {
+	if st := r.t.State(); st.Pending != Break || st.Stage != 3 || st.Count != 1 {
 		t.Fatalf("after focus %+v", st)
 	}
 }
@@ -262,6 +326,7 @@ func TestBeginFocusAtTheLastStageEndsInTheLongBreak(t *testing.T) {
 	r := newRig(t, Default)
 	r.t.Begin(Focus, 4)
 	r.fire(t)
+	r.do(t, "start")
 	if st := r.t.State(); st.Phase != Long || st.Stage != 0 || st.RemainingMs != 15*60_000 {
 		t.Fatalf("state %+v", st)
 	}
@@ -309,12 +374,14 @@ func TestStageFollowsTheCycle(t *testing.T) {
 	r := newRig(t, Settings{Focus: 25, Break: 5, Long: 15, Every: 2})
 	r.do(t, "start")
 	r.fire(t)
-	if st := r.t.State(); st.Stage != 1 || st.Phase != Break {
+	if st := r.t.State(); st.Stage != 1 || st.Pending != Break {
 		t.Fatalf("state %+v", st)
 	}
+	r.do(t, "start")
 	r.fire(t)
 	r.do(t, "start")
 	r.fire(t)
+	r.do(t, "start")
 	if st := r.t.State(); st.Stage != 0 || st.Phase != Long {
 		t.Fatalf("state %+v", st)
 	}

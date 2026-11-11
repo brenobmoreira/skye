@@ -1,5 +1,5 @@
-// Package pomodoro runs focus and break phases. A focus ends into a break on its own; a break ends
-// into idle, and the next focus waits for start.
+// Package pomodoro runs focus and break phases. Every phase ends into idle and the next one waits
+// for start: after a focus, start runs the break that is due.
 package pomodoro
 
 import (
@@ -27,7 +27,9 @@ type State struct {
 	// Stage is how many focuses of the current cycle are done; the long break starts it over.
 	Stage int `json:"stage"`
 	// NextMs, set while idle, is the length the next phase starts with instead of the settings.
-	NextMs   int64    `json:"nextMs"`
+	NextMs int64 `json:"nextMs"`
+	// Pending, set while idle after a focus ran out, is the break start runs: break or long.
+	Pending  Phase    `json:"pending,omitempty"`
 	Settings Settings `json:"settings"`
 }
 
@@ -55,6 +57,7 @@ type Timer struct {
 	count     int
 	stage     int
 	next      time.Duration
+	breakDue  bool
 	day       string
 	stop      func() bool
 	gen       int
@@ -70,6 +73,9 @@ func (t *Timer) state() State {
 	st := State{Phase: t.phase, Paused: t.paused, Settings: t.settings, Stage: t.stage, NextMs: t.next.Milliseconds()}
 	if t.day == t.today() {
 		st.Count = t.count
+	}
+	if t.breakDue {
+		st.Pending = t.breakPhase()
 	}
 	if t.phase != Idle {
 		left := t.remaining
@@ -99,7 +105,7 @@ func (t *Timer) cancel() {
 // run starts phase p with d left of a phase that lasts total.
 func (t *Timer) run(p Phase, d, total time.Duration) {
 	t.cancel()
-	t.phase, t.paused, t.total = p, false, total
+	t.phase, t.paused, t.total, t.breakDue = p, false, total, false
 	t.endsAt = t.now().Add(d)
 	gen := t.gen
 	t.stop = t.after(d, func() { t.fire(gen) })
@@ -116,14 +122,22 @@ func (t *Timer) fresh(p Phase, normal time.Duration) {
 
 func (t *Timer) idle() {
 	t.cancel()
-	t.phase, t.paused, t.remaining, t.total = Idle, false, 0, 0
+	t.phase, t.paused, t.remaining, t.total, t.breakDue = Idle, false, 0, 0, false
 }
 
 func minutes(m int) time.Duration { return time.Duration(m) * time.Minute }
 
-// runBreak starts the break that follows the focuses done: the long one closes the cycle.
-func (t *Timer) runBreak() {
+// breakPhase is the break that follows the focuses done: the long one closes the cycle.
+func (t *Timer) breakPhase() Phase {
 	if t.stage >= t.settings.Every {
+		return Long
+	}
+	return Break
+}
+
+// runBreak starts the break that follows the focuses done; the long one starts the cycle over.
+func (t *Timer) runBreak() {
+	if t.breakPhase() == Long {
 		t.stage = 0
 		t.fresh(Long, minutes(t.settings.Long))
 		return
@@ -146,7 +160,8 @@ func (t *Timer) fire(gen int) {
 		}
 		t.count++
 		t.stage++
-		t.runBreak()
+		t.idle()
+		t.breakDue = true
 	} else {
 		t.idle()
 	}
@@ -165,7 +180,11 @@ func (t *Timer) Do(action string) error {
 			t.mu.Unlock()
 			return errors.New("já está rodando")
 		}
-		t.fresh(Focus, minutes(t.settings.Focus))
+		if t.breakDue {
+			t.runBreak()
+		} else {
+			t.fresh(Focus, minutes(t.settings.Focus))
+		}
 	case "pause":
 		if t.phase == Idle || t.paused {
 			t.mu.Unlock()
@@ -181,7 +200,8 @@ func (t *Timer) Do(action string) error {
 		}
 		t.run(t.phase, t.remaining, t.total)
 	case "skip":
-		if t.phase == Idle {
+		// Idle, it drops the break that is due, and the next start is a focus.
+		if t.phase == Idle && !t.breakDue {
 			t.mu.Unlock()
 			return errors.New("nada para pular")
 		}

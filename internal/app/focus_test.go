@@ -188,9 +188,10 @@ func TestPomodoroEndNotifiesWithoutBarking(t *testing.T) {
 	}
 	r.fire()
 	waitFor(t, func() bool { return len(r.shown()) == 1 })
-	if got := r.shown()[0]; got != "skye|pausa de 5 min" {
+	if got := r.shown()[0]; got != "skye|hora da pausa de 5 min" {
 		t.Fatalf("shown %q", got)
 	}
+	r.app.PomodoroAction("start")
 	r.fire()
 	waitFor(t, func() bool { return len(r.shown()) == 2 })
 	if got := r.shown()[1]; got != "skye|hora de focar" {
@@ -203,7 +204,7 @@ func TestPomodoroEndNotifiesWithoutBarking(t *testing.T) {
 	}
 	waitFor(t, func() bool { return len(r.shown()) == 5 })
 	// Toasts go out on their own goroutines, so only the set is fixed, not the order.
-	if !slices.Contains(r.shown(), "skye|pausa longa de 15 min") {
+	if !slices.Contains(r.shown(), "skye|hora da pausa longa de 15 min") {
 		t.Fatalf("shown %q", r.shown())
 	}
 	if len(r.barks) != 0 {
@@ -277,6 +278,7 @@ func TestPomodoroEndEmitsWhichPhaseEnded(t *testing.T) {
 	}
 	r.app.PomodoroAction("start")
 	r.fire()
+	r.app.PomodoroAction("start")
 	r.fire()
 	if !slices.Equal(ended, []string{"focus", "break"}) {
 		t.Fatalf("ended = %v", ended)

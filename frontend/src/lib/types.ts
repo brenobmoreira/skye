@@ -231,6 +231,8 @@ export interface PomodoroState {
   count: number;
   stage: number;
   nextMs: number;
+  // Idle after a focus ran out: the break the next start runs.
+  pending?: 'break' | 'long';
   settings: PomodoroSettings;
 }
 

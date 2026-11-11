@@ -14,6 +14,7 @@ export function phaseLabel(s: PomodoroState): string {
     case 'long':
       return 'Pausa longa';
     case 'idle':
+      if (s.pending) return s.pending === 'long' ? 'Hora da pausa longa' : 'Hora da pausa';
       if (s.count === 0) return 'Pronto para focar';
       return s.count === 1 ? '1 foco hoje' : `${s.count} focos hoje`;
   }
@@ -46,6 +47,7 @@ const PHASE_NAMES = { idle: 'Foco', focus: 'Foco', break: 'Pausa', long: 'Pausa 
 // it runs, ran out (until acknowledged) or has not started. Pausa takes the feminine ending.
 export function collapsedLabel(s: PomodoroState, ended: PomodoroPhase | null): string {
   if (ended) return `${PHASE_NAMES[ended]} – ${ended === 'focus' ? 'Concluído' : 'Concluída'}`;
+  if (s.phase === 'idle' && s.pending) return `${PHASE_NAMES[s.pending]} – Não iniciada`;
   if (s.phase === 'idle') return 'Foco – Não iniciado';
   return `${PHASE_NAMES[s.phase]} – Em andamento`;
 }
