@@ -60,6 +60,7 @@ type rpcTarget interface {
 	Pomodoro() pomodoro.State
 	PomodoroAction(action string) error
 	PomodoroBegin(phase string, stage int) error
+	PomodoroSetRemaining(seconds int) error
 	FreeCache() (app.FreedCache, error)
 	Version() string
 	Update() error
@@ -310,6 +311,11 @@ func dispatcher(t rpcTarget) web.Dispatch {
 				return nil, err
 			}
 			return t.FreeCache()
+		case "PomodoroSetRemaining":
+			if err := decode(&cols); err != nil {
+				return nil, err
+			}
+			return nil, t.PomodoroSetRemaining(cols)
 		case "PomodoroBegin":
 			var stage int
 			if err := decode(&a, &stage); err != nil {

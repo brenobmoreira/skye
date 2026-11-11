@@ -56,6 +56,11 @@ func (a *App) Pomodoro() pomodoro.State { return a.timer.State() }
 
 func (a *App) PomodoroAction(action string) error { return a.timer.Do(action) }
 
+// PomodoroSetRemaining sets the time left, in seconds, of the running phase or of the next one.
+func (a *App) PomodoroSetRemaining(seconds int) error {
+	return a.timer.SetRemaining(time.Duration(seconds) * time.Second)
+}
+
 // PomodoroBegin starts at a chosen stage: phase is "focus" or "break".
 func (a *App) PomodoroBegin(phase string, stage int) error {
 	return a.timer.Begin(pomodoro.Phase(phase), stage)

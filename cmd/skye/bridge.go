@@ -661,3 +661,11 @@ func (b *Bridge) Update() error {
 	}()
 	return nil
 }
+
+func (b *Bridge) PomodoroSetRemaining(seconds int) error {
+	a, err := b.ready()
+	if err != nil {
+		return err
+	}
+	return a.PomodoroSetRemaining(seconds)
+}

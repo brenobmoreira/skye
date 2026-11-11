@@ -80,6 +80,11 @@ func (f *fakeTarget) FreeCache() (app.FreedCache, error) {
 	return app.FreedCache{FreedMB: 3400, CacheMB: 1200, LargeFree: 812}, nil
 }
 
+func (f *fakeTarget) PomodoroSetRemaining(seconds int) error {
+	f.record("PomodoroSetRemaining(%d)", seconds)
+	return nil
+}
+
 func (f *fakeTarget) PomodoroBegin(phase string, stage int) error {
 	f.record("PomodoroBegin(%s,%d)", phase, stage)
 	return nil
@@ -280,6 +285,7 @@ func TestDispatchCallsEachMethodWithDecodedArgs(t *testing.T) {
 		{"DeleteNote", `["n1"]`, "DeleteNote(n1)", `null`, false},
 		{"Pomodoro", `[]`, "Pomodoro", `{"phase":"idle"`, false},
 		{"PomodoroAction", `["start"]`, "PomodoroAction(start)", `null`, false},
+		{"PomodoroSetRemaining", `[1080]`, "PomodoroSetRemaining(1080)", `null`, false},
 		{"PomodoroBegin", `["break",3]`, "PomodoroBegin(break,3)", `null`, false},
 		{"Version", `[]`, "Version", `"abc123"`, false},
 		{"Update", `[]`, "Update", `null`, false},

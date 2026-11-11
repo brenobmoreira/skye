@@ -314,3 +314,13 @@ func TestPinAndMoveEmitNotes(t *testing.T) {
 		t.Fatalf("items %+v", n.Items)
 	}
 }
+
+func TestPomodoroSetRemainingTakesSeconds(t *testing.T) {
+	r := newFocusRig(t, true)
+	if err := r.app.PomodoroSetRemaining(18 * 60); err != nil {
+		t.Fatal(err)
+	}
+	if st := r.app.Pomodoro(); st.NextMs != 18*60_000 || r.count("pomodoro") != 1 {
+		t.Fatalf("state %+v", st)
+	}
+}

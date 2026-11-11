@@ -323,3 +323,64 @@ func TestStageFollowsTheCycle(t *testing.T) {
 		t.Fatalf("reset kept the stage: %+v", st)
 	}
 }
+
+func TestSetRemainingWhileRunningOrPaused(t *testing.T) {
+	r := newRig(t, Default)
+	r.do(t, "start")
+	if err := r.t.SetRemaining(18 * time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	st := r.t.State()
+	if st.RemainingMs != 18*60_000 || st.TotalMs != 25*60_000 || !r.jobs[0].stopped {
+		t.Fatalf("state %+v", st)
+	}
+	if last := r.jobs[len(r.jobs)-1]; last.d != 18*time.Minute {
+		t.Fatalf("rescheduled for %v", last.d)
+	}
+	r.do(t, "pause")
+	r.t.SetRemaining(5 * time.Minute)
+	if st := r.t.State(); st.RemainingMs != 5*60_000 || !st.Paused {
+		t.Fatalf("paused %+v", st)
+	}
+	r.do(t, "resume")
+	if last := r.jobs[len(r.jobs)-1]; last.d != 5*time.Minute {
+		t.Fatalf("resumed for %v", last.d)
+	}
+}
+
+func TestSetRemainingWhileIdleAppliesToTheNextStartOnly(t *testing.T) {
+	r := newRig(t, Default)
+	if err := r.t.SetRemaining(18 * time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	if st := r.t.State(); st.Phase != Idle || st.NextMs != 18*60_000 {
+		t.Fatalf("idle %+v", st)
+	}
+	r.do(t, "start")
+	if st := r.t.State(); st.RemainingMs != 18*60_000 || st.TotalMs != 18*60_000 || st.NextMs != 0 {
+		t.Fatalf("started %+v", st)
+	}
+	r.do(t, "skip")
+	r.t.Begin(Focus, 1)
+	if st := r.t.State(); st.RemainingMs != 25*60_000 {
+		t.Fatalf("second start %+v", st)
+	}
+}
+
+func TestSetRemainingValidates(t *testing.T) {
+	r := newRig(t, Default)
+	for _, d := range []time.Duration{0, -time.Second, 181 * time.Minute} {
+		if err := r.t.SetRemaining(d); err == nil {
+			t.Errorf("%v accepted", d)
+		}
+	}
+}
+
+func TestResetForgetsTheChosenLength(t *testing.T) {
+	r := newRig(t, Default)
+	r.t.SetRemaining(18 * time.Minute)
+	r.do(t, "reset")
+	if st := r.t.State(); st.NextMs != 0 {
+		t.Fatalf("state %+v", st)
+	}
+}
