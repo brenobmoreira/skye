@@ -616,3 +616,19 @@ func recordHost(w *winmem.Watcher, dir string) {
 		}
 	}
 }
+
+func (b *Bridge) PinNote(id string, pinned bool) error {
+	a, err := b.ready()
+	if err != nil {
+		return err
+	}
+	return a.PinNote(id, pinned)
+}
+
+func (b *Bridge) MoveNote(id, to string) error {
+	a, err := b.ready()
+	if err != nil {
+		return err
+	}
+	return a.MoveNote(id, to)
+}

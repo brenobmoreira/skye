@@ -117,6 +117,20 @@ func (a *App) EditNote(id string, e notes.Edit) (notes.Item, error) {
 	return it, a.changed(err)
 }
 
+func (a *App) PinNote(id string, pinned bool) error {
+	if a.o.Notes == nil {
+		return errNoNotes
+	}
+	return a.changed(a.o.Notes.Pin(id, pinned))
+}
+
+func (a *App) MoveNote(id, to string) error {
+	if a.o.Notes == nil {
+		return errNoNotes
+	}
+	return a.changed(a.o.Notes.Move(id, to))
+}
+
 func (a *App) CheckNote(id string) error {
 	if a.o.Notes == nil {
 		return errNoNotes

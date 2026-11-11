@@ -295,3 +295,22 @@ func TestPomodoroBeginStartsAtTheChosenStage(t *testing.T) {
 		t.Fatal("unknown phase accepted")
 	}
 }
+
+func TestPinAndMoveEmitNotes(t *testing.T) {
+	r := newFocusRig(t, true)
+	a, _ := r.app.AddNote("a")
+	b, _ := r.app.AddNote("b")
+	if err := r.app.PinNote(a.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.app.MoveNote(b.ID, a.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got := r.count("notes"); got != 4 {
+		t.Fatalf("notes events = %d", got)
+	}
+	n, _ := r.app.Notes()
+	if n.Items[0].ID != b.ID || !n.Items[1].Pinned {
+		t.Fatalf("items %+v", n.Items)
+	}
+}

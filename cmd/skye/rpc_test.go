@@ -47,6 +47,16 @@ func (f *fakeTarget) EditNote(id string, e notes.Edit) (notes.Item, error) {
 	return notes.Item{ID: id, Text: e.Text}, nil
 }
 
+func (f *fakeTarget) PinNote(id string, pinned bool) error {
+	f.record("PinNote(%s,%v)", id, pinned)
+	return nil
+}
+
+func (f *fakeTarget) MoveNote(id, to string) error {
+	f.record("MoveNote(%s,%s)", id, to)
+	return nil
+}
+
 func (f *fakeTarget) CheckNote(id string) error   { f.record("CheckNote(%s)", id); return nil }
 func (f *fakeTarget) UncheckNote(id string) error { f.record("UncheckNote(%s)", id); return nil }
 func (f *fakeTarget) DeleteNote(id string) error  { f.record("DeleteNote(%s)", id); return nil }
@@ -260,6 +270,8 @@ func TestDispatchCallsEachMethodWithDecodedArgs(t *testing.T) {
 		{"EditNote", `["n1",{"text":"a","date":"2026-11-13","time":"14:00","repeat":{"kind":"weekly","weekday":5}}]`, "EditNote(n1,a,2026-11-13,14:00,weekly/5)", `{"id":"n1","text":"a"`, false},
 		{"EditNote", `["n1",{"text":"a","date":"","time":"","repeat":null}]`, "EditNote(n1,a,,,)", `{"id":"n1"`, false},
 		{"CheckNote", `["n1"]`, "CheckNote(n1)", `null`, false},
+		{"PinNote", `["n1",true]`, "PinNote(n1,true)", `null`, false},
+		{"MoveNote", `["n3","n1"]`, "MoveNote(n3,n1)", `null`, false},
 		{"UncheckNote", `["n1"]`, "UncheckNote(n1)", `null`, false},
 		{"DeleteNote", `["n1"]`, "DeleteNote(n1)", `null`, false},
 		{"Pomodoro", `[]`, "Pomodoro", `{"phase":"idle"`, false},

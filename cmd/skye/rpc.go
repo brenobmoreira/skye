@@ -53,6 +53,8 @@ type rpcTarget interface {
 	AddNote(text string) (notes.Item, error)
 	EditNote(id string, e notes.Edit) (notes.Item, error)
 	CheckNote(id string) error
+	PinNote(id string, pinned bool) error
+	MoveNote(id, to string) error
 	UncheckNote(id string) error
 	DeleteNote(id string) error
 	Pomodoro() pomodoro.State
@@ -256,6 +258,16 @@ func dispatcher(t rpcTarget) web.Dispatch {
 				return nil, err
 			}
 			return t.EditNote(a, e)
+		case "PinNote":
+			if err := decode(&a, &flag); err != nil {
+				return nil, err
+			}
+			return nil, t.PinNote(a, flag)
+		case "MoveNote":
+			if err := decode(&a, &b); err != nil {
+				return nil, err
+			}
+			return nil, t.MoveNote(a, b)
 		case "CheckNote":
 			if err := decode(&a); err != nil {
 				return nil, err

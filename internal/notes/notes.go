@@ -18,11 +18,13 @@ import (
 )
 
 type Item struct {
-	ID      string    `json:"id"`
-	Text    string    `json:"text"`
-	Date    string    `json:"date,omitempty"`
-	Time    string    `json:"time,omitempty"`
-	Repeat  *Repeat   `json:"repeat,omitempty"`
+	ID     string  `json:"id"`
+	Text   string  `json:"text"`
+	Date   string  `json:"date,omitempty"`
+	Time   string  `json:"time,omitempty"`
+	Repeat *Repeat `json:"repeat,omitempty"`
+	// Pinned notes sit in their own group at the top of the list.
+	Pinned  bool      `json:"pinned,omitempty"`
 	Created time.Time `json:"created"`
 	// DoneAt is set only on notes that do not repeat; a repeating one leaves a Done instead.
 	DoneAt time.Time `json:"doneAt,omitzero"`
@@ -315,6 +317,34 @@ func (s *Store) Delete(id string) error {
 			return nil
 		}
 		return fmt.Errorf("anotação desconhecida: %q", id)
+	})
+	return err
+}
+
+func (s *Store) Pin(id string, pinned bool) error {
+	_, err := s.change(func(n *Notes) error {
+		i := findItem(n, id)
+		if i < 0 {
+			return fmt.Errorf("anotação desconhecida: %q", id)
+		}
+		n.Items[i].Pinned = pinned
+		return nil
+	})
+	return err
+}
+
+// Move puts note id where note to is, shifting the ones between: the list's order is the order
+// the panel shows inside each group.
+func (s *Store) Move(id, to string) error {
+	_, err := s.change(func(n *Notes) error {
+		src, dst := findItem(n, id), findItem(n, to)
+		if src < 0 || dst < 0 {
+			return fmt.Errorf("anotação desconhecida: %q", map[bool]string{true: id, false: to}[src < 0])
+		}
+		moved := n.Items[src]
+		n.Items = append(n.Items[:src:src], n.Items[src+1:]...)
+		n.Items = append(n.Items[:dst:dst], append([]Item{moved}, n.Items[dst:]...)...)
+		return nil
 	})
 	return err
 }
