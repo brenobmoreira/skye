@@ -80,6 +80,12 @@ Cada item é um terminal. O cachorro mostra o estado, e a lista agrupa nesta ord
 - **Barra fina no pé:** quanto do contexto a sessão já usou; amarela a partir de 80%. Passar o
   mouse mostra contexto, modelo e custo.
 - **Ponto azul:** terminou ou pediu algo enquanto você olhava outro terminal. Some ao abrir.
+- **Responder pela lista:** quando o claude ou o codex termina com uma pergunta, ela aparece na
+  linha de baixo com o botão **sim**; quando termina com 2 a 4 opções numeradas, cada opção vira
+  um botão. O clique digita a resposta no terminal sem abri-lo e só vale para aquela pergunta: se
+  você já respondeu pelo terminal ou ele voltou a trabalhar, nada é enviado. Sem pergunta, a linha
+  mostra como a resposta terminou; passar o mouse mostra o trecho inteiro. O agy ainda não mostra.
+- **Tempo em âmbar:** algo espera você (pergunta, opções ou pedido) há mais de 10 min.
 - **Rodapé:** o uso do plano (5h e 7d) com o horário de renovação. Atualiza a cada resposta de
   qualquer sessão; depois de reiniciar a skye, aparece na próxima resposta.
 - **Encerradas:** as conversas que acabaram (sair do claude, fechar o terminal, **sair**).

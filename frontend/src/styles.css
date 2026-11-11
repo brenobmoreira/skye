@@ -99,6 +99,10 @@ button:hover { background: var(--line); }
 .item .sub { display: flex; gap: 6px; color: var(--muted); font-size: 11px; white-space: nowrap; }
 .item .sub > span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .item .sub .time { flex: none; }
+.item .sub .time.overdue { color: var(--waiting); }
+.item .answers { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.item .answers button { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 1px 8px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--text); font: inherit; font-size: 11px; cursor: pointer; }
+.item .answers button:hover { border-color: var(--accent); color: var(--accent); }
 .item input { width: 100%; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--accent); border-radius: 4px; }
 .item .x { border: 0; color: var(--muted); padding: 0 4px; }
 .item > div { min-width: 0; }
