@@ -1,11 +1,12 @@
 import { useEffect, useState, type MouseEvent } from 'react';
 import { api } from '../bridge';
 import { itemLabel } from '../lib/label';
-import { memoryLevel, nearest, size, sparkline, strayLabel } from '../lib/monitor';
+import { bridgeBroken, memoryLevel, nearest, size, sparkline, strayLabel } from '../lib/monitor';
 import { stateLabel } from '../lib/states';
 import { capitalize } from '../lib/text';
 import type { MemoryPoint, MonitorReport, Terminal } from '../lib/types';
 import { DogIcon } from './DogIcon';
+import { ConfirmDialog } from './ConfirmDialog';
 
 const REFRESH_MS = 3000;
 const CHART_W = 600;
@@ -52,6 +53,19 @@ function MemoryChart({ points, totalMb }: { points: MemoryPoint[]; totalMb: numb
 export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: (id: string) => void }) {
   const [report, setReport] = useState<MonitorReport | null>(null);
   const [error, setError] = useState('');
+  const [asking, setAsking] = useState(false);
+  const [freeing, setFreeing] = useState(false);
+  const [freed, setFreed] = useState('');
+  const freeCache = () => {
+    setAsking(false);
+    setFreeing(true);
+    setFreed('');
+    api()
+      .FreeCache()
+      .then((r) => setFreed(`Liberou ${size(r.freedMb)}; ${r.largeFree} blocos grandes livres agora.`))
+      .catch((e) => setFreed(String(e?.message ?? e)))
+      .finally(() => setFreeing(false));
+  };
 
   useEffect(() => {
     let alive = true;
@@ -65,7 +79,7 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
     return () => { alive = false; clearInterval(tick); };
   }, []);
 
-  if (!report) return <div className="monitor"><p className="hint">{error || 'medindo…'}</p></div>;
+  if (!report) return <div className="monitor"><p className="hint">{error || 'Medindo…'}</p></div>;
 
   const m = report.machine;
   const level = memoryLevel(m);
@@ -89,7 +103,7 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
 
   return (
     <div className="monitor">
-      {error && <p className="hint warn">falhou a última leitura: {error}</p>}
+      {error && <p className="hint warn">Falhou a última leitura: {error}</p>}
       <section className="mon-tiles">
         {host ? (
           <div className="tile" title="O que o Gerenciador de Tarefas do Windows mostra como disponível; inclui o que a VM do WSL segura">
@@ -116,6 +130,17 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
           <span className="value">{size(m.swapUsedMb)}</span>
           <span className="note">de {size(m.swapTotalMb)}</span>
         </div>
+        <div className={bridgeBroken(m) ? 'tile cache warn-tile' : 'tile cache'} title="Cache de disco que o kernel do WSL segura e pode soltar">
+          <span className="label">Cache de disco</span>
+          <span className="value">{size(m.cacheMb)}</span>
+          <span className="note">
+            {bridgeBroken(m)
+              ? <strong className="warn">⚠ O Windows não consegue abrir programas no WSL</strong>
+              : m.largeFree >= 0 ? `${m.largeFree} blocos grandes livres` : 'Blocos livres desconhecidos'}
+          </span>
+          <button className="free" disabled={freeing} onClick={() => setAsking(true)}>{freeing ? 'Liberando…' : 'Liberar cache'}</button>
+          {freed && <span className="note">{freed}</span>}
+        </div>
         <div className="tile">
           <span className="label">Pressão de memória</span>
           <span className="value">{m.psiSome60.toFixed(1).replace('.', ',')}%</span>
@@ -127,6 +152,16 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
           <span className="note">Média de 1 min</span>
         </div>
       </section>
+
+      {asking && (
+        <ConfirmDialog
+          title="Liberar o cache de disco?"
+          message="A skye grava o que está pendente no disco, solta o cache do WSL e compacta a memória. Nenhum programa é fechado; o disco pode ficar um pouco mais lento por alguns minutos."
+          confirm="Liberar"
+          onConfirm={freeCache}
+          onCancel={() => setAsking(false)}
+        />
+      )}
 
       {report.history && report.history.length > 1 && <MemoryChart points={report.history} totalMb={m.memTotalMb} />}
 

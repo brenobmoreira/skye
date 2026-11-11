@@ -77,6 +77,8 @@ export interface OutputEvent {
 }
 
 export interface Machine {
+  cacheMb: number;
+  largeFree: number;
   memTotalMb: number;
   memAvailMb: number;
   swapTotalMb: number;
@@ -227,4 +229,10 @@ export interface PomodoroState {
   count: number;
   stage: number;
   settings: PomodoroSettings;
+}
+
+export interface FreedCache {
+  freedMb: number;
+  cacheMb: number;
+  largeFree: number;
 }

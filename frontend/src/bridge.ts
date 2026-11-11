@@ -1,4 +1,4 @@
-import type { NoteEdit, NoteItem, Notes, PomodoroSettings, PomodoroState } from './lib/types';
+import type { FreedCache, NoteEdit, NoteItem, Notes, PomodoroSettings, PomodoroState } from './lib/types';
 import type { Changes, CompareMode, Conversation, DirEntry, FileContent, FileDiff, MonitorReport, OutputEvent, Place, PlaceCommand, Preset, Repo, Terminal, Usage } from './lib/types';
 import { createOutputHub } from './output';
 import { createSendQueue } from './sendQueue';
@@ -51,6 +51,7 @@ interface GoBridge {
   Pomodoro(): Promise<PomodoroState>;
   PomodoroAction(action: 'start' | 'pause' | 'resume' | 'skip' | 'reset'): Promise<void>;
   PomodoroBegin(phase: 'focus' | 'break', stage: number): Promise<void>;
+  FreeCache(): Promise<FreedCache>;
   SetPomodoroSettings(settings: PomodoroSettings): Promise<void>;
 }
 
@@ -170,6 +171,7 @@ function remoteBridge(connect: () => SocketLike): { bridge: GoBridge; on: (name:
     Pomodoro: () => call('Pomodoro'),
     PomodoroAction: (action) => call('PomodoroAction', action),
     PomodoroBegin: (phase, stage) => call('PomodoroBegin', phase, stage),
+    FreeCache: () => call('FreeCache'),
     SetPomodoroSettings: (settings) => call('SetPomodoroSettings', settings),
   };
   return { bridge, on: (name, cb) => client.on(name, cb) };

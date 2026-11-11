@@ -429,3 +429,8 @@ button:disabled { cursor: default; }
 .pomodoro .stage:hover { border-color: var(--accent); color: var(--text); background: none; }
 .pomodoro .stage.done { background: rgba(122, 162, 247, 0.22); border-color: transparent; color: var(--text); }
 .pomodoro .stage.current { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.15); }
+
+/* Disk cache tile: amber when no large free block is left, with the button that frees it. */
+.mon-tiles .tile.warn-tile { border-color: color-mix(in srgb, var(--waiting) 55%, var(--line)); }
+.mon-tiles .tile .free { justify-self: start; margin-top: 4px; font-size: 12px; padding: 2px 10px; }
+.mon-tiles .tile.warn-tile .free { border-color: var(--waiting); color: var(--waiting); }

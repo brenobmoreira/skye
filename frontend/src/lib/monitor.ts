@@ -47,3 +47,9 @@ export function nearest(count: number, fraction: number): number {
   if (count <= 0) return -1;
   return Math.min(count - 1, Math.max(0, Math.round(fraction * (count - 1))));
 }
+
+// bridgeBroken: no free block of 512 KB or more is left, so Windows cannot open programs in WSL
+// (skye.exe, wsl.exe, cmd.exe). -1 means the kernel did not say.
+export function bridgeBroken(m: Pick<Machine, 'largeFree'>): boolean {
+  return m.largeFree === 0;
+}
