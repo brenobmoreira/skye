@@ -16,9 +16,11 @@ import (
 	"github.com/brenobmoreira/skye/internal/config"
 	"github.com/brenobmoreira/skye/internal/files"
 	"github.com/brenobmoreira/skye/internal/hooks"
+	"github.com/brenobmoreira/skye/internal/notes"
 	"github.com/brenobmoreira/skye/internal/notify"
 	"github.com/brenobmoreira/skye/internal/opener"
 	"github.com/brenobmoreira/skye/internal/places"
+	"github.com/brenobmoreira/skye/internal/pomodoro"
 	"github.com/brenobmoreira/skye/internal/procs"
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
@@ -133,6 +135,10 @@ func (b *Bridge) boot() error {
 	if err != nil {
 		b.problem("paths salvos ilegíveis, começando vazio: %v", err)
 	}
+	noteStore, err := notes.Open(paths.Notes, time.Now, newID)
+	if err != nil {
+		b.problem("anotações: %v", err)
+	}
 	var hostMemory func() (winmem.Memory, bool)
 	if w := winmem.New(); w != nil {
 		hostMemory = w.Latest
@@ -162,6 +168,9 @@ func (b *Bridge) boot() error {
 		CreateWorktree: worktree.Create,
 		Host:           hostMemory,
 		Places:         saved,
+		Notes:          noteStore,
+		PomodoroFile:   paths.Pomodoro,
+		Problem:        func(msg string) { b.problem("%s", msg) },
 	})
 	b.mu.Lock()
 	b.app, b.client = a, client
@@ -170,6 +179,7 @@ func (b *Bridge) boot() error {
 	if err := a.Recover(); err != nil {
 		b.problem("não consegui reencontrar os terminais: %v", err)
 	}
+	go a.WatchAlarms(30*time.Second, nil)
 	ok = true
 	return nil
 }
@@ -490,4 +500,76 @@ func (b *Bridge) Quit() error {
 	}
 	b.host.quit()
 	return nil
+}
+
+func (b *Bridge) Notes() (notes.Notes, error) {
+	a, err := b.ready()
+	if err != nil {
+		return notes.Notes{}, err
+	}
+	return a.Notes()
+}
+
+func (b *Bridge) AddNote(text string) (notes.Item, error) {
+	a, err := b.ready()
+	if err != nil {
+		return notes.Item{}, err
+	}
+	return a.AddNote(text)
+}
+
+func (b *Bridge) EditNote(id string, e notes.Edit) (notes.Item, error) {
+	a, err := b.ready()
+	if err != nil {
+		return notes.Item{}, err
+	}
+	return a.EditNote(id, e)
+}
+
+func (b *Bridge) CheckNote(id string) error {
+	a, err := b.ready()
+	if err != nil {
+		return err
+	}
+	return a.CheckNote(id)
+}
+
+func (b *Bridge) UncheckNote(id string) error {
+	a, err := b.ready()
+	if err != nil {
+		return err
+	}
+	return a.UncheckNote(id)
+}
+
+func (b *Bridge) DeleteNote(id string) error {
+	a, err := b.ready()
+	if err != nil {
+		return err
+	}
+	return a.DeleteNote(id)
+}
+
+func (b *Bridge) Pomodoro() pomodoro.State {
+	a, err := b.ready()
+	if err != nil {
+		return pomodoro.State{Phase: pomodoro.Idle, Settings: pomodoro.Default}
+	}
+	return a.Pomodoro()
+}
+
+func (b *Bridge) PomodoroAction(action string) error {
+	a, err := b.ready()
+	if err != nil {
+		return err
+	}
+	return a.PomodoroAction(action)
+}
+
+func (b *Bridge) SetPomodoroSettings(s pomodoro.Settings) error {
+	a, err := b.ready()
+	if err != nil {
+		return err
+	}
+	return a.SetPomodoroSettings(s)
 }
