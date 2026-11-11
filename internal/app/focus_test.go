@@ -261,3 +261,24 @@ func TestAlarmsSkipAGapLikeASleep(t *testing.T) {
 		t.Fatalf("ticking resumed wrong: barks %v", r.barks)
 	}
 }
+
+func TestPomodoroEndEmitsWhichPhaseEnded(t *testing.T) {
+	r := newFocusRig(t, true)
+	var ended []string
+	r.app.o.Emit = func(ev string, data any) {
+		if ev == "pomodoroEnded" {
+			ended = append(ended, string(data.(pomodoro.Phase)))
+		}
+	}
+	r.app.PomodoroAction("start")
+	r.app.PomodoroAction("skip")
+	if len(ended) != 0 {
+		t.Fatalf("a skip emitted an end: %v", ended)
+	}
+	r.app.PomodoroAction("start")
+	r.fire()
+	r.fire()
+	if !slices.Equal(ended, []string{"focus", "break"}) {
+		t.Fatalf("ended = %v", ended)
+	}
+}

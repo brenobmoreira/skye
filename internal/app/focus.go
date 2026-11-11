@@ -40,6 +40,8 @@ func (a *App) pomodoroEnded(e pomodoro.Ended) {
 		}
 	}
 	a.toast("skye", body)
+	// Tells the windows a phase ran out on its own, so the closed panel's pill can pulse.
+	a.o.Emit("pomodoroEnded", e.Phase)
 }
 
 func (a *App) toast(title, body string) {
