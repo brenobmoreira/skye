@@ -225,5 +225,6 @@ export interface PomodoroState {
   remainingMs: number;
   totalMs: number;
   count: number;
+  stage: number;
   settings: PomodoroSettings;
 }

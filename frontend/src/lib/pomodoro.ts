@@ -8,7 +8,7 @@ export function clock(ms: number): string {
 export function phaseLabel(s: PomodoroState): string {
   switch (s.phase) {
     case 'focus':
-      return `Foco · ${(s.count % s.settings.every) + 1} de ${s.settings.every}`;
+      return `Foco · ${s.stage + 1} de ${s.settings.every}`;
     case 'break':
       return 'Pausa';
     case 'long':
@@ -33,4 +33,9 @@ export function pillPhase(s: PomodoroState): string {
 
 export function endedLabel(phase: PomodoroPhase): string {
   return phase === 'focus' ? 'Foco acabou' : 'Pausa acabou';
+}
+
+// breakLabel names the button that starts the break after stage n of a cycle of `every`.
+export function breakLabel(n: number, every: number): string {
+  return n >= every ? 'Começar pausa longa' : 'Começar pausa';
 }

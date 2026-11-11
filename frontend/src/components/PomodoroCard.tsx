@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react';
 import { api } from '../bridge';
-import { clock, phaseLabel } from '../lib/pomodoro';
+import { breakLabel, clock, phaseLabel } from '../lib/pomodoro';
 import type { PomodoroState } from '../lib/types';
 
 const R = 54;
@@ -15,6 +16,11 @@ export function PomodoroCard({ state, remainingMs }: { state: PomodoroState; rem
   const total = running ? state.totalMs : state.settings.focus * 60_000;
   const left = running ? remainingMs : total;
   const done = total > 0 ? Math.min(1, Math.max(0, 1 - left / total)) : 0;
+  const every = state.settings.every;
+  // The stage the next start uses: the next focus of the cycle, unless another one is picked.
+  const [stage, setStage] = useState(Math.min(state.stage + 1, every));
+  useEffect(() => setStage(Math.min(state.stage + 1, every)), [state.stage, every]);
+  const begin = (phase: 'focus' | 'break') => { api().PomodoroBegin(phase, stage).catch(() => {}); };
 
   return (
     <section className={`pomodoro ${state.phase}${state.paused ? ' paused' : ''}`}>
@@ -32,8 +38,25 @@ export function PomodoroCard({ state, remainingMs }: { state: PomodoroState; rem
         <div className="time">{clock(left)}</div>
       </div>
       <div className="phase">{phaseLabel(state)}{state.paused ? ' · pausado' : ''}</div>
+      {!running && (
+        <div className="stages" role="radiogroup" aria-label="Estágio do ciclo">
+          {Array.from({ length: every }, (_, i) => i + 1).map((n) => (
+            <button
+              key={n}
+              role="radio"
+              aria-checked={n === stage}
+              className={`stage${n < stage ? ' done' : ''}${n === stage ? ' current' : ''}`}
+              onClick={() => setStage(n)}
+              data-tip={`Estágio ${n}`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="controls">
-        {!running && <button className="primary" onClick={() => act('start')}>Começar</button>}
+        {!running && <button className="primary" onClick={() => begin('focus')}>Começar foco</button>}
+        {!running && <button onClick={() => begin('break')}>{breakLabel(stage, every)}</button>}
         {running && !state.paused && <button onClick={() => act('pause')}>Pausar</button>}
         {running && state.paused && <button className="primary" onClick={() => act('resume')}>Retomar</button>}
         {running && <button onClick={() => act('skip')} title="Encerra esta fase agora">Pular</button>}

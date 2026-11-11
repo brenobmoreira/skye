@@ -422,3 +422,10 @@ button:disabled { cursor: default; }
   button, .views-ind, .pill .left, .titlebar .logo, .titlebar .icon.gear svg { transition: none; }
   .pill.ended, .pill.ended .dot, .titlebar .icon.bell:hover svg, .menu-list { animation: none; }
 }
+
+/* Stage picker under the idle timer: the done ones filled, the chosen one ringed. */
+.pomodoro .stages { display: flex; gap: 6px; }
+.pomodoro .stage { position: relative; width: 24px; height: 24px; display: grid; place-items: center; padding: 0; border: 1.5px solid var(--line); border-radius: 50%; background: none; color: var(--muted); font-size: 11.5px; font-weight: 600; }
+.pomodoro .stage:hover { border-color: var(--accent); color: var(--text); background: none; }
+.pomodoro .stage.done { background: rgba(122, 162, 247, 0.22); border-color: transparent; color: var(--text); }
+.pomodoro .stage.current { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.15); }

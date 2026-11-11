@@ -50,6 +50,7 @@ interface GoBridge {
   DeleteNote(id: string): Promise<void>;
   Pomodoro(): Promise<PomodoroState>;
   PomodoroAction(action: 'start' | 'pause' | 'resume' | 'skip' | 'reset'): Promise<void>;
+  PomodoroBegin(phase: 'focus' | 'break', stage: number): Promise<void>;
   SetPomodoroSettings(settings: PomodoroSettings): Promise<void>;
 }
 
@@ -168,6 +169,7 @@ function remoteBridge(connect: () => SocketLike): { bridge: GoBridge; on: (name:
     DeleteNote: (id) => call('DeleteNote', id),
     Pomodoro: () => call('Pomodoro'),
     PomodoroAction: (action) => call('PomodoroAction', action),
+    PomodoroBegin: (phase, stage) => call('PomodoroBegin', phase, stage),
     SetPomodoroSettings: (settings) => call('SetPomodoroSettings', settings),
   };
   return { bridge, on: (name, cb) => client.on(name, cb) };
