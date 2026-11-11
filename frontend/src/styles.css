@@ -358,7 +358,7 @@ button:disabled { cursor: default; }
    the icon group on the right. Every icon names itself in a tooltip under it. */
 .titlebar .logo { transition: transform 0.25s var(--ease); }
 .titlebar .logo:hover { transform: rotate(-12deg) scale(1.1); }
-.titlebar .new-button { background: var(--accent); border-color: var(--accent); color: #0b0b0e; font-weight: 600; font-size: 12.5px; padding: 2px 11px; }
+.titlebar .new-button { white-space: nowrap; flex: none; background: var(--accent); border-color: var(--accent); color: #0b0b0e; font-weight: 600; font-size: 12.5px; padding: 2px 11px; }
 .titlebar .new-button:hover { background: #8fb2ff; box-shadow: 0 4px 16px rgba(122, 162, 247, 0.35); }
 .titlebar .new-button:disabled { opacity: 0.4; box-shadow: none; }
 
