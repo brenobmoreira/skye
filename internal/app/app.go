@@ -295,6 +295,20 @@ func (a *App) Write(id, data string) error {
 	return a.o.Tmux.SendKeys(t.Pane, []byte(data))
 }
 
+// Answer types the user's answer to the question the agent ended its turn with: the text, then
+// Enter on its own, so the agent does not read the two as one paste.
+func (a *App) Answer(id string, turn int, text string) error {
+	t, err := a.reg.TakeAnswer(id, turn, text)
+	if err != nil {
+		return err
+	}
+	a.emitTerminals()
+	if err := a.o.Tmux.SendKeys(t.Pane, []byte(text)); err != nil {
+		return err
+	}
+	return a.o.Tmux.SendKeys(t.Pane, []byte("\r"))
+}
+
 func (a *App) Resize(id string, cols, rows int) error {
 	t, err := a.get(id)
 	if err != nil {

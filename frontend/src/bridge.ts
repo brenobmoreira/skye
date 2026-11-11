@@ -21,6 +21,7 @@ interface GoBridge {
   Resize(id: string, cols: number, rows: number): Promise<void>;
   Snapshot(id: string): Promise<string>;
   Rename(id: string, name: string): Promise<void>;
+  Answer(id: string, turn: number, text: string): Promise<void>;
   Reorder(ids: string[]): Promise<void>;
   Close(id: string): Promise<void>;
   Forget(sessionId: string): Promise<void>;
@@ -129,6 +130,7 @@ function remoteBridge(connect: () => SocketLike): { bridge: GoBridge; on: (name:
     Resize: (id, cols, rows) => call('Resize', id, cols, rows),
     Snapshot: (id) => call('Snapshot', id),
     Rename: (id, name) => call('Rename', id, name),
+    Answer: (id, turn, text) => call('Answer', id, turn, text),
     Reorder: (ids) => call('Reorder', ids),
     Close: (id) => call('Close', id),
     Forget: (sessionId) => call('Forget', sessionId),

@@ -414,6 +414,14 @@ func (b *Bridge) Snapshot(id string) (string, error) {
 	return a.Snapshot(id)
 }
 
+func (b *Bridge) Answer(id string, turn int, text string) error {
+	a, err := b.ready()
+	if err != nil {
+		return err
+	}
+	return a.Answer(id, turn, text)
+}
+
 func (b *Bridge) Rename(id, name string) error {
 	a, err := b.ready()
 	if err != nil {

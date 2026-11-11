@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -25,6 +26,7 @@ type fakeTmux struct {
 	created  [][]string
 	envs     []map[string]string
 	keys     map[string]string
+	sends    []string
 	killed   []string
 	serverKO bool
 }
@@ -42,6 +44,7 @@ func (f *fakeTmux) NewWindow(id string, env map[string]string, argv []string) (t
 func (f *fakeTmux) ListWindows() ([]tmuxctl.Window, error) { return f.windows, nil }
 func (f *fakeTmux) SendKeys(pane string, data []byte) error {
 	f.keys[pane] += string(data)
+	f.sends = append(f.sends, string(data))
 	return nil
 }
 func (f *fakeTmux) Capture(pane string) (string, error) { return "screen of " + pane, nil }
@@ -552,5 +555,34 @@ func TestSavedPlacesOpenClaudeInTheirFolder(t *testing.T) {
 	}
 	if _, err := h.app.OpenPlace("LivIA", "claude"); err == nil {
 		t.Fatal("opened a removed place")
+	}
+}
+
+func TestAnswerTypesTextThenEnter(t *testing.T) {
+	h := newHarness(t, config.Default())
+	term, _ := h.app.NewTerminal("")
+	h.hook(term.ID, "UserPromptSubmit")
+	h.hook(term.ID, "Stop", func(e *hooks.Event) { e.LastMessage = "Faço o push?" })
+	if err := h.app.Answer(term.ID, 1, "sim"); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(h.tmux.sends, []string{"sim", "\r"}) {
+		t.Fatalf("sends = %q", h.tmux.sends)
+	}
+	if got, _ := h.app.reg.Get(term.ID); got.Answered != "sim" {
+		t.Fatalf("answered = %q", got.Answered)
+	}
+}
+
+func TestAnswerRefusesStaleTurn(t *testing.T) {
+	h := newHarness(t, config.Default())
+	term, _ := h.app.NewTerminal("")
+	h.hook(term.ID, "UserPromptSubmit")
+	h.hook(term.ID, "Stop", func(e *hooks.Event) { e.LastMessage = "Faço o push?" })
+	if err := h.app.Answer(term.ID, 0, "sim"); err == nil {
+		t.Fatal("stale turn accepted")
+	}
+	if len(h.tmux.sends) != 0 {
+		t.Fatalf("sends = %q", h.tmux.sends)
 	}
 }
