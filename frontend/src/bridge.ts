@@ -54,6 +54,8 @@ interface GoBridge {
   PomodoroAction(action: 'start' | 'pause' | 'resume' | 'skip' | 'reset'): Promise<void>;
   PomodoroBegin(phase: 'focus' | 'break', stage: number): Promise<void>;
   FreeCache(): Promise<FreedCache>;
+  Version(): Promise<string>;
+  Update(): Promise<void>;
   SetPomodoroSettings(settings: PomodoroSettings): Promise<void>;
 }
 
@@ -176,6 +178,8 @@ function remoteBridge(connect: () => SocketLike): { bridge: GoBridge; on: (name:
     PomodoroAction: (action) => call('PomodoroAction', action),
     PomodoroBegin: (phase, stage) => call('PomodoroBegin', phase, stage),
     FreeCache: () => call('FreeCache'),
+    Version: () => call('Version'),
+    Update: () => call('Update'),
     SetPomodoroSettings: (settings) => call('SetPomodoroSettings', settings),
   };
   return { bridge, on: (name, cb) => client.on(name, cb) };

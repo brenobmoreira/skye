@@ -7,6 +7,7 @@ import { TerminalView } from './components/TerminalView';
 import { Monitor } from './components/Monitor';
 import { FocusPanel } from './components/FocusPanel';
 import { clock, endedLabel, pillPhase } from './lib/pomodoro';
+import { shouldReload } from './lib/version';
 import type { Conversation, Notes, Place, PlaceCommand, PomodoroPhase, PomodoroSettings, PomodoroState, Preset, Repo, State, Terminal, Usage } from './lib/types';
 import { nextUnread, withMarks } from './lib/unread';
 import { shortcut } from './lib/shortcuts';
@@ -22,8 +23,8 @@ const FONT_KEY = 'skye:fontSize';
 const FAMILY_KEY = 'skye:font';
 const CUSTOM_FONTS_KEY = 'skye:customFonts';
 const FOCUS_KEY = 'skye:focusOpen';
-const PILL_HIDDEN_KEY = 'skye:pillHidden';
-const TIMER_COLLAPSED_KEY = 'skye:timerCollapsed';
+// One flag hides the time in the title bar pill and folds the timer island.
+const TIME_HIDDEN_KEY = 'skye:timeHidden';
 
 function storedFlag(key: string): boolean {
   try {
@@ -114,11 +115,11 @@ export function App() {
   // The timer as the Go side last sent it, and when it arrived: the time left is counted from there.
   const [pomodoro, setPomodoroState] = useState<{ state: PomodoroState; at: number } | null>(null);
   const [now, setNow] = useState(() => Date.now());
-  const [pillHidden, setPillHidden] = useState(() => storedFlag(PILL_HIDDEN_KEY));
+  const [timeHidden, setTimeHidden] = useState(() => storedFlag(TIME_HIDDEN_KEY));
+  // The interface build this page loaded with; a different one after a reconnect means an update.
+  const seenVersion = useRef('');
   // The phase that last ran out on its own, until the pill is clicked or the panel opened.
   const [ended, setEnded] = useState<PomodoroPhase | null>(null);
-  // The timer island folded down to one line, with the panel open.
-  const [timerCollapsed, setTimerCollapsed] = useState(() => storedFlag(TIMER_COLLAPSED_KEY));
   const receivePomodoro = (state: PomodoroState) => { setPomodoroState({ state, at: Date.now() }); setNow(Date.now()); };
   const [unread, setUnread] = useState<Set<string>>(() => new Set());
   // Marked unread from the right-click menu; only picking the terminal clears these.
@@ -163,6 +164,13 @@ export function App() {
     api().Usage().then(setUsage).catch(() => {});
     api().Notes().then(setNotes).catch(() => {});
     api().Pomodoro().then(receivePomodoro).catch(() => {});
+    api()
+      .Version()
+      .then((v) => {
+        if (shouldReload(seenVersion.current, v)) window.location.reload();
+        else if (!seenVersion.current) seenVersion.current = v;
+      })
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -258,8 +266,8 @@ export function App() {
 
   // With the panel open the end of a phase is already in view; nothing is left to acknowledge.
   useEffect(() => {
-    if (focusOpen && !timerCollapsed && ended) setEnded(null);
-  }, [focusOpen, timerCollapsed, ended]);
+    if (focusOpen && !timeHidden && ended) setEnded(null);
+  }, [focusOpen, timeHidden, ended]);
 
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return;
@@ -312,18 +320,13 @@ export function App() {
       storeFlag(FOCUS_KEY, !open);
       return !open;
     });
-  const togglePillHidden = () =>
-    setPillHidden((hidden) => {
-      storeFlag(PILL_HIDDEN_KEY, !hidden);
+  const toggleTimeHidden = () =>
+    setTimeHidden((hidden) => {
+      storeFlag(TIME_HIDDEN_KEY, !hidden);
       return !hidden;
     });
   // A pulsing pill is only acknowledged by the click; otherwise the pill opens the panel.
   const clickPill = () => (ended ? setEnded(null) : toggleFocus());
-  const toggleTimerCollapsed = () =>
-    setTimerCollapsed((c) => {
-      storeFlag(TIMER_COLLAPSED_KEY, !c);
-      return !c;
-    });
   const pickView = (next: 'terminals' | 'monitor' | 'files') => setView(next);
   const running = pomodoro !== null && pomodoro.state.phase !== 'idle';
 
@@ -355,7 +358,7 @@ export function App() {
   return (
     <div className={isWindow() ? 'app windowed' : 'app'}>
       {link.kind !== 'ready' && <ConnectionScreen state={link} />}
-      <TitleBar presets={presets} repos={repos} places={places} onOpenPlace={openPlace} onAddPlace={addPlace} onRemovePlace={removePlace} onNewWorktree={newWorktree} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} customFonts={customFonts} onPickFont={pickFont} onAddFont={addFont} onRemoveFont={removeFont} view={view} onView={pickView} canFiles={activeId !== null} focus={focusOpen} onToggleFocus={toggleFocus} pill={running && pomodoro ? { phase: pillPhase(pomodoro.state), time: clock(remainingMs) } : null} pillHidden={pillHidden} onTogglePillHidden={togglePillHidden} ended={ended ? endedLabel(ended) : ''} onPill={clickPill} pomodoro={pomodoro?.state.settings ?? null} onSavePomodoro={savePomodoro} />
+      <TitleBar presets={presets} repos={repos} places={places} onOpenPlace={openPlace} onAddPlace={addPlace} onRemovePlace={removePlace} onNewWorktree={newWorktree} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} customFonts={customFonts} onPickFont={pickFont} onAddFont={addFont} onRemoveFont={removeFont} view={view} onView={pickView} canFiles={activeId !== null} focus={focusOpen} onToggleFocus={toggleFocus} pill={running && pomodoro ? { phase: pillPhase(pomodoro.state), time: clock(remainingMs) } : null} pillHidden={timeHidden} onTogglePillHidden={toggleTimeHidden} ended={ended ? endedLabel(ended) : ''} onPill={clickPill} pomodoro={pomodoro?.state.settings ?? null} onSavePomodoro={savePomodoro} onUpdate={() => api().Update()} />
       <div className={focusOpen ? 'body with-focus' : 'body'}>
         <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={shownUnread} shown={visible(panes, room)} onSelect={pickFromList} onReorder={reorder} onResume={resume} onMark={mark} usage={usage} />
         <main className="main island">
@@ -382,7 +385,7 @@ export function App() {
             ))}
           </div>
         </main>
-        {focusOpen && <FocusPanel notes={notes} pomodoro={pomodoro?.state ?? null} remainingMs={remainingMs} now={new Date(now)} collapsed={timerCollapsed} onToggleCollapsed={toggleTimerCollapsed} ended={ended} onAck={() => setEnded(null)} />}
+        {focusOpen && <FocusPanel notes={notes} pomodoro={pomodoro?.state ?? null} remainingMs={remainingMs} now={new Date(now)} collapsed={timeHidden} onToggleCollapsed={toggleTimeHidden} ended={ended} onAck={() => setEnded(null)} />}
       </div>
     </div>
   );

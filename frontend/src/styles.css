@@ -205,7 +205,7 @@ button:disabled { cursor: default; }
 .mon-servers summary { cursor: pointer; }
 .mon-servers details div { padding-left: 14px; }
 .settings-menu { min-width: 180px; }
-.settings-menu .section { display: flex; justify-content: space-between; }
+.settings-menu .section { display: flex; align-items: center; gap: 8px; }
 .settings-menu .section span { color: var(--muted); }
 .settings-menu .section.on { background: rgba(255, 255, 255, 0.06); }
 .settings-panel { top: -5px; left: auto; right: calc(100% - 2px); min-width: 260px; }
@@ -399,9 +399,6 @@ button:disabled { cursor: default; }
 .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 .pill .left { display: inline-block; overflow: hidden; max-width: 50px; transition: max-width 0.25s var(--ease), opacity 0.2s; }
 .pill.hidden .left { max-width: 0; opacity: 0; }
-.pill .eye { position: relative; width: 20px; height: 20px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; color: var(--muted); }
-.pill .eye:hover { background: var(--line); color: var(--text); }
-.pill .eye svg { width: 14px; height: 14px; }
 /* The phase ran out: the pill breathes blue until it is clicked. */
 .pill.ended { padding-right: 0; border-color: var(--accent); animation: pill-ring 1.6s ease-in-out infinite; }
 .pill.ended .pill-main { color: var(--accent); }
@@ -464,18 +461,12 @@ button:disabled { cursor: default; }
 
 /* Timer island folding: the eye in its top right corner, and the one-line status when folded. */
 .pomodoro { position: relative; }
-.pomodoro-island .collapse { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; color: var(--muted); }
-.pomodoro-island .collapse:hover { background: var(--hover); color: var(--text); }
-.pomodoro-island .collapse svg { width: 15px; height: 15px; }
-.pomodoro-island .collapse[data-tip]::after { left: auto; right: 0; transform: translateY(-3px); }
-.pomodoro-island .collapse[data-tip]:hover::after { transform: translateY(0); }
 .pomodoro-line { position: relative; display: flex; align-items: center; min-height: 40px; padding: 0 40px 0 6px; border-radius: 10px; --phase: var(--accent); }
 .pomodoro-line.break, .pomodoro-line.long { --phase: var(--idle); }
 .pomodoro-line.idle { --phase: var(--shell); }
 .pomodoro-line .line-main { flex: 1; display: flex; align-items: center; gap: 9px; padding: 6px 8px; border: 0; background: none; font-weight: 600; text-align: left; }
 .pomodoro-line .line-main:hover { background: none; }
 .pomodoro-line .dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--phase); }
-.pomodoro-line .collapse { top: 8px; }
 .pomodoro-island.collapsed:has(.pomodoro-line.ended) { border-color: var(--accent); animation: pill-ring 1.6s ease-in-out infinite; }
 .pomodoro-line.ended .line-main { color: var(--accent); }
 .pomodoro-line.ended .dot { background: var(--accent); animation: pill-dot 1.6s ease-in-out infinite; }
@@ -498,3 +489,13 @@ button:disabled { cursor: default; }
 .note-tools { position: absolute; top: 3px; right: 4px; padding-left: 10px; border-radius: 6px; background: linear-gradient(90deg, transparent, var(--panel) 10px); opacity: 0; transition: opacity 0.12s; }
 .note:hover .note-tools, .note-tools:has(.armed) { opacity: 1; }
 .note .pin { visibility: visible; }
+
+/* The eye that hides the time: the same button in the title bar pill and on the timer island. */
+.eye-toggle { position: relative; width: 20px; height: 20px; flex: none; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); }
+.eye-toggle:hover { background: var(--line); color: var(--text); }
+.eye-toggle svg { width: 14px; height: 14px; }
+.pomodoro-island .eye-toggle { position: absolute; top: 10px; right: 10px; }
+
+.update-panel { max-width: 300px; }
+.update-panel p { margin: 4px 8px 8px; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.update-panel .busy { color: var(--accent); }

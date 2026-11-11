@@ -71,6 +71,10 @@ func (f *fakeTarget) PomodoroAction(action string) error {
 	return nil
 }
 
+func (f *fakeTarget) Version() string { f.record("Version"); return "abc123" }
+
+func (f *fakeTarget) Update() error { f.record("Update"); return nil }
+
 func (f *fakeTarget) FreeCache() (app.FreedCache, error) {
 	f.record("FreeCache")
 	return app.FreedCache{FreedMB: 3400, CacheMB: 1200, LargeFree: 812}, nil
@@ -277,6 +281,8 @@ func TestDispatchCallsEachMethodWithDecodedArgs(t *testing.T) {
 		{"Pomodoro", `[]`, "Pomodoro", `{"phase":"idle"`, false},
 		{"PomodoroAction", `["start"]`, "PomodoroAction(start)", `null`, false},
 		{"PomodoroBegin", `["break",3]`, "PomodoroBegin(break,3)", `null`, false},
+		{"Version", `[]`, "Version", `"abc123"`, false},
+		{"Update", `[]`, "Update", `null`, false},
 		{"FreeCache", `[]`, "FreeCache", `{"freedMb":3400,"cacheMb":1200,"largeFree":812}`, false},
 		{"SetPomodoroSettings", `[{"focus":50,"break":10,"long":20,"every":3}]`, "SetPomodoroSettings(50,10,20,3)", `null`, false},
 	}

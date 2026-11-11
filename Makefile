@@ -2,11 +2,16 @@ TAGS := desktop,production,webkit2_41
 
 .PHONY: frontend build test windows windows-icon install-windows windows-shortcuts
 
-frontend:
-	cd frontend && npm ci && npm run build
+# npm ci only runs when the lock file changed since the last install.
+frontend/node_modules/.package-lock.json: frontend/package-lock.json
+	cd frontend && npm ci
 
+frontend: frontend/node_modules/.package-lock.json
+	cd frontend && npm run build
+
+# repoDir lets skye update find this checkout again.
 build: frontend
-	CGO_ENABLED=1 go build -tags $(TAGS) -o skye ./cmd/skye
+	CGO_ENABLED=1 go build -tags $(TAGS) -ldflags "-X main.repoDir=$(CURDIR)" -o skye ./cmd/skye
 
 windows: frontend
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -tags desktop,production -ldflags "-H windowsgui" -o skye.exe ./cmd/skye-win

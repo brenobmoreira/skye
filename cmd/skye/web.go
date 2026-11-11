@@ -9,11 +9,13 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 
 	"github.com/brenobmoreira/skye/frontend"
 	"github.com/brenobmoreira/skye/internal/config"
 	"github.com/brenobmoreira/skye/internal/hooks"
+	"github.com/brenobmoreira/skye/internal/update"
 	"github.com/brenobmoreira/skye/internal/web"
 )
 
@@ -66,6 +68,8 @@ func runWeb(args []string) int {
 	}
 	h := &webHost{}
 	bridge := newBridge(h)
+	bridge.version = update.Version(assets)
+	bridge.restart = func() { _ = syscall.Kill(os.Getpid(), syscall.SIGHUP) }
 	server, err := web.Listen(cfg.WebPort, web.Options{
 		Token:    token,
 		Assets:   assets,
@@ -90,8 +94,16 @@ func runWeb(args []string) int {
 	defer bridge.shutdown()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	// SIGHUP, from skye update or the Atualizar item, restarts on the binary just installed.
+	hup := make(chan os.Signal, 1)
+	signal.Notify(hup, syscall.SIGHUP)
+	var restart atomic.Bool
 	go func() {
-		<-ctx.Done()
+		select {
+		case <-ctx.Done():
+		case <-hup:
+			restart.Store(true)
+		}
 		_ = server.Close()
 	}()
 	url := server.URL()
@@ -99,7 +111,19 @@ func runWeb(args []string) int {
 	if openBrowser {
 		launchBrowser(url)
 	}
-	if err := server.Serve(); err != nil {
+	err = server.Serve()
+	if restart.Load() {
+		bridge.shutdown()
+		self, xerr := executable()
+		if xerr == nil {
+			// Same pid and arguments on the new binary; the terminals stay in tmux and the
+			// windows reconnect.
+			xerr = syscall.Exec(self, os.Args, os.Environ())
+		}
+		fmt.Fprintln(os.Stderr, "skye web: não consegui reiniciar:", xerr)
+		return 1
+	}
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "skye web:", err)
 		return 1
 	}

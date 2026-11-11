@@ -21,6 +21,7 @@ const usage = `skye — terminais do Claude Code no WSL
 
   skye                 abre a janela
   skye web [--no-open] abre no navegador (http://127.0.0.1)
+  skye update          recompila a partir do repositório, instala e reinicia o skye web
   skye install-hooks   instala os hooks e o repasse do statusLine em ~/.claude/settings.json
   skye launch <id>     uso interno: roda o comando de um terminal`
 
@@ -36,6 +37,8 @@ func main() {
 			os.Exit(runLaunch(os.Args[2:]))
 		case "web":
 			os.Exit(runWeb(os.Args[2:]))
+		case "update":
+			os.Exit(runUpdate(os.Args[2:]))
 		case "install-hooks":
 			os.Exit(runInstallHooks())
 		case "-h", "--help", "help":

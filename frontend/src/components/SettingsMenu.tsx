@@ -3,12 +3,13 @@ import { FONTS, type TerminalFont } from '../lib/fonts';
 import type { PomodoroSettings } from '../lib/types';
 import { GearIcon } from './icons';
 
-type Section = 'shortcuts' | 'font' | 'focus' | 'settings';
+type Section = 'shortcuts' | 'font' | 'focus' | 'update' | 'settings';
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: 'shortcuts', label: 'Atalhos' },
   { id: 'font', label: 'Fonte' },
   { id: 'focus', label: 'Foco' },
+  { id: 'update', label: 'Atualizar' },
   { id: 'settings', label: 'Configurações' },
 ];
 
@@ -34,6 +35,7 @@ export function SettingsMenu(props: {
   onRemoveFont: (font: TerminalFont) => void;
   pomodoro: PomodoroSettings | null;
   onSavePomodoro: (s: PomodoroSettings) => Promise<void>;
+  onUpdate: () => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
   const [section, setSection] = useState<Section | null>(null);
@@ -42,6 +44,17 @@ export function SettingsMenu(props: {
   const [armed, setArmed] = useState<string | null>(null);
   const [times, setTimes] = useState<PomodoroSettings | null>(null);
   const [timesError, setTimesError] = useState('');
+  // The update's progress: idle, building, restarting (the window reloads by itself), or an error.
+  const [updating, setUpdating] = useState<'idle' | 'building' | 'restarting'>('idle');
+  const [updateError, setUpdateError] = useState('');
+  const runUpdate = () => {
+    setUpdating('building');
+    setUpdateError('');
+    props.onUpdate().then(
+      () => setUpdating('restarting'),
+      (e) => { setUpdating('idle'); setUpdateError(e instanceof Error ? e.message : String(e)); },
+    );
+  };
 
   const close = () => {
     setOpen(false);
@@ -104,10 +117,10 @@ export function SettingsMenu(props: {
         <GearIcon />
       </button>
       {open && (
-        <div className="menu-list right settings-menu" onMouseLeave={() => { if (!adding && section !== 'focus') close(); }}>
+        <div className="menu-list right settings-menu" onMouseLeave={() => { if (!adding && section !== 'focus' && section !== 'update') close(); }}>
           {SECTIONS.map((s) => (
             <button key={s.id} className={section === s.id ? 'section on' : 'section'} onClick={() => openSection(s.id)}>
-              {s.label}<span>›</span>
+              <span>‹</span>{s.label}
             </button>
           ))}
           {section === 'shortcuts' && (
@@ -170,6 +183,16 @@ export function SettingsMenu(props: {
               ) : (
                 <small className="empty">O timer ainda não respondeu</small>
               )}
+            </div>
+          )}
+          {section === 'update' && (
+            <div className="menu-list settings-panel update-panel">
+              <h4>Atualizar a skye</h4>
+              <p>Recompila a partir do repositório, instala e reinicia o servidor. Os terminais continuam abertos e a janela recarrega sozinha.</p>
+              {updating === 'idle' && <button className="add" onClick={runUpdate}>Atualizar agora</button>}
+              {updating === 'building' && <p className="busy">Compilando… pode levar um minuto.</p>}
+              {updating === 'restarting' && <p className="busy">Reiniciando; a janela recarrega em instantes.</p>}
+              {updateError && <div className="error">{updateError}</div>}
             </div>
           )}
           {section === 'settings' && (

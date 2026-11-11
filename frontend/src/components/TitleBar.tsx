@@ -50,6 +50,7 @@ export function TitleBar(props: {
   onPill: () => void;
   pomodoro: PomodoroSettings | null;
   onSavePomodoro: (s: PomodoroSettings) => Promise<void>;
+  onUpdate: () => Promise<void>;
 }) {
   const [maximised, setMaximised] = useState(false);
   const [quitting, setQuitting] = useState(false);
@@ -112,7 +113,7 @@ export function TitleBar(props: {
             {!props.ended && <span className="left">{props.pill?.time}</span>}
           </button>
           {!props.ended && (
-            <button className="eye" onClick={props.onTogglePillHidden} aria-label={props.pillHidden ? 'Mostrar o tempo' : 'Esconder o tempo'} data-tip={props.pillHidden ? 'Mostrar o tempo' : 'Esconder o tempo'}>
+            <button className="eye-toggle" onClick={props.onTogglePillHidden} aria-label={props.pillHidden ? 'Mostrar o tempo' : 'Esconder o tempo'} data-tip={props.pillHidden ? 'Mostrar o tempo' : 'Esconder o tempo'}>
               <EyeIcon shut={props.pillHidden} />
             </button>
           )}
@@ -133,6 +134,7 @@ export function TitleBar(props: {
         onRemoveFont={props.onRemoveFont}
         pomodoro={props.pomodoro}
         onSavePomodoro={props.onSavePomodoro}
+        onUpdate={props.onUpdate}
       />
         <button className="icon quit tip-end" onClick={() => setQuitting(true)} aria-label="Sair" data-tip="Sair e encerrar todos os terminais">
           <PowerIcon />

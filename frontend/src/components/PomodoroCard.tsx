@@ -32,7 +32,7 @@ export function PomodoroCard(props: {
   const begin = (phase: 'focus' | 'break') => { api().PomodoroBegin(phase, stage).catch(() => {}); };
 
   const eye = (
-    <button className="collapse" onClick={props.onToggleCollapsed} aria-label={props.collapsed ? 'Mostrar o timer' : 'Esconder o timer'} data-tip={props.collapsed ? 'Mostrar o timer' : 'Esconder o timer'}>
+    <button className="eye-toggle tip-end" onClick={props.onToggleCollapsed} aria-label={props.collapsed ? 'Mostrar o tempo' : 'Esconder o tempo'} data-tip={props.collapsed ? 'Mostrar o tempo' : 'Esconder o tempo'}>
       <EyeIcon shut={props.collapsed} />
     </button>
   );
@@ -41,7 +41,7 @@ export function PomodoroCard(props: {
   if (props.collapsed) {
     return (
       <section className={`pomodoro-line ${state.phase}${props.ended ? ' ended' : ''}`}>
-        <button className="line-main" onClick={props.ended ? props.onAck : props.onToggleCollapsed} title={props.ended ? 'Ok' : 'Mostrar o timer'}>
+        <button className="line-main" onClick={props.ended ? props.onAck : props.onToggleCollapsed} title={props.ended ? 'Ok' : 'Mostrar o tempo'}>
           <span className="dot" />
           {collapsedLabel(state, props.ended)}
         </button>

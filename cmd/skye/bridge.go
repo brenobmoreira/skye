@@ -25,6 +25,7 @@ import (
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
 	"github.com/brenobmoreira/skye/internal/tmuxctl"
+	"github.com/brenobmoreira/skye/internal/update"
 	"github.com/brenobmoreira/skye/internal/winmem"
 	"github.com/brenobmoreira/skye/internal/worktree"
 )
@@ -47,6 +48,10 @@ type Bridge struct {
 	server   *hooks.Server
 	windows  *winmem.Watcher
 	problems []string
+	// version names the interface this server serves; restart, set by skye web, swaps the
+	// process for the binary just installed.
+	version string
+	restart func()
 }
 
 func newBridge(h host) *Bridge {
@@ -631,4 +636,28 @@ func (b *Bridge) MoveNote(id, to string) error {
 		return err
 	}
 	return a.MoveNote(id, to)
+}
+
+func (b *Bridge) Version() string { return b.version }
+
+// Update rebuilds skye from the repository it was built from, installs it over the running
+// binary and restarts the server on it. The terminals stay in tmux; the windows reconnect and
+// reload when they see the new version.
+func (b *Bridge) Update() error {
+	if b.restart == nil {
+		return errors.New("atualizar daqui só funciona com o skye web; rode skye update no terminal")
+	}
+	self, err := executable()
+	if err != nil {
+		return err
+	}
+	if err := update.Run(update.Options{Repo: repoDir, Target: self}); err != nil {
+		return err
+	}
+	// Answer first, then restart: the window waits for this reply before it reconnects.
+	go func() {
+		time.Sleep(300 * time.Millisecond)
+		b.restart()
+	}()
+	return nil
 }
