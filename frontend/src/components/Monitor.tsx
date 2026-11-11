@@ -14,7 +14,7 @@ const CHART_H = 64;
 
 const clock = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-function MemoryChart({ points, totalMb }: { points: MemoryPoint[]; totalMb: number }) {
+function MemoryChart({ points, totalMb, title }: { points: MemoryPoint[]; totalMb: number; title: string }) {
   const [hover, setHover] = useState<number | null>(null);
   const d = sparkline(points, totalMb, CHART_W, CHART_H);
   if (!d) return null;
@@ -26,7 +26,7 @@ function MemoryChart({ points, totalMb }: { points: MemoryPoint[]; totalMb: numb
   const x = hover === null ? 0 : (hover / (points.length - 1)) * 100;
   return (
     <figure className="mon-chart">
-      <figcaption>Memória disponível no WSL · últimas 3 h</figcaption>
+      <figcaption>{title}</figcaption>
       <div className="plot" onMouseMove={move} onMouseLeave={() => setHover(null)}>
         <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} preserveAspectRatio="none" role="img" aria-label="Memória disponível nas últimas 3 horas">
           <line x1="0" y1={CHART_H} x2={CHART_W} y2={CHART_H} className="axis" />
@@ -163,7 +163,10 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
         />
       )}
 
-      {report.history && report.history.length > 1 && <MemoryChart points={report.history} totalMb={m.memTotalMb} />}
+      {host && report.hostHistory && report.hostHistory.length > 1 && (
+        <MemoryChart points={report.hostHistory} totalMb={host.totalMb} title="Memória disponível no Windows · últimas 3 h" />
+      )}
+      {report.history && report.history.length > 1 && <MemoryChart points={report.history} totalMb={m.memTotalMb} title="Memória disponível no WSL · últimas 3 h" />}
 
       <section>
         <h3>Terminais da skye ({loads.length})</h3>

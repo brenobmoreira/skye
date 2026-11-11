@@ -113,3 +113,17 @@ func TestMonitorWithoutAProcessSource(t *testing.T) {
 		t.Fatalf("host without a reading = %+v %v", r.Host, err)
 	}
 }
+
+func TestMonitorCarriesTheWindowsHistory(t *testing.T) {
+	points := []procs.Point{{AvailMB: 6000}, {AvailMB: 5000}}
+	h := newHarness(t, config.Default())
+	h.app.o.Procs = fakeProcs{}
+	h.app.o.HostHistory = func() []procs.Point { return points }
+	r, err := h.app.Monitor()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.HostHistory) != 2 || r.HostHistory[1].AvailMB != 5000 {
+		t.Fatalf("host history %+v", r.HostHistory)
+	}
+}

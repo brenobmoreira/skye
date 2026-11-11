@@ -129,6 +129,7 @@ export interface MonitorReport {
   host?: HostMemory;
   machine: Machine;
   history: MemoryPoint[] | null;
+  hostHistory?: MemoryPoint[] | null;
   selfMb: number;
   terminals: TerminalLoad[] | null;
   strays: Stray[] | null;

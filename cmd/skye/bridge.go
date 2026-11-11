@@ -140,8 +140,12 @@ func (b *Bridge) boot() error {
 		b.problem("anotações: %v", err)
 	}
 	var hostMemory func() (winmem.Memory, bool)
+	var hostHistory func() []procs.Point
 	if w := winmem.New(); w != nil {
 		hostMemory = w.Latest
+		winDir := filepath.Join(paths.StateDir, "winmem")
+		hostHistory = func() []procs.Point { return procs.History(winDir, time.Now(), 3*time.Hour) }
+		go recordHost(w, winDir)
 		b.mu.Lock()
 		b.windows = w
 		b.mu.Unlock()
@@ -167,6 +171,7 @@ func (b *Bridge) boot() error {
 		TmuxSocket:     tmuxSocket,
 		CreateWorktree: worktree.Create,
 		Host:           hostMemory,
+		HostHistory:    hostHistory,
 		Places:         saved,
 		Notes:          noteStore,
 		PomodoroFile:   paths.Pomodoro,
@@ -589,4 +594,25 @@ func (b *Bridge) FreeCache() (app.FreedCache, error) {
 		return app.FreedCache{}, err
 	}
 	return a.FreeCache()
+}
+
+// recordHost keeps the Windows reader running and writes one reading a minute, so the monitor
+// can chart the host the way mcp-sysagent's history charts the WSL. Asking more often than the
+// watcher's idle time keeps one powershell.exe alive instead of starting one a minute.
+func recordHost(w *winmem.Watcher, dir string) {
+	var last time.Time
+	pruned := ""
+	for now := range time.Tick(20 * time.Second) {
+		m, ok := w.Latest()
+		if !ok || now.Sub(last) < 55*time.Second {
+			continue
+		}
+		if err := winmem.Record(dir, m, now); err == nil {
+			last = now
+		}
+		if day := now.Format(time.DateOnly); day != pruned {
+			winmem.Prune(dir, now, 7)
+			pruned = day
+		}
+	}
 }
