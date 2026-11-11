@@ -21,6 +21,7 @@ type rpcTarget interface {
 	NewTerminal(preset string) (terminals.Terminal, error)
 	Resume(sessionID string) (terminals.Terminal, error)
 	Write(id, data string) error
+	Answer(id string, turn int, text string) error
 	Resize(id string, cols, rows int) error
 	Snapshot(id string) (string, error)
 	Rename(id, name string) error
@@ -176,6 +177,11 @@ func dispatcher(t rpcTarget) web.Dispatch {
 				return nil, err
 			}
 			return nil, t.Write(a, b)
+		case "Answer":
+			if err := decode(&a, &cols, &b); err != nil {
+				return nil, err
+			}
+			return nil, t.Answer(a, cols, b)
 		case "Rename":
 			if err := decode(&a, &b); err != nil {
 				return nil, err

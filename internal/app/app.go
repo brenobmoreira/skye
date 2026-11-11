@@ -44,6 +44,8 @@ type Options struct {
 	Home     string
 	NewID    func() string
 	Now      func() time.Time
+	// Pause waits between typing an answer and its Enter (time.Sleep when nil).
+	Pause func(time.Duration)
 	// For the monitor: this process, the user's processes, the tmux sockets and the memory
 	// history. Monitor fails without Procs.
 	PID     int
@@ -82,6 +84,9 @@ type App struct {
 }
 
 func New(o Options) *App {
+	if o.Pause == nil {
+		o.Pause = time.Sleep
+	}
 	return &App{o: o, reg: terminals.NewRegistry(o.Now), sound: o.Config.Sound, providerUsage: map[string]hooks.Usage{}}
 }
 
@@ -293,6 +298,25 @@ func (a *App) Write(id, data string) error {
 		return err
 	}
 	return a.o.Tmux.SendKeys(t.Pane, []byte(data))
+}
+
+// answerEnterDelay separates an answer from its Enter: codex reads an Enter that arrives with the
+// text as part of a paste and leaves the answer unsent (it needs about 50 ms; claude needs none).
+const answerEnterDelay = 150 * time.Millisecond
+
+// Answer types the user's answer to the question the agent ended its turn with: the text, then
+// Enter on its own, so the agent does not read the two as one paste.
+func (a *App) Answer(id string, turn int, text string) error {
+	t, err := a.reg.TakeAnswer(id, turn, text)
+	if err != nil {
+		return err
+	}
+	a.emitTerminals()
+	if err := a.o.Tmux.SendKeys(t.Pane, []byte(text)); err != nil {
+		return err
+	}
+	a.o.Pause(answerEnterDelay)
+	return a.o.Tmux.SendKeys(t.Pane, []byte("\r"))
 }
 
 func (a *App) Resize(id string, cols, rows int) error {

@@ -1,10 +1,12 @@
 package terminals
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -71,6 +73,45 @@ type Terminal struct {
 	agents     map[string]bool
 	// Order sorts terminals inside the same state group; 0 means not placed yet.
 	Order int `json:"order"`
+	// Reply is the closing block of the agent's last turn, cut for the list (ReplyFull for the
+	// tooltip); Question and Options say whether it can be answered from the list.
+	Reply     string         `json:"reply,omitempty"`
+	ReplyFull string         `json:"replyFull,omitempty"`
+	Question  bool           `json:"question,omitempty"`
+	Options   []hooks.Option `json:"options,omitempty"`
+	// Turn counts the turns that ended, so an answer meant for one turn never lands in the next.
+	Turn int `json:"turn"`
+	// Answered is what the user answered from the list, until the agent moves on.
+	Answered string `json:"answered,omitempty"`
+}
+
+func (t *Terminal) clearReply() {
+	t.Reply, t.ReplyFull, t.Question, t.Options, t.Answered = "", "", false, nil, ""
+}
+
+// TakeAnswer accepts an answer typed from the list: "sim" to the question or the number of one of
+// the choices of the given turn, on a terminal still idle. The question is taken, so a second
+// click is refused.
+func (r *Registry) TakeAnswer(id string, turn int, text string) (Terminal, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	t, ok := r.items[id]
+	if !ok {
+		return Terminal{}, fmt.Errorf("terminal desconhecido: %q", id)
+	}
+	if t.State != Idle || turn != t.Turn || (!t.Question && t.Options == nil) {
+		return Terminal{}, errors.New("a pergunta mudou")
+	}
+	accepted := t.Question && text == "sim"
+	for _, o := range t.Options {
+		accepted = accepted || text == strconv.Itoa(o.N)
+	}
+	if !accepted {
+		return Terminal{}, errors.New("resposta não aceita")
+	}
+	t.clearReply()
+	t.Answered = text
+	return *t, nil
 }
 
 func (t Terminal) Conversation(now time.Time) (resume.Conversation, bool) {
@@ -389,6 +430,15 @@ func (r *Registry) Apply(ev hooks.Event) (Change, bool) {
 		t.compacting, t.agents = false, nil
 	case "UserPromptSubmit", "Stop":
 		t.compacting = false
+	}
+	switch ev.Name {
+	case "UserPromptSubmit", "SessionStart", "SessionEnd":
+		t.clearReply()
+	case "Stop":
+		t.clearReply()
+		t.Turn++
+		reply := hooks.ParseReply(ev.LastMessage)
+		t.Reply, t.ReplyFull, t.Question, t.Options = reply.Line, reply.Full, reply.Question, reply.Options
 	}
 	switch ev.Name {
 	case "SessionStart":

@@ -12,6 +12,7 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { ContextMenu } from './ContextMenu';
 import type { Conversation, Terminal, Usage } from '../lib/types';
 import { usagePanel } from '../lib/usage';
+import { answers, overdue } from '../lib/reply';
 
 const ENDED_KEY = 'skye:endedOpen';
 
@@ -39,7 +40,8 @@ function TerminalItem({ t, active, shown, unread, closing, now, onSelect, onClos
   const label = itemLabel(t);
   const time = elapsed(t.since, t.state, now);
   const bar = contextBar(t.context);
-  const hover = [t.state === 'waiting' && t.ask ? `${stateLabel[t.state]}: ${t.ask}` : stateLabel[t.state], contextText(t.context)]
+  const said = t.state === 'waiting' ? t.ask : t.state === 'idle' ? t.replyFull : '';
+  const hover = [said ? `${stateLabel[t.state]}: ${said}` : stateLabel[t.state], contextText(t.context)]
     .filter(Boolean)
     .join('\n');
   const [editing, setEditing] = useState(false);
@@ -85,8 +87,21 @@ function TerminalItem({ t, active, shown, unread, closing, now, onSelect, onClos
         </div>
         <div className="sub">
           <span>{label.sub}</span>
-          {time && <span className="time">{time}</span>}
+          {time && <span className={overdue(t, now) ? 'time overdue' : 'time'} title={overdue(t, now) ? 'esperando você há mais de 10 min' : undefined}>{time}</span>}
         </div>
+        {answers(t).length > 0 && (
+          <div className="answers">
+            {answers(t).map((a) => (
+              <button
+                key={a.text}
+                title={`responder ${a.text}`}
+                onClick={(e) => { e.stopPropagation(); api().Answer(t.id, t.turn ?? 0, a.text).catch(() => {}); }}
+              >
+                {a.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       {bar && <span className={bar.full ? 'ctx full' : 'ctx'}><span style={{ width: `${bar.pct}%` }} /></span>}
     </div>

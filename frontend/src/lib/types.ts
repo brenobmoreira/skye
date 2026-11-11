@@ -16,6 +16,18 @@ export interface Terminal {
   createdAt: string;
   since?: string;
   order: number;
+  // How the agent's last turn closed, and whether the list can answer it (see lib/reply).
+  reply?: string;
+  replyFull?: string;
+  question?: boolean;
+  options?: Option[];
+  turn?: number;
+  answered?: string;
+}
+
+export interface Option {
+  n: number;
+  label: string;
 }
 
 export interface SessionContext {

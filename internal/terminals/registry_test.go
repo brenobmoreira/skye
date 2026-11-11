@@ -449,3 +449,110 @@ func TestRenamedTerminalNamesItsEndedConversation(t *testing.T) {
 		t.Fatalf("renamed: title = %q", c.Title)
 	}
 }
+
+func said(text string) func(*hooks.Event) {
+	return func(e *hooks.Event) { e.LastMessage = text }
+}
+
+func TestStopKeepsTheReply(t *testing.T) {
+	r := newReg()
+	apply(t, r, "UserPromptSubmit")
+	ch := apply(t, r, "Stop", said("Rodei os testes.\n\nFaço o push?"))
+	got := ch.Terminal
+	if !got.Question || got.Reply != "Faço o push?" || got.ReplyFull != "Faço o push?" || got.Turn != 1 || got.Options != nil {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestStopKeepsTheChoices(t *testing.T) {
+	r := newReg()
+	apply(t, r, "UserPromptSubmit")
+	got := apply(t, r, "Stop", said("Publico?\n1. Publicar tudo\n2. Só críticos\n3. Cancelar")).Terminal
+	if got.Question || len(got.Options) != 3 || got.Options[1] != (hooks.Option{N: 2, Label: "Só críticos"}) {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestReplyClearsWhenWorkResumes(t *testing.T) {
+	for _, name := range []string{"UserPromptSubmit", "SessionStart", "SessionEnd"} {
+		r := newReg()
+		apply(t, r, "UserPromptSubmit")
+		apply(t, r, "Stop", said("Faço o push?"))
+		got := apply(t, r, name).Terminal
+		if got.Question || got.Reply != "" || got.ReplyFull != "" || got.Options != nil || got.Answered != "" {
+			t.Fatalf("%s kept the reply: %+v", name, got)
+		}
+	}
+}
+
+func TestIdleReminderKeepsTheQuestion(t *testing.T) {
+	r := newReg()
+	apply(t, r, "UserPromptSubmit")
+	apply(t, r, "Stop", said("Faço o push?"))
+	got := apply(t, r, "Notification", func(e *hooks.Event) { e.Message = "Claude is waiting for your input" }).Terminal
+	if !got.Question || got.Reply != "Faço o push?" {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestStopWithoutTextClearsOldQuestion(t *testing.T) {
+	r := newReg()
+	apply(t, r, "UserPromptSubmit")
+	apply(t, r, "Stop", said("Faço o push?"))
+	apply(t, r, "UserPromptSubmit")
+	got := apply(t, r, "Stop").Terminal
+	if got.Question || got.Reply != "" || got.Turn != 2 {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestTakeAnswer(t *testing.T) {
+	r := newReg()
+	apply(t, r, "UserPromptSubmit")
+	apply(t, r, "Stop", said("Faço o push?"))
+	if _, err := r.TakeAnswer("a", 0, "sim"); err == nil {
+		t.Fatal("stale turn accepted")
+	}
+	if _, err := r.TakeAnswer("a", 1, "push"); err == nil {
+		t.Fatal("free text accepted")
+	}
+	got, err := r.TakeAnswer("a", 1, "sim")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Answered != "sim" || got.Question || got.Pane != "%1" {
+		t.Fatalf("got %+v", got)
+	}
+	if _, err := r.TakeAnswer("a", 1, "sim"); err == nil {
+		t.Fatal("double click answered twice")
+	}
+	if _, err := r.TakeAnswer("nope", 1, "sim"); err == nil {
+		t.Fatal("unknown terminal accepted")
+	}
+}
+
+func TestTakeAnswerNeedsAnIdleTerminal(t *testing.T) {
+	r := newReg()
+	apply(t, r, "UserPromptSubmit")
+	apply(t, r, "Stop", said("Faço o push?"))
+	apply(t, r, "PostToolUse")
+	if _, err := r.TakeAnswer("a", 1, "sim"); err == nil {
+		t.Fatal("answered a running terminal")
+	}
+}
+
+func TestTakeAnswerPicksAnOption(t *testing.T) {
+	r := newReg()
+	apply(t, r, "UserPromptSubmit")
+	apply(t, r, "Stop", said("Publico?\n1. Publicar tudo\n2. Só críticos\n3. Cancelar"))
+	if _, err := r.TakeAnswer("a", 1, "sim"); err == nil {
+		t.Fatal("sim accepted for a choice")
+	}
+	if _, err := r.TakeAnswer("a", 1, "4"); err == nil {
+		t.Fatal("missing option accepted")
+	}
+	got, err := r.TakeAnswer("a", 1, "2")
+	if err != nil || got.Answered != "2" || got.Options != nil {
+		t.Fatalf("got %+v, %v", got, err)
+	}
+}
