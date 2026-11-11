@@ -282,3 +282,16 @@ func TestPomodoroEndEmitsWhichPhaseEnded(t *testing.T) {
 		t.Fatalf("ended = %v", ended)
 	}
 }
+
+func TestPomodoroBeginStartsAtTheChosenStage(t *testing.T) {
+	r := newFocusRig(t, true)
+	if err := r.app.PomodoroBegin("break", 2); err != nil {
+		t.Fatal(err)
+	}
+	if st := r.app.Pomodoro(); st.Phase != pomodoro.Break || st.Stage != 2 || r.count("pomodoro") != 1 {
+		t.Fatalf("state %+v events %v", st, r.events)
+	}
+	if err := r.app.PomodoroBegin("nap", 1); err == nil {
+		t.Fatal("unknown phase accepted")
+	}
+}

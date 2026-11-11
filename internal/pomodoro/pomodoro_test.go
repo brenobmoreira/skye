@@ -242,3 +242,84 @@ func TestLoadSettings(t *testing.T) {
 		t.Fatalf("round trip: %+v %v", s, err)
 	}
 }
+
+func TestBeginFocusAtAStage(t *testing.T) {
+	r := newRig(t, Default)
+	if err := r.t.Begin(Focus, 3); err != nil {
+		t.Fatal(err)
+	}
+	st := r.t.State()
+	if st.Phase != Focus || st.Stage != 2 || st.Count != 0 || st.RemainingMs != 25*60_000 {
+		t.Fatalf("state %+v", st)
+	}
+	r.fire(t)
+	if st := r.t.State(); st.Phase != Break || st.Stage != 3 || st.Count != 1 {
+		t.Fatalf("after focus %+v", st)
+	}
+}
+
+func TestBeginFocusAtTheLastStageEndsInTheLongBreak(t *testing.T) {
+	r := newRig(t, Default)
+	r.t.Begin(Focus, 4)
+	r.fire(t)
+	if st := r.t.State(); st.Phase != Long || st.Stage != 0 || st.RemainingMs != 15*60_000 {
+		t.Fatalf("state %+v", st)
+	}
+}
+
+func TestBeginBreakAfterAStage(t *testing.T) {
+	r := newRig(t, Default)
+	if err := r.t.Begin(Break, 2); err != nil {
+		t.Fatal(err)
+	}
+	if st := r.t.State(); st.Phase != Break || st.Stage != 2 || st.RemainingMs != 5*60_000 || st.Count != 0 {
+		t.Fatalf("state %+v", st)
+	}
+	r.do(t, "skip")
+	if err := r.t.Begin(Break, 4); err != nil {
+		t.Fatal(err)
+	}
+	if st := r.t.State(); st.Phase != Long || st.Stage != 0 || st.RemainingMs != 15*60_000 {
+		t.Fatalf("state %+v", st)
+	}
+	r.fire(t)
+	r.do(t, "start")
+	if st := r.t.State(); st.Stage != 0 {
+		t.Fatalf("after the long break the cycle starts over: %+v", st)
+	}
+}
+
+func TestBeginValidates(t *testing.T) {
+	r := newRig(t, Default)
+	for _, c := range []struct {
+		p Phase
+		s int
+	}{{Focus, 0}, {Focus, 5}, {Break, 0}, {Idle, 1}, {Long, 4}} {
+		if err := r.t.Begin(c.p, c.s); err == nil {
+			t.Errorf("Begin(%s, %d) accepted", c.p, c.s)
+		}
+	}
+	r.t.Begin(Focus, 1)
+	if err := r.t.Begin(Focus, 2); err == nil {
+		t.Fatal("Begin while running accepted")
+	}
+}
+
+func TestStageFollowsTheCycle(t *testing.T) {
+	r := newRig(t, Settings{Focus: 25, Break: 5, Long: 15, Every: 2})
+	r.do(t, "start")
+	r.fire(t)
+	if st := r.t.State(); st.Stage != 1 || st.Phase != Break {
+		t.Fatalf("state %+v", st)
+	}
+	r.fire(t)
+	r.do(t, "start")
+	r.fire(t)
+	if st := r.t.State(); st.Stage != 0 || st.Phase != Long {
+		t.Fatalf("state %+v", st)
+	}
+	r.do(t, "reset")
+	if st := r.t.State(); st.Stage != 0 {
+		t.Fatalf("reset kept the stage: %+v", st)
+	}
+}

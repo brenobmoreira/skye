@@ -61,6 +61,11 @@ func (f *fakeTarget) PomodoroAction(action string) error {
 	return nil
 }
 
+func (f *fakeTarget) PomodoroBegin(phase string, stage int) error {
+	f.record("PomodoroBegin(%s,%d)", phase, stage)
+	return nil
+}
+
 func (f *fakeTarget) SetPomodoroSettings(s pomodoro.Settings) error {
 	f.record("SetPomodoroSettings(%d,%d,%d,%d)", s.Focus, s.Break, s.Long, s.Every)
 	return nil
@@ -254,6 +259,7 @@ func TestDispatchCallsEachMethodWithDecodedArgs(t *testing.T) {
 		{"DeleteNote", `["n1"]`, "DeleteNote(n1)", `null`, false},
 		{"Pomodoro", `[]`, "Pomodoro", `{"phase":"idle"`, false},
 		{"PomodoroAction", `["start"]`, "PomodoroAction(start)", `null`, false},
+		{"PomodoroBegin", `["break",3]`, "PomodoroBegin(break,3)", `null`, false},
 		{"SetPomodoroSettings", `[{"focus":50,"break":10,"long":20,"every":3}]`, "SetPomodoroSettings(50,10,20,3)", `null`, false},
 	}
 	for _, c := range cases {

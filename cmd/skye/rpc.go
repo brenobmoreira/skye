@@ -57,6 +57,7 @@ type rpcTarget interface {
 	DeleteNote(id string) error
 	Pomodoro() pomodoro.State
 	PomodoroAction(action string) error
+	PomodoroBegin(phase string, stage int) error
 	SetPomodoroSettings(s pomodoro.Settings) error
 }
 
@@ -279,6 +280,12 @@ func dispatcher(t rpcTarget) web.Dispatch {
 				return nil, err
 			}
 			return nil, t.PomodoroAction(a)
+		case "PomodoroBegin":
+			var stage int
+			if err := decode(&a, &stage); err != nil {
+				return nil, err
+			}
+			return nil, t.PomodoroBegin(a, stage)
 		case "SetPomodoroSettings":
 			var s pomodoro.Settings
 			if err := decode(&s); err != nil {

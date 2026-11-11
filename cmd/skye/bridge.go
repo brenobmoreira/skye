@@ -573,3 +573,11 @@ func (b *Bridge) SetPomodoroSettings(s pomodoro.Settings) error {
 	}
 	return a.SetPomodoroSettings(s)
 }
+
+func (b *Bridge) PomodoroBegin(phase string, stage int) error {
+	a, err := b.ready()
+	if err != nil {
+		return err
+	}
+	return a.PomodoroBegin(phase, stage)
+}

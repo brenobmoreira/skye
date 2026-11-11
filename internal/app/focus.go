@@ -56,6 +56,11 @@ func (a *App) Pomodoro() pomodoro.State { return a.timer.State() }
 
 func (a *App) PomodoroAction(action string) error { return a.timer.Do(action) }
 
+// PomodoroBegin starts at a chosen stage: phase is "focus" or "break".
+func (a *App) PomodoroBegin(phase string, stage int) error {
+	return a.timer.Begin(pomodoro.Phase(phase), stage)
+}
+
 func (a *App) SetPomodoroSettings(s pomodoro.Settings) error {
 	if err := s.Validate(); err != nil {
 		return err
