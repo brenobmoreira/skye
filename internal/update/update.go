@@ -4,6 +4,7 @@
 package update
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -14,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type Options struct {
@@ -27,10 +29,61 @@ type Options struct {
 // tailLines is how much of a failed build's output the error keeps.
 const tailLines = 15
 
-func Exec(dir, name string, args ...string) ([]byte, error) {
-	cmd := exec.Command(name, args...)
-	cmd.Dir = dir
-	return cmd.CombinedOutput()
+// Exec runs commands with path as their PATH, or with the current one when path is empty.
+func Exec(path string) func(dir, name string, args ...string) ([]byte, error) {
+	return func(dir, name string, args ...string) ([]byte, error) {
+		cmd := exec.Command(name, args...)
+		cmd.Dir = dir
+		cmd.Env = withPath(os.Environ(), path)
+		return cmd.CombinedOutput()
+	}
+}
+
+// pathMark sets the PATH apart from whatever the shell's startup files print.
+const pathMark = "__skye_path__"
+
+// ShellPath is the PATH of the user's interactive shell. npm (from nvm) and go are often put on
+// it by ~/.bashrc, which the login shell that started skye web does not read, so a build started
+// from the interface would not find them. Empty when the shell does not answer.
+func ShellPath() string {
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		shell = "bash"
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, shell, "-ic", `printf '`+pathMark+`%s' "$PATH"`).Output()
+	if err != nil {
+		return ""
+	}
+	return parsePath(string(out))
+}
+
+func parsePath(out string) string {
+	i := strings.LastIndex(out, pathMark)
+	if i < 0 {
+		return ""
+	}
+	return strings.TrimSpace(out[i+len(pathMark):])
+}
+
+// withPath is env with PATH set to path; an empty path leaves env as it is.
+func withPath(env []string, path string) []string {
+	if path == "" {
+		return env
+	}
+	out := make([]string, 0, len(env)+1)
+	set := false
+	for _, kv := range env {
+		if strings.HasPrefix(kv, "PATH=") {
+			kv, set = "PATH="+path, true
+		}
+		out = append(out, kv)
+	}
+	if !set {
+		out = append(out, "PATH="+path)
+	}
+	return out
 }
 
 func Run(o Options) error {
@@ -38,7 +91,7 @@ func Run(o Options) error {
 		return errors.New("não sei onde está o repositório da skye; compile com make build")
 	}
 	if o.Run == nil {
-		o.Run = Exec
+		o.Run = Exec(ShellPath())
 	}
 	if out, err := o.Run(o.Repo, "make", "build"); err != nil {
 		return fmt.Errorf("a compilação falhou (%v):\n%s", err, tail(string(out)))

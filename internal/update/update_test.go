@@ -76,3 +76,29 @@ func TestVersionFollowsTheIndexPage(t *testing.T) {
 		t.Fatal("version without an index page")
 	}
 }
+
+func TestShellPathTakesWhatFollowsTheLastMark(t *testing.T) {
+	for out, want := range map[string]string{
+		pathMark + "/a:/b":                       "/a:/b",
+		"bem-vindo\n" + pathMark + "/nvm/bin:/b": "/nvm/bin:/b",
+		pathMark + "x" + pathMark + "/c\n":       "/c",
+		"sem marca":                              "",
+	} {
+		if got := parsePath(out); got != want {
+			t.Errorf("parsePath(%q) = %q, want %q", out, got, want)
+		}
+	}
+}
+
+func TestWithPathReplacesOrAddsPATH(t *testing.T) {
+	got := withPath([]string{"HOME=/h", "PATH=/usr/bin", "X=1"}, "/nvm/bin:/usr/bin")
+	if strings.Join(got, " ") != "HOME=/h PATH=/nvm/bin:/usr/bin X=1" {
+		t.Fatalf("replaced %q", got)
+	}
+	if got := withPath([]string{"HOME=/h"}, "/a"); strings.Join(got, " ") != "HOME=/h PATH=/a" {
+		t.Fatalf("added %q", got)
+	}
+	if got := withPath([]string{"PATH=/usr/bin"}, ""); strings.Join(got, " ") != "PATH=/usr/bin" {
+		t.Fatalf("empty path changed the env: %q", got)
+	}
+}

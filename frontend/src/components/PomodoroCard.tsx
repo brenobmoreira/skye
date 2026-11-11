@@ -22,8 +22,14 @@ export function PomodoroCard(props: {
   const { state, remainingMs } = props;
   const act = (a: Action) => { api().PomodoroAction(a).catch(() => {}); };
   const running = state.phase !== 'idle';
-  // Idle, the clock shows what the next start runs: a length typed in, or the focus setting.
-  const total = running ? state.totalMs : state.nextMs || state.settings.focus * 60_000;
+  // The break a focus that ran out left due; the next start runs it.
+  const due = running ? undefined : state.pending;
+  // Idle, the clock shows what the next start runs: a length typed in, or the setting of the break
+  // due or of the focus.
+  const minutes = due === 'long' ? state.settings.long : due === 'break' ? state.settings.break : state.settings.focus;
+  const total = running ? state.totalMs : state.nextMs || minutes * 60_000;
+  // The colors follow the break due as if it were running.
+  const look = due ?? state.phase;
   const left = running ? remainingMs : total;
   const done = total > 0 ? Math.min(1, Math.max(0, 1 - left / total)) : 0;
   const every = state.settings.every;
@@ -49,7 +55,7 @@ export function PomodoroCard(props: {
   // Folded: one line with the phase and its status, pulsing when a phase ran out until clicked.
   if (props.collapsed) {
     return (
-      <section className={`pomodoro-line ${state.phase}${props.ended ? ' ended' : ''}`}>
+      <section className={`pomodoro-line ${look}${props.ended ? ' ended' : ''}`}>
         <button className="line-main" onClick={props.ended ? props.onAck : props.onToggleCollapsed} title={props.ended ? 'Ok' : 'Mostrar o tempo'}>
           <span className="dot" />
           {collapsedLabel(state, props.ended)}
@@ -60,7 +66,7 @@ export function PomodoroCard(props: {
   }
 
   return (
-    <section className={`pomodoro ${state.phase}${state.paused ? ' paused' : ''}`}>
+    <section className={`pomodoro ${look}${state.paused ? ' paused' : ''}`}>
       {eye}
       <div className="ring">
         <svg viewBox="0 0 128 128" aria-hidden="true">
@@ -92,7 +98,7 @@ export function PomodoroCard(props: {
         )}
       </div>
       <div className="phase">{phaseLabel(state)}{state.paused ? ' · pausado' : ''}</div>
-      {!running && (
+      {!running && !due && (
         <div className="stages" role="radiogroup" aria-label="Estágio do ciclo">
           {Array.from({ length: every }, (_, i) => i + 1).map((n) => (
             <button
@@ -109,8 +115,10 @@ export function PomodoroCard(props: {
         </div>
       )}
       <div className="controls">
-        {!running && <button className="primary" onClick={() => begin('focus')}>Começar foco</button>}
-        {!running && <button onClick={() => begin('break')}>{breakLabel(stage, every)}</button>}
+        {due && <button className="primary" onClick={() => act('start')}>{due === 'long' ? 'Começar pausa longa' : 'Começar pausa'}</button>}
+        {due && <button onClick={() => act('skip')} title="Dispensa a pausa; o próximo começo é um foco">Pular pausa</button>}
+        {!running && !due && <button className="primary" onClick={() => begin('focus')}>Começar foco</button>}
+        {!running && !due && <button onClick={() => begin('break')}>{breakLabel(stage, every)}</button>}
         {running && !state.paused && <button onClick={() => act('pause')}>Pausar</button>}
         {running && state.paused && <button className="primary" onClick={() => act('resume')}>Retomar</button>}
         {running && <button onClick={() => act('skip')} title="Encerra esta fase agora">Pular</button>}
