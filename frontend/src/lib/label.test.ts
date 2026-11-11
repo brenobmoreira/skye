@@ -45,4 +45,14 @@ describe('itemLabel', () => {
     expect(itemLabel(term({ title: 'arrume', state: 'running', activity: '2 subagentes' })).sub).toBe('2 subagentes');
     expect(itemLabel(term({ title: 'arrume', state: 'idle', activity: '1 subagente' })).sub).toBe('skye');
   });
+  it('shows how the finished turn closed under the name', () => {
+    expect(itemLabel(term({ title: 'arrume o teste', reply: 'Faço o push?' })).sub).toBe('Faço o push?');
+    expect(itemLabel(term({ name: 'api', reply: 'Instalei.' })).sub).toBe('Instalei.');
+  });
+  it('shows the answer given from the list', () => {
+    expect(itemLabel(term({ title: 'arrume o teste', answered: 'sim' })).sub).toBe('você: sim');
+  });
+  it('keeps the reply of a finished turn off a running terminal', () => {
+    expect(itemLabel(term({ title: 'arrume o teste', state: 'running', reply: 'Faço o push?' })).sub).toBe('skye');
+  });
 });
