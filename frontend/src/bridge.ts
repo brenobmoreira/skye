@@ -46,6 +46,8 @@ interface GoBridge {
   AddNote(text: string): Promise<NoteItem>;
   EditNote(id: string, edit: NoteEdit): Promise<NoteItem>;
   CheckNote(id: string): Promise<void>;
+  PinNote(id: string, pinned: boolean): Promise<void>;
+  MoveNote(id: string, to: string): Promise<void>;
   UncheckNote(id: string): Promise<void>;
   DeleteNote(id: string): Promise<void>;
   Pomodoro(): Promise<PomodoroState>;
@@ -166,6 +168,8 @@ function remoteBridge(connect: () => SocketLike): { bridge: GoBridge; on: (name:
     AddNote: (text) => call('AddNote', text),
     EditNote: (id, edit) => call('EditNote', id, edit),
     CheckNote: (id) => call('CheckNote', id),
+    PinNote: (id, pinned) => call('PinNote', id, pinned),
+    MoveNote: (id, to) => call('MoveNote', id, to),
     UncheckNote: (id) => call('UncheckNote', id),
     DeleteNote: (id) => call('DeleteNote', id),
     Pomodoro: () => call('Pomodoro'),

@@ -279,7 +279,10 @@ button:disabled { cursor: default; }
 
 /* Focus panel: a third island on the right with the pomodoro on top and the notes under it. */
 .body.with-focus { grid-template-columns: 260px minmax(0, 1fr) 260px; }
-.focus { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; overflow: hidden; }
+.focus { display: flex; flex-direction: column; gap: 6px; min-height: 0; min-width: 0; overflow: hidden; }
+.pomodoro-island { flex: none; }
+.notes-island { flex: 1; min-height: 0; display: grid; overflow: hidden; }
+.pomodoro-island .pomodoro { border-bottom: 0; }
 
 .titlebar .pill { --wails-draggable: no-drag; display: flex; align-items: center; gap: 6px; padding: 1px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); font-size: 12px; font-variant-numeric: tabular-nums; }
 .titlebar .pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
@@ -434,3 +437,27 @@ button:disabled { cursor: default; }
 .mon-tiles .tile.warn-tile { border-color: color-mix(in srgb, var(--waiting) 55%, var(--line)); }
 .mon-tiles .tile .free { justify-self: start; margin-top: 4px; font-size: 12px; padding: 2px 10px; }
 .mon-tiles .tile.warn-tile .free { border-color: var(--waiting); color: var(--waiting); }
+
+/* Notes: Pendentes and Completas tabs, pinned group, and the row being dragged. */
+.note-tabs { position: relative; display: grid; grid-template-columns: 1fr 1fr; margin: 8px 8px 2px; padding: 3px; border-radius: 8px; background: var(--bg); }
+.note-tabs-ind { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); border-radius: 6px; background: var(--line); transition: transform 0.25s var(--ease); }
+.note-tabs button { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 3px 0; border: 0; background: none; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+.note-tabs button:hover { background: none; color: var(--text); }
+.note-tabs button.on { color: var(--text); }
+.note-tabs .count { min-width: 18px; padding: 0 5px; border-radius: 9px; background: rgba(255, 255, 255, 0.07); font-size: 11px; font-variant-numeric: tabular-nums; }
+.note-tabs button.on .count { background: rgba(122, 162, 247, 0.2); color: var(--accent); }
+.notes { grid-template-rows: auto minmax(0, 1fr) auto; }
+.note-scroll { position: relative; }
+.note-group.pinned h4 { color: var(--accent); }
+.note { grid-template-columns: 16px minmax(0, 1fr) auto; }
+.note[draggable='true'] { cursor: grab; }
+.note.dragging { opacity: 0.35; }
+.note-tools { display: flex; align-items: center; gap: 2px; }
+.note .pin { width: 20px; height: 20px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; color: var(--muted); visibility: hidden; }
+.note .pin svg { width: 13px; height: 13px; }
+.note:hover .pin, .note .pin.on { visibility: visible; }
+.note .pin:hover { background: var(--hover); color: var(--text); }
+.note .pin.on { color: var(--accent); }
+.note .pin.on svg { fill: currentColor; fill-opacity: 0.3; }
+.list.island { position: relative; }
+@media (prefers-reduced-motion: reduce) { .note-tabs-ind { transition: none; } }

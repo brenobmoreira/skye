@@ -189,6 +189,7 @@ export interface NoteItem {
   date?: string;
   time?: string;
   repeat?: Repeat;
+  pinned?: boolean;
   created: string;
   doneAt?: string;
 }

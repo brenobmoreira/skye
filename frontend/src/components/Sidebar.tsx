@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../bridge';
 import { base, itemLabel } from '../lib/label';
 import { filterConversations } from '../lib/filter';
 import { elapsed } from '../lib/duration';
 import { contextBar, contextText } from '../lib/context';
 import { moveWithinGroup } from '../lib/order';
+import { useFlip } from './useFlip';
 import { DogIcon } from './DogIcon';
 import { stateLabel } from '../lib/states';
 import { capitalize } from '../lib/text';
@@ -54,6 +55,7 @@ function TerminalItem({ t, active, shown, unread, closing, now, onSelect, onClos
   };
   return (
     <div
+      data-flip={t.id}
       className={`item${active ? ' active' : shown ? ' shown' : ''}${unread ? ' unread' : ''}${drag.dragging === t.id ? ' dragging' : ''}${closing ? ' closing' : ''}`}
       onClick={(e) => onSelect(e.ctrlKey || e.metaKey)}
       onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
@@ -141,6 +143,11 @@ export function Sidebar(props: {
   usage: Usage | null;
 }) {
   const [dragging, setDragging] = useState<string | null>(null);
+  // The order shown while dragging: the others make room where the dragged one would land.
+  const [preview, setPreview] = useState<Terminal[] | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  useFlip(listRef);
+  const shownTerminals = preview ?? props.terminals;
   const [asking, setAsking] = useState<string | null>(null);
   const [closing, setClosing] = useState<Set<string>>(() => new Set());
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
@@ -170,24 +177,30 @@ export function Sidebar(props: {
   const menuFor = menu && props.terminals.find((t) => t.id === menu.id);
   const drag: Drag = {
     dragging,
-    start: setDragging,
-    over: (id) => dragging !== null && moveWithinGroup(props.terminals, dragging, id) !== null,
-    drop: (id) => {
-      const next = dragging && moveWithinGroup(props.terminals, dragging, id);
-      setDragging(null);
-      if (next) props.onReorder(next);
+    start: (id) => { setDragging(id); setPreview(props.terminals); },
+    over: (id) => {
+      if (dragging === null) return false;
+      if (dragging === id) return true;
+      const next = moveWithinGroup(shownTerminals, dragging, id);
+      if (next) setPreview(next);
+      return next !== null;
     },
-    end: () => setDragging(null),
+    drop: () => {
+      if (preview && preview.some((t, i) => t.id !== props.terminals[i]?.id)) props.onReorder(preview);
+      setDragging(null);
+      setPreview(null);
+    },
+    end: () => { setDragging(null); setPreview(null); },
   };
   return (
     <aside className="sidebar">
-      <div className="list island">
+      <div className="list island" ref={listRef}>
       <h3>Terminais</h3>
-      {props.terminals.map((t) => (
+      {shownTerminals.map((t) => (
         <TerminalItem key={t.id} t={t} active={t.id === props.activeId} shown={props.shown.includes(t.id)} unread={props.unread.has(t.id)} closing={closing.has(t.id)} now={now} onSelect={(side) => props.onSelect(t.id, side)} onClose={() => requestClose(t)} onMenu={(x, y) => setMenu({ id: t.id, x, y })} drag={drag} />
       ))}
       {props.conversations.length > 0 && (
-        <h3 className="toggle" onClick={toggleEnded} title={endedOpen ? 'recolher' : 'mostrar'}>
+        <h3 className="toggle" onClick={toggleEnded} title={endedOpen ? 'Recolher' : 'Mostrar'}>
           {endedOpen ? '▾' : '▸'} Encerradas ({props.conversations.length})
         </h3>
       )}

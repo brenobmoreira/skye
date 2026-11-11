@@ -119,7 +119,7 @@ export function TitleBar(props: {
         </div>
       )}
       <div className="icons">
-        <button className={props.focus ? 'icon on' : 'icon'} disabled={!props.ready} onClick={props.onToggleFocus} aria-label="Painel de foco" data-tip="Painel de foco">
+        <button className={props.focus ? 'icon on' : 'icon'} disabled={!props.ready} onClick={props.onToggleFocus} aria-label="Painel" data-tip="Painel">
           <PanelIcon open={props.focus} />
         </button>
         <button className="icon bell" disabled={!props.ready} onClick={props.onToggleSound} aria-label={props.sound ? 'Latido ligado' : 'Latido desligado'} data-tip={props.sound ? 'Latido ligado' : 'Latido desligado'}>
