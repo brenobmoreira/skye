@@ -139,7 +139,7 @@ export function NoteList({ notes, now }: { notes: Notes; now: Date }) {
     return (
       <li key={id} className={`note${done ? ' done' : ''}${late && !done ? ' late' : ''}`} onMouseLeave={() => { if (armed === id) setArmed(null); }}>
         <button className={done ? 'check on' : 'check'} disabled={past} onClick={() => toggle(r)} title={past ? 'feito antes de hoje' : done ? 'desmarcar' : 'marcar como feito'} aria-label={done ? 'desmarcar' : 'marcar'} />
-        <div className="body">
+        <div className="note-body">
           <span className="text" onClick={() => { if (r.kind === 'item' && !done) startEdit(r.item); }}>{text}</span>
           {(due || repeat) && <span className="meta">{[due, repeat].filter(Boolean).join(' · ')}</span>}
           {errors[id] && <span className="note-error">{errors[id]}</span>}

@@ -11,6 +11,9 @@ import (
 
 var errNoNotes = errors.New("anotações indisponíveis")
 
+// maxAlarmGap is the longest stretch between two checks that still rings what fell in it.
+const maxAlarmGap = 5 * time.Minute
+
 func (a *App) startPomodoro() {
 	settings := pomodoro.Default
 	if a.o.PomodoroFile != "" {
@@ -136,7 +139,9 @@ func (a *App) CheckAlarms(now time.Time) {
 	a.alarmsFrom = now
 	sound, focused := a.sound, a.focused
 	a.mu.Unlock()
-	if from.IsZero() || a.o.Notes == nil {
+	// A gap far longer than a tick means the machine slept or the clock jumped: like a start,
+	// what fell in it stays quiet.
+	if from.IsZero() || now.Sub(from) > maxAlarmGap || a.o.Notes == nil {
 		return
 	}
 	n, err := a.o.Notes.List()

@@ -270,3 +270,32 @@ func TestStoreMovesABrokenFileAsideOnAnyRead(t *testing.T) {
 		t.Fatalf("problems not drained: %v", p)
 	}
 }
+
+func TestStoreMovesAsideAFileWithUnknownKeys(t *testing.T) {
+	f := newFixture(t)
+	os.WriteFile(f.file, []byte(`{"itens":[{"id":"x","text":"hand typed"}],"done":[]}`), 0o600)
+	_, err := Open(f.file, func() time.Time { return f.now }, func() string { f.ids++; return fmt.Sprintf("n%d", f.ids) })
+	aside := f.file + ".broken-20261111-100000"
+	if err == nil || !strings.Contains(err.Error(), aside) {
+		t.Fatalf("err = %v", err)
+	}
+	if data, _ := os.ReadFile(aside); !strings.Contains(string(data), "hand typed") {
+		t.Fatalf("aside = %q", data)
+	}
+}
+
+func TestStoreGivesHandAddedNotesAnID(t *testing.T) {
+	f := newFixture(t)
+	os.WriteFile(f.file, []byte(`{"items":[{"text":"a"},{"text":"b"}],"done":[]}`), 0o600)
+	s := f.open(t)
+	first := mustList(t, s)
+	if first.Items[0].ID == "" || first.Items[1].ID == "" || first.Items[0].ID == first.Items[1].ID {
+		t.Fatalf("ids %+v", first.Items)
+	}
+	if again := mustList(t, s); again.Items[0].ID != first.Items[0].ID {
+		t.Fatalf("ids changed between reads: %s → %s", first.Items[0].ID, again.Items[0].ID)
+	}
+	if err := s.Check(first.Items[1].ID); err != nil {
+		t.Fatal(err)
+	}
+}

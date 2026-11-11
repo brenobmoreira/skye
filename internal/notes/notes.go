@@ -3,6 +3,7 @@
 package notes
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -84,7 +85,10 @@ func (s *Store) load() (n Notes, aside string, err error) {
 	if err != nil {
 		return n, "", err
 	}
-	if err := json.Unmarshal(data, &n); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	// A misspelled key would otherwise decode as an empty list and be written over.
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&n); err != nil {
 		aside = s.file + ".broken-" + s.now().Format("20060102-150405")
 		if err := os.Rename(s.file, aside); err != nil {
 			return n, "", fmt.Errorf("%s ilegível e não consegui movê-lo: %w", s.file, err)
@@ -97,7 +101,27 @@ func (s *Store) load() (n Notes, aside string, err error) {
 	if n.Done == nil {
 		n.Done = []Done{}
 	}
+	// A note added by hand without an id gets one now, saved, so it stays the same across reads.
+	missing := false
+	for i := range n.Items {
+		if n.Items[i].ID == "" {
+			n.Items[i].ID, missing = s.newID(), true
+		}
+	}
+	if missing {
+		if err := s.write(n); err != nil {
+			return n, "", err
+		}
+	}
 	return n, "", nil
+}
+
+func (s *Store) write(n Notes) error {
+	data, err := json.MarshalIndent(n, "", "  ")
+	if err != nil {
+		return err
+	}
+	return atomicfile.Write(s.file, data, 0o600)
 }
 
 func (s *Store) read() (Notes, error) {
@@ -119,11 +143,7 @@ func (s *Store) change(f func(n *Notes) error) (Notes, error) {
 	if err := f(&n); err != nil {
 		return n, err
 	}
-	data, err := json.MarshalIndent(n, "", "  ")
-	if err != nil {
-		return n, err
-	}
-	return n, atomicfile.Write(s.file, data, 0o600)
+	return n, s.write(n)
 }
 
 func (s *Store) List() (Notes, error) {

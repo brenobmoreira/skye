@@ -314,7 +314,7 @@ button:hover { background: var(--line); }
 .note .check:active { transform: scale(0.88); }
 .note .check:disabled { cursor: default; }
 .note.late .check { border-color: var(--waiting); }
-.note .body { display: grid; gap: 1px; min-width: 0; }
+.note .note-body { display: grid; gap: 1px; min-width: 0; }
 .note .text { overflow-wrap: anywhere; line-height: 1.35; cursor: text; transition: color 160ms ease; }
 .note.done .text { color: var(--muted); text-decoration: line-through; cursor: default; }
 .note .meta { font-size: 11px; color: var(--muted); }

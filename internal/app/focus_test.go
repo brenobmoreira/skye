@@ -243,3 +243,21 @@ func TestSetPomodoroSettingsSaves(t *testing.T) {
 		t.Fatalf("file changed by invalid settings: %+v", got)
 	}
 }
+
+func TestAlarmsSkipAGapLikeASleep(t *testing.T) {
+	r := newFocusRig(t, true)
+	for _, hhmm := range []string{"11:00", "12:00", "13:00"} {
+		timed(t, r, "x"+hhmm, "2026-11-11", hhmm)
+	}
+	r.app.CheckAlarms(r.at(10, 0, 0))
+	r.app.CheckAlarms(r.at(15, 0, 0))
+	time.Sleep(20 * time.Millisecond)
+	if len(r.barks) != 0 || len(r.shown()) != 0 {
+		t.Fatalf("burst after a gap: barks %v shown %v", r.barks, r.shown())
+	}
+	timed(t, r, "depois", "2026-11-11", "15:01")
+	r.app.CheckAlarms(r.at(15, 1, 0))
+	if len(r.barks) != 1 {
+		t.Fatalf("ticking resumed wrong: barks %v", r.barks)
+	}
+}
