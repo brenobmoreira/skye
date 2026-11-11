@@ -124,3 +124,19 @@ func TestParseCodexWithoutTaskComplete(t *testing.T) {
 		t.Fatalf("got %+v", ev)
 	}
 }
+
+func TestParseCodexIgnoresTheReplyOfAnEarlierTurn(t *testing.T) {
+	path := writeTranscript(t,
+		`{"type":"event_msg","payload":{"type":"task_complete","last_agent_message":"Posso commitar?"}}`,
+		`{"type":"event_msg","payload":{"type":"task_started"}}`,
+		`{"type":"event_msg","payload":{"type":"user_message","message":"rode os testes"}}`,
+		codexTokenCount,
+	)
+	ev, err := Parse("t1", []byte(`{"hook_event_name":"Stop","model":"gpt-5","transcript_path":"`+path+`"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ev.LastMessage != "" {
+		t.Fatalf("stale reply %q", ev.LastMessage)
+	}
+}

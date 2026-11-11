@@ -206,6 +206,13 @@ func readCodexTranscript(path string) (*Usage, *float64, string) {
 	sc.Buffer(make([]byte, 64*1024), 2*1024*1024)
 	for sc.Scan() {
 		line := sc.Bytes()
+		// A new turn starts: the reply of the previous one no longer answers anything.
+		if bytes.Contains(line, []byte(`"task_started"`)) || bytes.Contains(line, []byte(`"user_message"`)) {
+			var row codexRolloutLine
+			if json.Unmarshal(line, &row) == nil && (row.Payload.Type == "task_started" || row.Payload.Type == "user_message") {
+				last = ""
+			}
+		}
 		if bytes.Contains(line, []byte(`"task_complete"`)) {
 			var row codexRolloutLine
 			if json.Unmarshal(line, &row) == nil && row.Payload.Type == "task_complete" {
