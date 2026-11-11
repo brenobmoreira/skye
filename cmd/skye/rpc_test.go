@@ -12,7 +12,9 @@ import (
 	"github.com/brenobmoreira/skye/internal/config"
 	"github.com/brenobmoreira/skye/internal/files"
 	"github.com/brenobmoreira/skye/internal/hooks"
+	"github.com/brenobmoreira/skye/internal/notes"
 	"github.com/brenobmoreira/skye/internal/places"
+	"github.com/brenobmoreira/skye/internal/pomodoro"
 	"github.com/brenobmoreira/skye/internal/procs"
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
@@ -24,6 +26,44 @@ type fakeTarget struct {
 
 func (f *fakeTarget) record(format string, args ...any) {
 	f.calls = append(f.calls, fmt.Sprintf(format, args...))
+}
+
+func (f *fakeTarget) Notes() (notes.Notes, error) {
+	f.record("Notes")
+	return notes.Notes{Items: []notes.Item{{ID: "n1", Text: "a"}}, Done: []notes.Done{}}, nil
+}
+
+func (f *fakeTarget) AddNote(text string) (notes.Item, error) {
+	f.record("AddNote(%s)", text)
+	return notes.Item{ID: "n2", Text: text}, nil
+}
+
+func (f *fakeTarget) EditNote(id string, e notes.Edit) (notes.Item, error) {
+	repeat := ""
+	if e.Repeat != nil {
+		repeat = fmt.Sprintf("%s/%d", e.Repeat.Kind, e.Repeat.Weekday)
+	}
+	f.record("EditNote(%s,%s,%s,%s,%s)", id, e.Text, e.Date, e.Time, repeat)
+	return notes.Item{ID: id, Text: e.Text}, nil
+}
+
+func (f *fakeTarget) CheckNote(id string) error   { f.record("CheckNote(%s)", id); return nil }
+func (f *fakeTarget) UncheckNote(id string) error { f.record("UncheckNote(%s)", id); return nil }
+func (f *fakeTarget) DeleteNote(id string) error  { f.record("DeleteNote(%s)", id); return nil }
+
+func (f *fakeTarget) Pomodoro() pomodoro.State {
+	f.record("Pomodoro")
+	return pomodoro.State{Phase: pomodoro.Idle, Settings: pomodoro.Default}
+}
+
+func (f *fakeTarget) PomodoroAction(action string) error {
+	f.record("PomodoroAction(%s)", action)
+	return nil
+}
+
+func (f *fakeTarget) SetPomodoroSettings(s pomodoro.Settings) error {
+	f.record("SetPomodoroSettings(%d,%d,%d,%d)", s.Focus, s.Break, s.Long, s.Every)
+	return nil
 }
 
 func (f *fakeTarget) List() []terminals.Terminal {
@@ -205,6 +245,16 @@ func TestDispatchCallsEachMethodWithDecodedArgs(t *testing.T) {
 		{"ReadFile", `["t1",".env"]`, "ReadFile(t1,.env)", `{"path":".env","content":"","version":"v1"`, false},
 		{"WriteFile", `["t1",".env","A=2","v1"]`, "WriteFile(t1,.env,A=2,v1)", `{"path":".env","content":"","version":"v2"`, false},
 		{"OpenInEditor", `["t1",""]`, "OpenInEditor(t1,)", `null`, false},
+		{"Notes", `[]`, "Notes", `{"items":[{"id":"n1","text":"a"`, false},
+		{"AddNote", `["ligar"]`, "AddNote(ligar)", `{"id":"n2","text":"ligar"`, false},
+		{"EditNote", `["n1",{"text":"a","date":"2026-11-13","time":"14:00","repeat":{"kind":"weekly","weekday":5}}]`, "EditNote(n1,a,2026-11-13,14:00,weekly/5)", `{"id":"n1","text":"a"`, false},
+		{"EditNote", `["n1",{"text":"a","date":"","time":"","repeat":null}]`, "EditNote(n1,a,,,)", `{"id":"n1"`, false},
+		{"CheckNote", `["n1"]`, "CheckNote(n1)", `null`, false},
+		{"UncheckNote", `["n1"]`, "UncheckNote(n1)", `null`, false},
+		{"DeleteNote", `["n1"]`, "DeleteNote(n1)", `null`, false},
+		{"Pomodoro", `[]`, "Pomodoro", `{"phase":"idle"`, false},
+		{"PomodoroAction", `["start"]`, "PomodoroAction(start)", `null`, false},
+		{"SetPomodoroSettings", `[{"focus":50,"break":10,"long":20,"every":3}]`, "SetPomodoroSettings(50,10,20,3)", `null`, false},
 	}
 	for _, c := range cases {
 		f := &fakeTarget{}

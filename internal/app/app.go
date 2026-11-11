@@ -10,7 +10,9 @@ import (
 	"github.com/brenobmoreira/skye/internal/config"
 	"github.com/brenobmoreira/skye/internal/hooks"
 	"github.com/brenobmoreira/skye/internal/launch"
+	"github.com/brenobmoreira/skye/internal/notes"
 	"github.com/brenobmoreira/skye/internal/places"
+	"github.com/brenobmoreira/skye/internal/pomodoro"
 	"github.com/brenobmoreira/skye/internal/procs"
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
@@ -61,6 +63,13 @@ type Options struct {
 	CreateWorktree func(repo, base, dir, branch string) (string, error)
 	// OpenEditor opens a folder, or a file in it, in VS Code (files.OpenInEditor outside tests).
 	OpenEditor func(root, rel string) error
+	// Notes is the focus panel's list; PomodoroFile keeps the timer lengths.
+	Notes        *notes.Store
+	PomodoroFile string
+	// After schedules the end of a pomodoro phase (time.AfterFunc outside tests).
+	After pomodoro.After
+	// Problem reports something the user should see in the problems bar.
+	Problem func(msg string)
 }
 
 type ProcSource interface {
@@ -81,13 +90,23 @@ type App struct {
 	focused       bool
 	usage         hooks.Usage
 	providerUsage map[string]hooks.Usage
+	timer         *pomodoro.Timer
+	alarmsFrom    time.Time
 }
 
 func New(o Options) *App {
 	if o.Pause == nil {
 		o.Pause = time.Sleep
 	}
-	return &App{o: o, reg: terminals.NewRegistry(o.Now), sound: o.Config.Sound, providerUsage: map[string]hooks.Usage{}}
+	if o.After == nil {
+		o.After = func(d time.Duration, f func()) func() bool { return time.AfterFunc(d, f).Stop }
+	}
+	if o.Problem == nil {
+		o.Problem = func(string) {}
+	}
+	a := &App{o: o, reg: terminals.NewRegistry(o.Now), sound: o.Config.Sound, providerUsage: map[string]hooks.Usage{}}
+	a.startPomodoro()
+	return a
 }
 
 func detectProvider(command string) string {

@@ -173,3 +173,57 @@ export interface FileContent {
   binary?: boolean;
   tooBig?: boolean;
 }
+
+export interface Repeat {
+  kind: 'daily' | 'weekdays' | 'weekly' | 'monthly';
+  weekday?: number;
+  day?: number;
+}
+
+export interface NoteItem {
+  id: string;
+  text: string;
+  date?: string;
+  time?: string;
+  repeat?: Repeat;
+  created: string;
+  doneAt?: string;
+}
+
+export interface DoneRecord {
+  id: string;
+  itemId: string;
+  text: string;
+  doneAt: string;
+  prevDate: string;
+}
+
+export interface Notes {
+  items: NoteItem[];
+  done: DoneRecord[];
+}
+
+export interface NoteEdit {
+  text: string;
+  date: string;
+  time: string;
+  repeat: Repeat | null;
+}
+
+export type PomodoroPhase = 'idle' | 'focus' | 'break' | 'long';
+
+export interface PomodoroSettings {
+  focus: number;
+  break: number;
+  long: number;
+  every: number;
+}
+
+export interface PomodoroState {
+  phase: PomodoroPhase;
+  paused: boolean;
+  remainingMs: number;
+  totalMs: number;
+  count: number;
+  settings: PomodoroSettings;
+}

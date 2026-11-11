@@ -1,3 +1,4 @@
+import type { NoteEdit, NoteItem, Notes, PomodoroSettings, PomodoroState } from './lib/types';
 import type { Changes, CompareMode, Conversation, DirEntry, FileContent, FileDiff, MonitorReport, OutputEvent, Place, PlaceCommand, Preset, Repo, Terminal, Usage } from './lib/types';
 import { createOutputHub } from './output';
 import { createSendQueue } from './sendQueue';
@@ -41,6 +42,15 @@ interface GoBridge {
   ReadFile(id: string, path: string): Promise<FileContent>;
   WriteFile(id: string, path: string, content: string, version: string): Promise<FileContent>;
   OpenInEditor(id: string, path: string): Promise<void>;
+  Notes(): Promise<Notes>;
+  AddNote(text: string): Promise<NoteItem>;
+  EditNote(id: string, edit: NoteEdit): Promise<NoteItem>;
+  CheckNote(id: string): Promise<void>;
+  UncheckNote(id: string): Promise<void>;
+  DeleteNote(id: string): Promise<void>;
+  Pomodoro(): Promise<PomodoroState>;
+  PomodoroAction(action: 'start' | 'pause' | 'resume' | 'skip' | 'reset'): Promise<void>;
+  SetPomodoroSettings(settings: PomodoroSettings): Promise<void>;
 }
 
 interface GoShell {
@@ -150,6 +160,15 @@ function remoteBridge(connect: () => SocketLike): { bridge: GoBridge; on: (name:
     ReadFile: (id, path) => call('ReadFile', id, path),
     WriteFile: (id, path, content, version) => call('WriteFile', id, path, content, version),
     OpenInEditor: (id, path) => call('OpenInEditor', id, path),
+    Notes: () => call('Notes'),
+    AddNote: (text) => call('AddNote', text),
+    EditNote: (id, edit) => call('EditNote', id, edit),
+    CheckNote: (id) => call('CheckNote', id),
+    UncheckNote: (id) => call('UncheckNote', id),
+    DeleteNote: (id) => call('DeleteNote', id),
+    Pomodoro: () => call('Pomodoro'),
+    PomodoroAction: (action) => call('PomodoroAction', action),
+    SetPomodoroSettings: (settings) => call('SetPomodoroSettings', settings),
   };
   return { bridge, on: (name, cb) => client.on(name, cb) };
 }

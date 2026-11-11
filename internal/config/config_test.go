@@ -105,6 +105,8 @@ func TestDefaultPaths(t *testing.T) {
 		Socket:         "/run/user/1000/skye.sock",
 		WebToken:       "/home/demo/.config/skye/web-token",
 		Places:         "/home/demo/.config/skye/paths.json",
+		Notes:          "/home/demo/.config/skye/notes.json",
+		Pomodoro:       "/home/demo/.config/skye/pomodoro.json",
 		ClaudeProjects: "/home/demo/.claude/projects",
 	}
 	if p != want {

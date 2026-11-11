@@ -267,3 +267,80 @@ button:hover { background: var(--line); }
 .md blockquote { margin: 0; padding: 0 12px; border-left: 3px solid var(--line); color: var(--muted); }
 .md img { max-width: 100%; }
 .md hr { border: 0; border-top: 1px solid var(--line); }
+
+/* Focus panel: a third island on the right with the pomodoro on top and the notes under it. */
+.body.with-focus { grid-template-columns: 260px minmax(0, 1fr) 260px; }
+.focus { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; overflow: hidden; }
+
+.titlebar .pill { --wails-draggable: no-drag; display: flex; align-items: center; gap: 6px; padding: 1px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); font-size: 12px; font-variant-numeric: tabular-nums; }
+.titlebar .pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.titlebar .pill:hover { border-color: var(--accent); background: var(--panel); }
+
+.pomodoro { display: grid; justify-items: center; gap: 6px; padding: 14px 12px 12px; border-bottom: 1px solid var(--line); --phase: var(--accent); }
+.pomodoro.break, .pomodoro.long { --phase: var(--idle); }
+.pomodoro.idle { --phase: var(--shell); }
+.pomodoro .ring { position: relative; width: 128px; height: 128px; }
+.pomodoro svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.pomodoro circle { fill: none; stroke-width: 7; }
+.pomodoro .track { stroke: var(--line); }
+.pomodoro .fill { stroke: var(--phase); stroke-linecap: round; transition: stroke-dashoffset 1s linear, stroke 300ms ease; }
+.pomodoro.paused .fill { opacity: 0.55; }
+.pomodoro .time { position: absolute; inset: 0; display: grid; place-items: center; font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+.pomodoro .phase { color: var(--muted); font-size: 12px; }
+.pomodoro .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 2px; }
+.pomodoro .controls button { border-radius: 999px; padding: 3px 12px; transition: background 120ms ease, border-color 120ms ease, transform 80ms ease; }
+.pomodoro .controls button:active { transform: scale(0.96); }
+.pomodoro .controls .primary { border-color: var(--phase); color: var(--phase); }
+.pomodoro .controls .primary:hover { background: color-mix(in srgb, var(--phase) 18%, transparent); }
+.pomodoro .controls .quiet { border-color: transparent; color: var(--muted); }
+
+.notes { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
+.note-scroll { overflow-y: auto; padding: 6px 8px; }
+.notes .none { margin: 12px 6px; color: var(--muted); font-size: 12px; }
+.note-group h4 { margin: 10px 4px 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.note-group.overdue h4 { color: var(--waiting); }
+.note-group h4.toggle { cursor: pointer; user-select: none; }
+.note-group h4.toggle:hover { color: var(--text); }
+.note-group h5 { margin: 8px 6px 2px; font-size: 11px; font-weight: normal; color: var(--muted); }
+.note-group ul { list-style: none; margin: 0; padding: 0; }
+.note-group .more { margin: 6px 4px; border: 0; color: var(--accent); font-size: 12px; }
+
+.note { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 8px; align-items: start; padding: 5px 4px; border-radius: 6px; }
+.note:hover { background: rgba(255, 255, 255, 0.04); }
+.note .check { width: 15px; height: 15px; margin-top: 1px; padding: 0; border: 1.5px solid var(--muted); border-radius: 4px; display: grid; place-items: center; transition: background 140ms ease, border-color 140ms ease, transform 120ms ease; }
+.note .check:hover { border-color: var(--text); background: transparent; }
+.note .check.on { background: var(--idle); border-color: var(--idle); }
+.note .check.on::after { content: ''; width: 4px; height: 8px; margin-top: -2px; border: solid var(--bg); border-width: 0 2px 2px 0; transform: rotate(45deg); animation: tick-in 160ms ease-out; }
+.note .check:active { transform: scale(0.88); }
+.note .check:disabled { cursor: default; }
+.note.late .check { border-color: var(--waiting); }
+.note .note-body { display: grid; gap: 1px; min-width: 0; }
+.note .text { overflow-wrap: anywhere; line-height: 1.35; cursor: text; transition: color 160ms ease; }
+.note.done .text { color: var(--muted); text-decoration: line-through; cursor: default; }
+.note .meta { font-size: 11px; color: var(--muted); }
+.note.late .meta { color: var(--waiting); }
+.note .remove { border: 0; padding: 0 4px; color: var(--muted); visibility: hidden; font-size: 12px; }
+.note:hover .remove, .note .remove.armed { visibility: visible; }
+.note .remove.armed { color: var(--waiting); }
+.note-error { color: var(--waiting); font-size: 11px; white-space: pre-wrap; }
+@keyframes tick-in { from { opacity: 0; transform: rotate(45deg) scale(0.4); } }
+
+.note.editing { display: block; background: rgba(255, 255, 255, 0.04); }
+.note-edit { display: grid; gap: 6px; }
+.note-edit input, .note-edit select, .note-add input { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 3px 6px; outline: none; min-width: 0; color-scheme: dark; }
+.note-edit input:focus, .note-edit select:focus, .note-add input:focus { border-color: var(--accent); }
+.note-edit input:disabled, .note-edit select:disabled { opacity: 0.45; }
+.note-edit .when { display: flex; gap: 6px; }
+.note-edit .when > * { flex: 1; }
+.note-edit .actions { display: flex; gap: 6px; justify-content: flex-end; }
+.note-add { padding: 8px; border-top: 1px solid var(--line); }
+.note-add input { width: 100%; padding: 6px 8px; }
+
+.settings-panel .time-field { display: grid; grid-template-columns: 1fr 64px 36px; gap: 6px; align-items: center; }
+.settings-panel .time-field input { width: 100%; }
+.settings-panel .time-field small { color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pomodoro .fill, .note .check, .note .text, .pomodoro .controls button { transition: none; }
+  .note .check.on::after { animation: none; }
+}

@@ -8,7 +8,9 @@ import (
 	"github.com/brenobmoreira/skye/internal/config"
 	"github.com/brenobmoreira/skye/internal/files"
 	"github.com/brenobmoreira/skye/internal/hooks"
+	"github.com/brenobmoreira/skye/internal/notes"
 	"github.com/brenobmoreira/skye/internal/places"
+	"github.com/brenobmoreira/skye/internal/pomodoro"
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
 	"github.com/brenobmoreira/skye/internal/web"
@@ -47,6 +49,15 @@ type rpcTarget interface {
 	ReadFile(id, path string) (files.File, error)
 	WriteFile(id, path, content, version string) (files.File, error)
 	OpenInEditor(id, path string) error
+	Notes() (notes.Notes, error)
+	AddNote(text string) (notes.Item, error)
+	EditNote(id string, e notes.Edit) (notes.Item, error)
+	CheckNote(id string) error
+	UncheckNote(id string) error
+	DeleteNote(id string) error
+	Pomodoro() pomodoro.State
+	PomodoroAction(action string) error
+	SetPomodoroSettings(s pomodoro.Settings) error
 }
 
 func decodeArgs(method string, args []json.RawMessage, dst ...any) error {
@@ -227,6 +238,53 @@ func dispatcher(t rpcTarget) web.Dispatch {
 				return nil, err
 			}
 			return nil, t.OpenInEditor(a, b)
+		case "Notes":
+			if err := decode(); err != nil {
+				return nil, err
+			}
+			return t.Notes()
+		case "AddNote":
+			if err := decode(&a); err != nil {
+				return nil, err
+			}
+			return t.AddNote(a)
+		case "EditNote":
+			var e notes.Edit
+			if err := decode(&a, &e); err != nil {
+				return nil, err
+			}
+			return t.EditNote(a, e)
+		case "CheckNote":
+			if err := decode(&a); err != nil {
+				return nil, err
+			}
+			return nil, t.CheckNote(a)
+		case "UncheckNote":
+			if err := decode(&a); err != nil {
+				return nil, err
+			}
+			return nil, t.UncheckNote(a)
+		case "DeleteNote":
+			if err := decode(&a); err != nil {
+				return nil, err
+			}
+			return nil, t.DeleteNote(a)
+		case "Pomodoro":
+			if err := decode(); err != nil {
+				return nil, err
+			}
+			return t.Pomodoro(), nil
+		case "PomodoroAction":
+			if err := decode(&a); err != nil {
+				return nil, err
+			}
+			return nil, t.PomodoroAction(a)
+		case "SetPomodoroSettings":
+			var s pomodoro.Settings
+			if err := decode(&s); err != nil {
+				return nil, err
+			}
+			return nil, t.SetPomodoroSettings(s)
 		case "SetSound":
 			if err := decode(&flag); err != nil {
 				return nil, err
