@@ -12,16 +12,16 @@ const SECTIONS: { id: Section; label: string }[] = [
 ];
 
 const SHORTCUTS: { keys: string; does: string }[] = [
-  { keys: 'Ctrl+1 … Ctrl+9', does: 'abre o 1º … 9º terminal da lista' },
-  { keys: 'Ctrl+Shift+Espaço', does: 'pula para o próximo que espera você (sem nenhum, o próximo não lido)' },
-  { keys: 'Ctrl+= / Ctrl+-', does: 'aumenta / diminui a fonte (também Ctrl+roda do mouse)' },
-  { keys: 'Ctrl+0', does: 'volta a fonte ao tamanho padrão' },
-  { keys: 'Ctrl+clique na lista', does: 'abre o terminal ao lado do atual' },
-  { keys: 'Clique do meio na lista', does: 'fecha o terminal (pergunta antes se estiver em andamento)' },
-  { keys: 'Clique direito na lista', does: 'marca o terminal como não lido (ou lido)' },
-  { keys: 'Alt+Enter / Ctrl+Enter', does: 'quebra linha no claude' },
-  { keys: 'Ctrl+Shift+V', does: 'cola no terminal' },
-  { keys: 'Ctrl+clique num link', does: 'abre no navegador padrão do Windows' },
+  { keys: 'Ctrl+1 … Ctrl+9', does: 'Abre o 1º … 9º terminal da lista' },
+  { keys: 'Ctrl+Shift+Espaço', does: 'Pula para o próximo que espera você (sem nenhum, o próximo não lido)' },
+  { keys: 'Ctrl+= / Ctrl+-', does: 'Aumenta / diminui a fonte (também Ctrl+roda do mouse)' },
+  { keys: 'Ctrl+0', does: 'Volta a fonte ao tamanho padrão' },
+  { keys: 'Ctrl+clique na lista', does: 'Abre o terminal ao lado do atual' },
+  { keys: 'Clique do meio na lista', does: 'Fecha o terminal (pergunta antes se estiver em andamento)' },
+  { keys: 'Clique direito na lista', does: 'Marca o terminal como não lido (ou lido)' },
+  { keys: 'Alt+Enter / Ctrl+Enter', does: 'Quebra linha no claude' },
+  { keys: 'Ctrl+Shift+V', does: 'Cola no terminal' },
+  { keys: 'Ctrl+clique num link', does: 'Abre no navegador padrão do Windows' },
 ];
 
 // The ⚙ menu: one row per section, each opening its panel beside the menu.
@@ -99,7 +99,7 @@ export function SettingsMenu(props: {
 
   return (
     <div className="menu">
-      <button className="flat" onClick={() => (open ? close() : setOpen(true))} title="configurações">⚙</button>
+      <button className="flat" onClick={() => (open ? close() : setOpen(true))} title="Configurações">⚙</button>
       {open && (
         <div className="menu-list right settings-menu" onMouseLeave={() => { if (!adding && section !== 'focus') close(); }}>
           {SECTIONS.map((s) => (
@@ -109,7 +109,7 @@ export function SettingsMenu(props: {
           ))}
           {section === 'shortcuts' && (
             <div className="menu-list settings-panel">
-              <h4>atalhos</h4>
+              <h4>Atalhos</h4>
               <dl className="shortcuts">
                 {SHORTCUTS.map((s) => (
                   <div key={s.keys}>
@@ -122,12 +122,12 @@ export function SettingsMenu(props: {
           )}
           {section === 'font' && (
             <div className="menu-list settings-panel">
-              <h4>fonte do terminal</h4>
+              <h4>Fonte do terminal</h4>
               {FONTS.map((f) => <div key={f.id}>{fontButton(f)}</div>)}
               {props.customFonts.map((f) => (
                 <div key={f.id} className="place" onMouseLeave={() => { if (armed === f.id) setArmed(null); }}>
                   {fontButton(f)}
-                  <button className={armed === f.id ? 'remove armed' : 'remove'} onClick={() => remove(f)} title="remover esta fonte">
+                  <button className={armed === f.id ? 'remove armed' : 'remove'} onClick={() => remove(f)} title="Remover esta fonte">
                     {armed === f.id ? 'remover?' : '×'}
                   </button>
                 </div>
@@ -135,11 +135,11 @@ export function SettingsMenu(props: {
               <hr />
               {adding ? (
                 <div className="form">
-                  <input autoFocus placeholder="nome da fonte (ex.: Fira Code)" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={keys} />
-                  <small>precisa estar instalada; sem ela, o terminal usa monospace</small>
+                  <input autoFocus placeholder="Nome da fonte (ex.: Fira Code)" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={keys} />
+                  <small>Precisa estar instalada; sem ela, o terminal usa monospace</small>
                   <div className="actions">
-                    <button onClick={saveFont}>salvar</button>
-                    <button onClick={() => { setAdding(false); setName(''); }}>cancelar</button>
+                    <button onClick={saveFont}>Salvar</button>
+                    <button onClick={() => { setAdding(false); setName(''); }}>Cancelar</button>
                   </div>
                 </div>
               ) : (
@@ -149,7 +149,7 @@ export function SettingsMenu(props: {
           )}
           {section === 'focus' && (
             <div className="menu-list settings-panel">
-              <h4>pomodoro</h4>
+              <h4>Pomodoro</h4>
               {times ? (
                 <div className="form">
                   {timeField('focus', 'foco', 'min')}
@@ -158,21 +158,21 @@ export function SettingsMenu(props: {
                   {timeField('every', 'pausa longa a cada', 'focos')}
                   {timesError && <div className="error">{timesError}</div>}
                   <div className="actions">
-                    <button onClick={saveTimes}>salvar</button>
-                    <button onClick={() => setTimes({ focus: 25, break: 5, long: 15, every: 4 })} title="25 / 5 / 15 / 4">padrão</button>
-                    <button onClick={close}>fechar</button>
+                    <button onClick={saveTimes}>Salvar</button>
+                    <button onClick={() => setTimes({ focus: 25, break: 5, long: 15, every: 4 })} title="25 / 5 / 15 / 4">Padrão</button>
+                    <button onClick={close}>Fechar</button>
                   </div>
-                  <small>vale a partir da próxima fase</small>
+                  <small>Vale a partir da próxima fase</small>
                 </div>
               ) : (
-                <small className="empty">o timer ainda não respondeu</small>
+                <small className="empty">O timer ainda não respondeu</small>
               )}
             </div>
           )}
           {section === 'settings' && (
             <div className="menu-list settings-panel">
-              <h4>configurações</h4>
-              <small className="empty">nada por aqui ainda</small>
+              <h4>Configurações</h4>
+              <small className="empty">Nada por aqui ainda</small>
             </div>
           )}
         </div>

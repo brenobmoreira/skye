@@ -27,11 +27,11 @@ export function PomodoroCard({ state, remainingMs }: { state: PomodoroState; rem
       </div>
       <div className="phase">{phaseLabel(state)}{state.paused ? ' · pausado' : ''}</div>
       <div className="controls">
-        {!running && <button className="primary" onClick={() => act('start')}>começar</button>}
-        {running && !state.paused && <button onClick={() => act('pause')}>pausar</button>}
-        {running && state.paused && <button className="primary" onClick={() => act('resume')}>retomar</button>}
-        {running && <button onClick={() => act('skip')} title="encerra esta fase agora">pular</button>}
-        {(running || state.count > 0) && <button className="quiet" onClick={() => act('reset')} title="para e zera a contagem de hoje">zerar</button>}
+        {!running && <button className="primary" onClick={() => act('start')}>Começar</button>}
+        {running && !state.paused && <button onClick={() => act('pause')}>Pausar</button>}
+        {running && state.paused && <button className="primary" onClick={() => act('resume')}>Retomar</button>}
+        {running && <button onClick={() => act('skip')} title="Encerra esta fase agora">Pular</button>}
+        {(running || state.count > 0) && <button className="quiet" onClick={() => act('reset')} title="Para e zera a contagem de hoje">Zerar</button>}
       </div>
     </section>
   );

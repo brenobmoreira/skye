@@ -43,13 +43,13 @@ function ConnectionScreen({ state }: { state: ConnectionState }) {
   if (state.kind === 'error') {
     return (
       <div className="connection error">
-        <h2>não consegui abrir a skye</h2>
+        <h2>Não consegui abrir a skye</h2>
         <pre>{state.message}</pre>
-        <button onClick={retryConnection}>tentar de novo</button>
+        <button onClick={retryConnection}>Tentar de novo</button>
       </div>
     );
   }
-  return <div className="connection">iniciando a skye no WSL…</div>;
+  return <div className="connection">Iniciando a skye no WSL…</div>;
 }
 
 function storedCustomFonts(): TerminalFont[] {
@@ -327,14 +327,14 @@ export function App() {
         <main className="main island">
           {monitor && <Monitor terminals={terminals} onOpen={show} />}
           {view === 'files' && (
-            <Suspense fallback={<div className="empty">abrindo…</div>}>
+            <Suspense fallback={<div className="empty">Abrindo…</div>}>
               <FilesPanel terminal={terminals.find((t) => t.id === activeId)} onBack={() => setView('terminals')} />
             </Suspense>
           )}
           <div className="terminals" hidden={covered}>
             {problems.length > 0 && <div className="problems">{problems.join('\n')}</div>}
             {terminals.length === 0 && <div className="empty">Nenhum terminal. Abra um no +.</div>}
-            {split && <button className="unsplit" onClick={() => setPanes(closeSplit)} title="voltar a um terminal só">×</button>}
+            {split && <button className="unsplit" onClick={() => setPanes(closeSplit)} title="Voltar a um terminal só">×</button>}
             {views.map((t) => (
               <TerminalView
                 key={`${t.id}:${epoch}`}

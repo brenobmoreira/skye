@@ -1,6 +1,7 @@
 import { useState, type FocusEvent, type KeyboardEvent } from 'react';
 import { api } from '../bridge';
 import { dayOf, dueLabel, groupNotes, repeatLabel, type Row } from '../lib/notes';
+import { capitalize } from '../lib/text';
 import type { NoteItem, Notes, Repeat } from '../lib/types';
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -101,16 +102,16 @@ export function NoteList({ notes, now }: { notes: Notes; now: Date }) {
     <div className="note-edit" onBlur={editBlur} onKeyDown={editKeys}>
       <input autoFocus className="text" value={draft.text} onChange={(e) => setDraft({ ...draft, text: e.target.value })} />
       <div className="when">
-        <input type="date" value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} title="data" />
-        <input type="time" value={draft.time} disabled={!draft.date} onChange={(e) => setDraft({ ...draft, time: e.target.value })} title="hora (avisa nesse horário)" />
+        <input type="date" value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} title="Data" />
+        <input type="time" value={draft.time} disabled={!draft.date} onChange={(e) => setDraft({ ...draft, time: e.target.value })} title="Hora (avisa nesse horário)" />
       </div>
       <div className="when">
         <select value={draft.kind} disabled={!draft.date} onChange={(e) => setDraft({ ...draft, kind: e.target.value as Draft['kind'] })} title={draft.date ? 'repetição' : 'repetir precisa de data'}>
-          <option value="">não repete</option>
-          <option value="daily">todo dia</option>
-          <option value="weekdays">dias úteis</option>
-          <option value="weekly">toda semana</option>
-          <option value="monthly">todo mês</option>
+          <option value="">Não repete</option>
+          <option value="daily">Todo dia</option>
+          <option value="weekdays">Dias úteis</option>
+          <option value="weekly">Toda semana</option>
+          <option value="monthly">Todo mês</option>
         </select>
         {draft.kind === 'weekly' && (
           <select value={draft.weekday} onChange={(e) => setDraft({ ...draft, weekday: Number(e.target.value) })}>
@@ -118,12 +119,12 @@ export function NoteList({ notes, now }: { notes: Notes; now: Date }) {
           </select>
         )}
         {draft.kind === 'monthly' && (
-          <input type="number" min={1} max={31} value={draft.day} onChange={(e) => setDraft({ ...draft, day: Number(e.target.value) })} title="dia do mês" />
+          <input type="number" min={1} max={31} value={draft.day} onChange={(e) => setDraft({ ...draft, day: Number(e.target.value) })} title="Dia do mês" />
         )}
       </div>
       <div className="actions">
-        <button onMouseDown={(e) => e.preventDefault()} onClick={saveEdit}>salvar</button>
-        <button onMouseDown={(e) => e.preventDefault()} onClick={cancelEdit}>cancelar</button>
+        <button onMouseDown={(e) => e.preventDefault()} onClick={saveEdit}>Salvar</button>
+        <button onMouseDown={(e) => e.preventDefault()} onClick={cancelEdit}>Cancelar</button>
       </div>
       {errors[id] && <div className="note-error">{errors[id]}</div>}
     </div>
@@ -141,10 +142,10 @@ export function NoteList({ notes, now }: { notes: Notes; now: Date }) {
         <button className={done ? 'check on' : 'check'} disabled={past} onClick={() => toggle(r)} title={past ? 'feito antes de hoje' : done ? 'desmarcar' : 'marcar como feito'} aria-label={done ? 'desmarcar' : 'marcar'} />
         <div className="note-body">
           <span className="text" onClick={() => { if (r.kind === 'item' && !done) startEdit(r.item); }}>{text}</span>
-          {(due || repeat) && <span className="meta">{[due, repeat].filter(Boolean).join(' · ')}</span>}
+          {(due || repeat) && <span className="meta">{capitalize([due, repeat].filter(Boolean).join(' · '))}</span>}
           {errors[id] && <span className="note-error">{errors[id]}</span>}
         </div>
-        <button className={armed === id ? 'remove armed' : 'remove'} onClick={() => remove(id)} title="apagar">{armed === id ? 'apagar?' : '×'}</button>
+        <button className={armed === id ? 'remove armed' : 'remove'} onClick={() => remove(id)} title="Apagar">{armed === id ? 'apagar?' : '×'}</button>
       </li>
     );
   };
@@ -185,7 +186,7 @@ export function NoteList({ notes, now }: { notes: Notes; now: Date }) {
                 <ul>{h.rows.map((r) => row(r, false, true))}</ul>
               </div>
             ))}
-            {historyOpen && !allHistory && <button className="more" onClick={() => setAllHistory(true)}>ver mais</button>}
+            {historyOpen && !allHistory && <button className="more" onClick={() => setAllHistory(true)}>Ver mais</button>}
           </section>
         )}
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { capitalize } from '../lib/text';
 import { api } from '../bridge';
 import { base } from '../lib/label';
 import { changeLabel, crumbs, isMarkdown, joinPath, splitPath } from '../lib/files';
@@ -108,20 +109,20 @@ function Viewer(props: { id: string; sel: Selection; mode: CompareMode; tick: nu
     <>
       <div className="files-bar">
         <span className="path" title={sel.path}>{sel.path}</span>
-        {sel.change && <span className={`status s-${sel.change.status === '?' ? 'u' : sel.change.status}`}>{changeLabel(sel.change.status)}</span>}
+        {sel.change && <span className={`status s-${sel.change.status === '?' ? 'u' : sel.change.status}`}>{capitalize(changeLabel(sel.change.status))}</span>}
         <span className="spacer" />
         {sel.change && !deleted && !editing && (
           <span className="seg">
-            <button className={view === 'diff' ? 'flat on' : 'flat'} onClick={() => setView('diff')}>mudanças</button>
-            <button className={view === 'file' ? 'flat on' : 'flat'} onClick={() => setView('file')}>arquivo</button>
+            <button className={view === 'diff' ? 'flat on' : 'flat'} onClick={() => setView('diff')}>Mudanças</button>
+            <button className={view === 'file' ? 'flat on' : 'flat'} onClick={() => setView('file')}>Arquivo</button>
           </span>
         )}
         {view === 'file' && md && !editing && (
           <button className="flat" onClick={() => setRendered(!rendered)}>{rendered ? 'ver código' : 'ver formatado'}</button>
         )}
-        {canEdit && !editing && <button className="flat" onClick={edit} title="editar aqui">editar</button>}
-        {editing && <button className="flat on" onClick={save} title="Ctrl+S">salvar</button>}
-        {editing && <button className="flat" onClick={cancel}>cancelar</button>}
+        {canEdit && !editing && <button className="flat" onClick={edit} title="Editar aqui">Editar</button>}
+        {editing && <button className="flat on" onClick={save} title="Ctrl+S">Salvar</button>}
+        {editing && <button className="flat" onClick={cancel}>Cancelar</button>}
         {!deleted && <OpenInEditor id={id} path={sel.path} />}
       </div>
       {error && <div className="files-error block">{error}</div>}
@@ -182,31 +183,31 @@ function Panel({ terminal, onBack }: { terminal: Terminal; onBack: () => void })
   return (
     <div className="files">
       <header className="files-head">
-        <button className="flat" onClick={onBack} title="voltar ao terminal">← terminal</button>
+        <button className="flat" onClick={onBack} title="Voltar ao terminal">← terminal</button>
         <span className="where" title={changes?.root ?? terminal.cwd}>
           {base(changes?.root ?? terminal.cwd)}
           {changes?.branch && <span className="branch">{changes.branch}</span>}
         </span>
         <span className="spacer" />
-        <button className="flat" onClick={refresh} title="recarregar">↻</button>
+        <button className="flat" onClick={refresh} title="Recarregar">↻</button>
         <OpenInEditor id={id} path="" />
       </header>
       <div className="files-body">
         <nav className="files-side">
           <div className="seg tabs">
             <button className={tab === 'changes' ? 'flat on' : 'flat'} onClick={() => setTab('changes')}>mudanças{changes ? ` (${files.length})` : ''}</button>
-            <button className={tab === 'tree' ? 'flat on' : 'flat'} onClick={() => setTab('tree')}>arquivos</button>
+            <button className={tab === 'tree' ? 'flat on' : 'flat'} onClick={() => setTab('tree')}>Arquivos</button>
           </div>
           {tab === 'changes' ? (
             <>
               <div className="seg modes">
-                <button className={mode === 'work' ? 'flat on' : 'flat'} onClick={() => pickMode('work')} title="o que ainda não foi commitado">não commitadas</button>
-                <button className={mode === 'branch' ? 'flat on' : 'flat'} onClick={() => pickMode('branch')} title="tudo o que a branch mudou desde a base, commitado ou não">
+                <button className={mode === 'work' ? 'flat on' : 'flat'} onClick={() => pickMode('work')} title="O que ainda não foi commitado">Não commitadas</button>
+                <button className={mode === 'branch' ? 'flat on' : 'flat'} onClick={() => pickMode('branch')} title="Tudo o que a branch mudou desde a base, commitado ou não">
                   {mode === 'branch' && changes ? `desde ${changes.base}` : 'na branch'}
                 </button>
               </div>
               {changesError && <div className="none">{changesError}</div>}
-              {changes && files.length === 0 && <div className="none">nada mudou</div>}
+              {changes && files.length === 0 && <div className="none">Nada mudou</div>}
               {files.map((c) => {
                 const { dir: folder, name } = splitPath(c.path);
                 return (

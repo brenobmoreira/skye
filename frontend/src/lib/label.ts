@@ -1,4 +1,5 @@
 import { stateLabel } from './states';
+import { capitalize } from './text';
 import type { Terminal } from './types';
 
 export const base = (path: string) => path.split('/').filter(Boolean).pop() ?? path;
@@ -13,9 +14,10 @@ export function itemLabel(t: Terminal): { name: string; sub: string } {
   const live =
     t.state === 'waiting' ? t.ask
     : t.state === 'running' ? t.activity
-    : t.state === 'idle' ? (t.answered ? `você: ${t.answered}` : t.reply)
+    : t.state === 'idle' ? (t.answered ? `Você: ${t.answered}` : t.reply)
     : '';
-  if (!defaultName(t)) return { name: t.name, sub: live || t.title || folder || stateLabel[t.state] };
-  if (t.title) return { name: t.title, sub: live || folder || stateLabel[t.state] };
-  return { name: folder || t.name, sub: live || stateLabel[t.state] };
+  const state = capitalize(stateLabel[t.state]);
+  if (!defaultName(t)) return { name: t.name, sub: live || t.title || folder || state };
+  if (t.title) return { name: t.title, sub: live || folder || state };
+  return { name: folder || t.name, sub: live || state };
 }

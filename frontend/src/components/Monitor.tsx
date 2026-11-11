@@ -3,6 +3,7 @@ import { api } from '../bridge';
 import { itemLabel } from '../lib/label';
 import { memoryLevel, nearest, size, sparkline, strayLabel } from '../lib/monitor';
 import { stateLabel } from '../lib/states';
+import { capitalize } from '../lib/text';
 import type { MemoryPoint, MonitorReport, Terminal } from '../lib/types';
 import { DogIcon } from './DogIcon';
 
@@ -26,7 +27,7 @@ function MemoryChart({ points, totalMb }: { points: MemoryPoint[]; totalMb: numb
     <figure className="mon-chart">
       <figcaption>Memória disponível no WSL · últimas 3 h</figcaption>
       <div className="plot" onMouseMove={move} onMouseLeave={() => setHover(null)}>
-        <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} preserveAspectRatio="none" role="img" aria-label="memória disponível nas últimas 3 horas">
+        <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} preserveAspectRatio="none" role="img" aria-label="Memória disponível nas últimas 3 horas">
           <line x1="0" y1={CHART_H} x2={CHART_W} y2={CHART_H} className="axis" />
           <path d={d} className="series" />
         </svg>
@@ -91,7 +92,7 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
       {error && <p className="hint warn">falhou a última leitura: {error}</p>}
       <section className="mon-tiles">
         {host ? (
-          <div className="tile" title="o que o Gerenciador de Tarefas do Windows mostra como disponível; inclui o que a VM do WSL segura">
+          <div className="tile" title="O que o Gerenciador de Tarefas do Windows mostra como disponível; inclui o que a VM do WSL segura">
             <span className="label">Windows · disponível</span>
             <span className="value">{size(host.availMb)}</span>
             <span className="meter"><span className={hostLevel === 'ok' ? '' : 'warn'} style={{ width: `${hostUsedPct}%` }} /></span>
@@ -101,7 +102,7 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
             </span>
           </div>
         ) : null}
-        <div className="tile" title="dentro da VM do WSL, até o teto do .wslconfig">
+        <div className="tile" title="Dentro da VM do WSL, até o teto do .wslconfig">
           <span className="label">{host ? 'WSL · disponível' : 'RAM disponível'}</span>
           <span className="value">{size(m.memAvailMb)}</span>
           <span className="meter"><span className={level === 'ok' ? '' : 'warn'} style={{ width: `${usedPct}%` }} /></span>
@@ -118,12 +119,12 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
         <div className="tile">
           <span className="label">Pressão de memória</span>
           <span className="value">{m.psiSome60.toFixed(1).replace('.', ',')}%</span>
-          <span className="note">tempo esperando memória (média de 60 s)</span>
+          <span className="note">Tempo esperando memória (média de 60 s)</span>
         </div>
         <div className="tile">
           <span className="label">Carga</span>
           <span className="value">{m.load1.toFixed(2).replace('.', ',')}</span>
-          <span className="note">média de 1 min</span>
+          <span className="note">Média de 1 min</span>
         </div>
       </section>
 
@@ -134,20 +135,20 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
         <div className="mon-scroll">
         <table className="mon-table">
           <thead>
-            <tr><th>terminal</th><th>estado</th><th className="num">processos</th><th className="num">memória</th><th className="bar-col" /></tr>
+            <tr><th>Terminal</th><th>Estado</th><th className="num">Processos</th><th className="num">Memória</th><th className="bar-col" /></tr>
           </thead>
           <tbody>
             {loads.map((l) => {
               const t = byId.get(l.id);
               return (
-                <tr key={l.id} className="link" onClick={() => onOpen(l.id)} title={`abrir · PID ${l.pid}`}>
+                <tr key={l.id} className="link" onClick={() => onOpen(l.id)} title={`Abrir · PID ${l.pid}`}>
                   <td>
                     <span className="name">
-                      {t && <DogIcon color={`var(--${t.state})`} title={stateLabel[t.state]} />}
+                      {t && <DogIcon color={`var(--${t.state})`} title={capitalize(stateLabel[t.state])} />}
                       <span>{t ? itemLabel(t).name : l.id}</span>
                     </span>
                   </td>
-                  <td>{t ? stateLabel[t.state] : ''}</td>
+                  <td>{t ? capitalize(stateLabel[t.state]) : ''}</td>
                   <td className="num">{l.procs + l.bgProcs}</td>
                   <td className="num" title={l.bgMb ? `${size(l.rssMb)} no terminal + ${size(l.bgMb)} em segundo plano` : undefined}>
                     {size(l.rssMb + l.bgMb)}
@@ -158,11 +159,11 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
               );
             })}
             <tr className="muted">
-              <td>a própria skye</td><td /><td /><td className="num">{size(report.selfMb)}</td><td />
+              <td>A própria skye</td><td /><td /><td className="num">{size(report.selfMb)}</td><td />
             </tr>
           </tbody>
           <tfoot>
-            <tr><td>total</td><td /><td /><td className="num">{size(total)}</td><td /></tr>
+            <tr><td>Total</td><td /><td /><td className="num">{size(total)}</td><td /></tr>
           </tfoot>
         </table>
         </div>
@@ -174,11 +175,11 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
           <div className="mon-scroll">
             <table className="mon-table">
               <thead>
-                <tr><th>terminal</th><th className="num">PID</th><th>comando</th><th>pasta</th><th className="num">processos</th><th className="num">memória</th></tr>
+                <tr><th>Terminal</th><th className="num">PID</th><th>Comando</th><th>Pasta</th><th className="num">Processos</th><th className="num">Memória</th></tr>
               </thead>
               <tbody>
                 {background.map((s) => (
-                  <tr key={s.pid} className="link" onClick={() => s.terminal && onOpen(s.terminal)} title="abrir o terminal que subiu este processo">
+                  <tr key={s.pid} className="link" onClick={() => s.terminal && onOpen(s.terminal)} title="Abrir o terminal que subiu este processo">
                     <td className="cmd">{terminalName(s.terminal)}</td>
                     <td className="num">{s.pid}</td>
                     <td className="cmd" title={s.args}>{s.args || s.name}</td>
@@ -203,12 +204,12 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
             <div className="mon-scroll">
             <table className="mon-table">
               <thead>
-                <tr><th>o quê</th><th className="num">PID</th><th>comando</th><th>pasta</th><th className="num">processos</th><th className="num">memória</th></tr>
+                <tr><th>O quê</th><th className="num">PID</th><th>Comando</th><th>Pasta</th><th className="num">Processos</th><th className="num">Memória</th></tr>
               </thead>
               <tbody>
                 {strays.map((s) => (
                   <tr key={`${s.kind}:${s.pid}`}>
-                    <td>{strayLabel(s.kind)}</td>
+                    <td>{capitalize(strayLabel(s.kind))}</td>
                     <td className="num">{s.pid}</td>
                     <td className="cmd" title={s.args}>{s.args || s.name}</td>
                     <td className="cmd" title={s.cwd}>{s.cwd}</td>

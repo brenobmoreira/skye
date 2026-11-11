@@ -52,7 +52,7 @@ export function TitleBar(props: {
   }, [windowed]);
 
   const sound = (
-    <button className="flat" disabled={!props.ready} onClick={props.onToggleSound} title="latido">{props.sound ? '🔔' : '🔕'}</button>
+    <button className="flat" disabled={!props.ready} onClick={props.onToggleSound} title="Latido">{props.sound ? '🔔' : '🔕'}</button>
   );
 
   const onDoubleClick = (e: MouseEvent) => {
@@ -78,11 +78,11 @@ export function TitleBar(props: {
       {windowed && sound}
       <span className="spacer" />
       {props.pill && !props.focus && (
-        <button className="pill" onClick={props.onToggleFocus} title="abrir o painel de foco">{props.pill}</button>
+        <button className="pill" onClick={props.onToggleFocus} title="Abrir o painel de foco">{props.pill}</button>
       )}
-      <button className={props.focus ? 'flat on' : 'flat'} disabled={!props.ready} onClick={props.onToggleFocus} title="foco: pomodoro e anotações">foco</button>
-      <button className={props.files ? 'flat on' : 'flat'} disabled={!props.ready || (!props.canFiles && !props.files)} onClick={props.onToggleFiles} title="arquivos do terminal: o que mudou, leitura e edição">arquivos</button>
-      <button className={props.monitor ? 'flat on' : 'flat'} disabled={!props.ready} onClick={props.onToggleMonitor} title="monitor: memória e processos">monitor</button>
+      <button className={props.focus ? 'flat on' : 'flat'} disabled={!props.ready} onClick={props.onToggleFocus} title="Foco: pomodoro e anotações">Foco</button>
+      <button className={props.files ? 'flat on' : 'flat'} disabled={!props.ready || (!props.canFiles && !props.files)} onClick={props.onToggleFiles} title="Arquivos do terminal: o que mudou, leitura e edição">Arquivos</button>
+      <button className={props.monitor ? 'flat on' : 'flat'} disabled={!props.ready} onClick={props.onToggleMonitor} title="Monitor: memória e processos">Monitor</button>
       <SettingsMenu
         font={props.font}
         customFonts={props.customFonts}
@@ -93,10 +93,10 @@ export function TitleBar(props: {
         onSavePomodoro={props.onSavePomodoro}
       />
       {!windowed && sound}
-      <button className="flat quit" onClick={() => setQuitting(true)} title="sair e encerrar todos os terminais">sair</button>
+      <button className="flat quit" onClick={() => setQuitting(true)} title="Sair e encerrar todos os terminais">Sair</button>
       {windowed && (
         <div className="window-controls">
-          <button onClick={controls.minimise} title="minimizar">—</button>
+          <button onClick={controls.minimise} title="Minimizar">—</button>
           <button onClick={controls.toggleMaximise} title={maximised ? 'restaurar' : 'maximizar'}>{maximised ? '❐' : '☐'}</button>
           <button className="close" onClick={controls.close} title={mode === 'windows-app' ? 'fechar a janela (os terminais continuam)' : 'esconder (os terminais continuam)'}>✕</button>
         </div>

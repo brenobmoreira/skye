@@ -7,6 +7,7 @@ import { contextBar, contextText } from '../lib/context';
 import { moveWithinGroup } from '../lib/order';
 import { DogIcon } from './DogIcon';
 import { stateLabel } from '../lib/states';
+import { capitalize } from '../lib/text';
 import { asksBeforeClose } from '../lib/close';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ContextMenu } from './ContextMenu';
@@ -41,7 +42,7 @@ function TerminalItem({ t, active, shown, unread, closing, now, onSelect, onClos
   const time = elapsed(t.since, t.state, now);
   const bar = contextBar(t.context);
   const said = t.state === 'waiting' ? t.ask : t.state === 'idle' ? t.replyFull : '';
-  const hover = [said ? `${stateLabel[t.state]}: ${said}` : stateLabel[t.state], contextText(t.context)]
+  const hover = [said ? `${capitalize(stateLabel[t.state])}: ${said}` : capitalize(stateLabel[t.state]), contextText(t.context)]
     .filter(Boolean)
     .join('\n');
   const [editing, setEditing] = useState(false);
@@ -65,7 +66,7 @@ function TerminalItem({ t, active, shown, unread, closing, now, onSelect, onClos
       onDrop={(e) => { e.preventDefault(); drag.drop(t.id); }}
       onDragEnd={drag.end}
     >
-      <DogIcon color={`var(--${t.state})`} title={stateLabel[t.state]} />
+      <DogIcon color={`var(--${t.state})`} title={capitalize(stateLabel[t.state])} />
       <div>
         <div className="row">
           {editing ? (
@@ -82,8 +83,8 @@ function TerminalItem({ t, active, shown, unread, closing, now, onSelect, onClos
           ) : (
             <div className="name" onDoubleClick={() => { setName(label.name); setEditing(true); }}>{label.name}</div>
           )}
-          {unread && <span className="badge" title="não lido" />}
-          <button className="x" title="fechar terminal (ou clique do meio)" onClick={(e) => { e.stopPropagation(); press(e.currentTarget); onClose(); }}>×</button>
+          {unread && <span className="badge" title="Não lido" />}
+          <button className="x" title="Fechar terminal (ou clique do meio)" onClick={(e) => { e.stopPropagation(); press(e.currentTarget); onClose(); }}>×</button>
         </div>
         <div className="sub">
           <span>{label.sub}</span>
@@ -94,7 +95,7 @@ function TerminalItem({ t, active, shown, unread, closing, now, onSelect, onClos
             {answers(t).map((a) => (
               <button
                 key={a.text}
-                title={`responder ${a.text}`}
+                title={`Responder ${a.text}`}
                 onClick={(e) => { e.stopPropagation(); api().Answer(t.id, t.turn ?? 0, a.text).catch(() => {}); }}
               >
                 {a.label}
@@ -114,7 +115,7 @@ function UsagePanel({ usage }: { usage: Usage | null }) {
   const panel = usagePanel(usage, Date.now());
   if (!panel) return null;
   return (
-    <div className={panel.stale ? 'usage island stale' : 'usage island'} title={`atualizado às ${panel.updated}`}>
+    <div className={panel.stale ? 'usage island stale' : 'usage island'} title={`Atualizado às ${panel.updated}`}>
       {panel.rows.map((r) => (
         <div className="usage-row" key={r.label}>
           <span className="label">{r.label}</span>
@@ -193,20 +194,20 @@ export function Sidebar(props: {
       {endedOpen && (
         <input
           className="filter"
-          placeholder="filtrar por título ou pasta"
+          placeholder="Filtrar por título ou pasta"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Escape') setQuery(''); }}
         />
       )}
-      {endedOpen && ended.length === 0 && <div className="none">nenhuma encontrada</div>}
+      {endedOpen && ended.length === 0 && <div className="none">Nenhuma encontrada</div>}
       {endedOpen && ended.map((c) => (
-        <div className="item" key={c.sessionId} onClick={() => props.onResume(c.sessionId)} title="retomar">
-          <DogIcon color="var(--shell)" title="encerrada" />
+        <div className="item" key={c.sessionId} onClick={() => props.onResume(c.sessionId)} title="Retomar">
+          <DogIcon color="var(--shell)" title="Encerrada" />
           <div>
             <div className="row">
               <div className="name">{c.title}</div>
-              <button className="x" title="esquecer" onClick={(e) => { e.stopPropagation(); api().Forget(c.sessionId); }}>×</button>
+              <button className="x" title="Esquecer" onClick={(e) => { e.stopPropagation(); api().Forget(c.sessionId); }}>×</button>
             </div>
             <div className="sub"><span>{base(c.cwd)} · retomar</span></div>
           </div>
@@ -219,8 +220,8 @@ export function Sidebar(props: {
           x={menu.x}
           y={menu.y}
           items={[props.unread.has(menuFor.id)
-            ? { label: 'marcar como lido', run: () => props.onMark(menuFor.id, false) }
-            : { label: 'marcar como não lido', run: () => props.onMark(menuFor.id, true) }]}
+            ? { label: 'Marcar como lido', run: () => props.onMark(menuFor.id, false) }
+            : { label: 'Marcar como não lido', run: () => props.onMark(menuFor.id, true) }]}
           onClose={() => setMenu(null)}
         />
       )}
