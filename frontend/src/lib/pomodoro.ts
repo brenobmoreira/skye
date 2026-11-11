@@ -49,3 +49,14 @@ export function collapsedLabel(s: PomodoroState, ended: PomodoroPhase | null): s
   if (s.phase === 'idle') return 'Foco – Não iniciado';
   return `${PHASE_NAMES[s.phase]} – Em andamento`;
 }
+
+// parseClock reads "18" (minutes) or "18:30" (minutes and seconds) into seconds; null when it is
+// not a time from 1 s to 180 min.
+export function parseClock(text: string): number | null {
+  const m = /^(\d{1,3})(?::(\d{2}))?$/.exec(text.trim());
+  if (!m) return null;
+  const seconds = Number(m[2] ?? 0);
+  if (seconds > 59) return null;
+  const total = Number(m[1]) * 60 + seconds;
+  return total >= 1 && total <= 180 * 60 ? total : null;
+}

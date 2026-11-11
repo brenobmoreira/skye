@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../bridge';
-import { breakLabel, clock, collapsedLabel, phaseLabel } from '../lib/pomodoro';
+import { breakLabel, clock, collapsedLabel, parseClock, phaseLabel } from '../lib/pomodoro';
 import { EyeIcon } from './icons';
 import type { PomodoroPhase, PomodoroState } from '../lib/types';
 
@@ -22,7 +22,8 @@ export function PomodoroCard(props: {
   const { state, remainingMs } = props;
   const act = (a: Action) => { api().PomodoroAction(a).catch(() => {}); };
   const running = state.phase !== 'idle';
-  const total = running ? state.totalMs : state.settings.focus * 60_000;
+  // Idle, the clock shows what the next start runs: a length typed in, or the focus setting.
+  const total = running ? state.totalMs : state.nextMs || state.settings.focus * 60_000;
   const left = running ? remainingMs : total;
   const done = total > 0 ? Math.min(1, Math.max(0, 1 - left / total)) : 0;
   const every = state.settings.every;
@@ -30,6 +31,14 @@ export function PomodoroCard(props: {
   const [stage, setStage] = useState(Math.min(state.stage + 1, every));
   useEffect(() => setStage(Math.min(state.stage + 1, every)), [state.stage, every]);
   const begin = (phase: 'focus' | 'break') => { api().PomodoroBegin(phase, stage).catch(() => {}); };
+  // A double click on the clock edits the time left: "18" or "18:30", Enter sets it, Esc gives up.
+  const [typing, setTyping] = useState<string | null>(null);
+  const [typeError, setTypeError] = useState(false);
+  const setTime = () => {
+    const seconds = typing === null ? null : parseClock(typing);
+    if (seconds === null) { setTypeError(true); return; }
+    api().PomodoroSetRemaining(seconds).then(() => { setTyping(null); setTypeError(false); }).catch(() => setTypeError(true));
+  };
 
   const eye = (
     <button className="eye-toggle tip-end" onClick={props.onToggleCollapsed} aria-label={props.collapsed ? 'Mostrar o tempo' : 'Esconder o tempo'} data-tip={props.collapsed ? 'Mostrar o tempo' : 'Esconder o tempo'}>
@@ -64,7 +73,23 @@ export function PomodoroCard(props: {
           <circle className="track" cx="64" cy="64" r={R} />
           <circle className="fill" cx="64" cy="64" r={R} strokeDasharray={C} strokeDashoffset={C * (1 - done)} />
         </svg>
-        <div className="time">{clock(left)}</div>
+        {typing === null ? (
+          <div className="time" onDoubleClick={() => { setTyping(clock(left)); setTypeError(false); }} title="Clique duas vezes para mudar o tempo">{clock(left)}</div>
+        ) : (
+          <input
+            className={typeError ? 'time time-input wrong' : 'time time-input'}
+            autoFocus
+            value={typing}
+            onFocus={(e) => e.currentTarget.select()}
+            onChange={(e) => { setTyping(e.target.value); setTypeError(false); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') setTime();
+              if (e.key === 'Escape') { setTyping(null); setTypeError(false); }
+            }}
+            onBlur={() => { setTyping(null); setTypeError(false); }}
+            aria-label="Tempo restante (minutos, ou minutos:segundos)"
+          />
+        )}
       </div>
       <div className="phase">{phaseLabel(state)}{state.paused ? ' · pausado' : ''}</div>
       {!running && (

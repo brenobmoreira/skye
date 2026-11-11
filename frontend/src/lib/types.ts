@@ -230,6 +230,7 @@ export interface PomodoroState {
   totalMs: number;
   count: number;
   stage: number;
+  nextMs: number;
   settings: PomodoroSettings;
 }
 

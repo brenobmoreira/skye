@@ -53,6 +53,7 @@ interface GoBridge {
   Pomodoro(): Promise<PomodoroState>;
   PomodoroAction(action: 'start' | 'pause' | 'resume' | 'skip' | 'reset'): Promise<void>;
   PomodoroBegin(phase: 'focus' | 'break', stage: number): Promise<void>;
+  PomodoroSetRemaining(seconds: number): Promise<void>;
   FreeCache(): Promise<FreedCache>;
   Version(): Promise<string>;
   Update(): Promise<void>;
@@ -177,6 +178,7 @@ function remoteBridge(connect: () => SocketLike): { bridge: GoBridge; on: (name:
     Pomodoro: () => call('Pomodoro'),
     PomodoroAction: (action) => call('PomodoroAction', action),
     PomodoroBegin: (phase, stage) => call('PomodoroBegin', phase, stage),
+    PomodoroSetRemaining: (seconds) => call('PomodoroSetRemaining', seconds),
     FreeCache: () => call('FreeCache'),
     Version: () => call('Version'),
     Update: () => call('Update'),

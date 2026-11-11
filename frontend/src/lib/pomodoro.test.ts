@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { breakLabel, clock, collapsedLabel, endedLabel, phaseLabel, pillLabel, pillPhase } from './pomodoro';
+import { breakLabel, clock, parseClock, collapsedLabel, endedLabel, phaseLabel, pillLabel, pillPhase } from './pomodoro';
 import type { PomodoroState } from './types';
 
 const settings = { focus: 25, break: 5, long: 15, every: 4 };
-const state = (over: Partial<PomodoroState>): PomodoroState => ({ phase: 'idle', paused: false, remainingMs: 0, totalMs: 0, count: 0, stage: 0, settings, ...over });
+const state = (over: Partial<PomodoroState>): PomodoroState => ({ phase: 'idle', paused: false, remainingMs: 0, totalMs: 0, count: 0, stage: 0, nextMs: 0, settings, ...over });
 
 describe('clock', () => {
   it('shows minutes and seconds, rounding up', () => {
@@ -68,5 +68,17 @@ describe('collapsedLabel', () => {
     expect(collapsedLabel(state({ phase: 'break' }), 'focus')).toBe('Foco – Concluído');
     expect(collapsedLabel(state({}), 'break')).toBe('Pausa – Concluída');
     expect(collapsedLabel(state({}), 'long')).toBe('Pausa longa – Concluída');
+  });
+});
+
+describe('parseClock', () => {
+  it('reads minutes, or minutes and seconds, into seconds', () => {
+    expect(parseClock('18')).toBe(1080);
+    expect(parseClock(' 18:30 ')).toBe(1110);
+    expect(parseClock('0:45')).toBe(45);
+    expect(parseClock('180')).toBe(10800);
+  });
+  it('refuses what is not a time in range', () => {
+    for (const bad of ['', '0', '0:00', '181', '18:60', 'abc', '1:2:3', '-5', '18,5']) expect(parseClock(bad)).toBeNull();
   });
 });

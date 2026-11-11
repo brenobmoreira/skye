@@ -499,3 +499,9 @@ button:disabled { cursor: default; }
 .update-panel { max-width: 300px; }
 .update-panel p { margin: 4px 8px 8px; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
 .update-panel .busy { color: var(--accent); }
+
+/* The clock turned into a field by a double click. */
+.pomodoro .time { cursor: default; user-select: none; }
+.pomodoro .time-input { inset: 34px 18px; width: auto; height: 60px; margin: auto; padding: 0; border: 1px solid var(--accent); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; font-size: 27px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; outline: none; }
+.pomodoro .time-input.wrong { border-color: var(--waiting); animation: shake 0.25s; }
+@keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
