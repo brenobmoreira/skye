@@ -1,4 +1,4 @@
-import type { NoteEdit, NoteItem, Notes, PomodoroSettings, PomodoroState } from './lib/types';
+import type { FreedCache, NoteEdit, NoteItem, Notes, PomodoroSettings, PomodoroState } from './lib/types';
 import type { Changes, CompareMode, Conversation, DirEntry, FileContent, FileDiff, MonitorReport, OutputEvent, Place, PlaceCommand, Preset, Repo, Terminal, Usage } from './lib/types';
 import { createOutputHub } from './output';
 import { createSendQueue } from './sendQueue';
@@ -46,10 +46,17 @@ interface GoBridge {
   AddNote(text: string): Promise<NoteItem>;
   EditNote(id: string, edit: NoteEdit): Promise<NoteItem>;
   CheckNote(id: string): Promise<void>;
+  PinNote(id: string, pinned: boolean): Promise<void>;
+  MoveNote(id: string, to: string): Promise<void>;
   UncheckNote(id: string): Promise<void>;
   DeleteNote(id: string): Promise<void>;
   Pomodoro(): Promise<PomodoroState>;
   PomodoroAction(action: 'start' | 'pause' | 'resume' | 'skip' | 'reset'): Promise<void>;
+  PomodoroBegin(phase: 'focus' | 'break', stage: number): Promise<void>;
+  PomodoroSetRemaining(seconds: number): Promise<void>;
+  FreeCache(): Promise<FreedCache>;
+  Version(): Promise<string>;
+  Update(): Promise<void>;
   SetPomodoroSettings(settings: PomodoroSettings): Promise<void>;
 }
 
@@ -164,10 +171,17 @@ function remoteBridge(connect: () => SocketLike): { bridge: GoBridge; on: (name:
     AddNote: (text) => call('AddNote', text),
     EditNote: (id, edit) => call('EditNote', id, edit),
     CheckNote: (id) => call('CheckNote', id),
+    PinNote: (id, pinned) => call('PinNote', id, pinned),
+    MoveNote: (id, to) => call('MoveNote', id, to),
     UncheckNote: (id) => call('UncheckNote', id),
     DeleteNote: (id) => call('DeleteNote', id),
     Pomodoro: () => call('Pomodoro'),
     PomodoroAction: (action) => call('PomodoroAction', action),
+    PomodoroBegin: (phase, stage) => call('PomodoroBegin', phase, stage),
+    PomodoroSetRemaining: (seconds) => call('PomodoroSetRemaining', seconds),
+    FreeCache: () => call('FreeCache'),
+    Version: () => call('Version'),
+    Update: () => call('Update'),
     SetPomodoroSettings: (settings) => call('SetPomodoroSettings', settings),
   };
   return { bridge, on: (name, cb) => client.on(name, cb) };

@@ -20,10 +20,10 @@ describe('itemLabel', () => {
     expect(itemLabel(term({ title: 'arrume o teste', state: 'running' }))).toEqual({ name: 'arrume o teste', sub: 'skye' });
   });
   it('shows the folder and the state when the shell has no session title', () => {
-    expect(itemLabel(term({ state: 'shell' }))).toEqual({ name: 'skye', sub: 'terminal' });
+    expect(itemLabel(term({ state: 'shell' }))).toEqual({ name: 'skye', sub: 'Terminal' });
   });
   it('falls back to shell and the state without folder', () => {
-    expect(itemLabel(term({ cwd: '' }))).toEqual({ name: 'shell', sub: 'terminou' });
+    expect(itemLabel(term({ cwd: '' }))).toEqual({ name: 'shell', sub: 'Terminou' });
   });
   it('keeps a name given by the user', () => {
     expect(itemLabel(term({ name: 'api', title: 'arrume o teste' }))).toEqual({ name: 'api', sub: 'arrume o teste' });
@@ -39,7 +39,7 @@ describe('itemLabel', () => {
     expect(itemLabel(term({ name: 'api', state: 'waiting', ask: 'precisa de permissão' })).sub).toBe('precisa de permissão');
   });
   it('ignores a stale ask once the terminal is not waiting', () => {
-    expect(itemLabel(term({ state: 'running', ask: 'velho' })).sub).toBe('trabalhando');
+    expect(itemLabel(term({ state: 'running', ask: 'velho' })).sub).toBe('Trabalhando');
   });
   it('shows what a running terminal is busy with', () => {
     expect(itemLabel(term({ title: 'arrume', state: 'running', activity: '2 subagentes' })).sub).toBe('2 subagentes');
@@ -50,7 +50,7 @@ describe('itemLabel', () => {
     expect(itemLabel(term({ name: 'api', reply: 'Instalei.' })).sub).toBe('Instalei.');
   });
   it('shows the answer given from the list', () => {
-    expect(itemLabel(term({ title: 'arrume o teste', answered: 'sim' })).sub).toBe('você: sim');
+    expect(itemLabel(term({ title: 'arrume o teste', answered: 'sim' })).sub).toBe('Você: sim');
   });
   it('keeps the reply of a finished turn off a running terminal', () => {
     expect(itemLabel(term({ title: 'arrume o teste', state: 'running', reply: 'Faço o push?' })).sub).toBe('skye');

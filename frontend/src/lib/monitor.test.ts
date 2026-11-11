@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { memoryLevel, nearest, size, sparkline, strayLabel } from './monitor';
+import { bridgeBroken, memoryLevel, nearest, size, sparkline, strayLabel } from './monitor';
 
 describe('size', () => {
   it('shows MB under a gigabyte and GB with one decimal above', () => {
@@ -48,5 +48,13 @@ describe('nearest', () => {
     expect(nearest(10, 0.52)).toBe(5);
     expect(nearest(10, 1.2)).toBe(9);
     expect(nearest(0, 0.5)).toBe(-1);
+  });
+});
+
+describe('bridgeBroken', () => {
+  it('is true only when the large free blocks are known and gone', () => {
+    expect(bridgeBroken({ largeFree: 0 })).toBe(true);
+    expect(bridgeBroken({ largeFree: 3 })).toBe(false);
+    expect(bridgeBroken({ largeFree: -1 })).toBe(false);
   });
 });

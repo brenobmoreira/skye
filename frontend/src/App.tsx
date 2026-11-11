@@ -6,8 +6,9 @@ import { Sidebar } from './components/Sidebar';
 import { TerminalView } from './components/TerminalView';
 import { Monitor } from './components/Monitor';
 import { FocusPanel } from './components/FocusPanel';
-import { pillLabel } from './lib/pomodoro';
-import type { Conversation, Notes, Place, PlaceCommand, PomodoroSettings, PomodoroState, Preset, Repo, State, Terminal, Usage } from './lib/types';
+import { clock, endedLabel, pillPhase } from './lib/pomodoro';
+import { shouldReload } from './lib/version';
+import type { Conversation, Notes, Place, PlaceCommand, PomodoroPhase, PomodoroSettings, PomodoroState, Preset, Repo, State, Terminal, Usage } from './lib/types';
 import { nextUnread, withMarks } from './lib/unread';
 import { shortcut } from './lib/shortcuts';
 import { active, closeSplit, prune, select, selectSide, slotOf, visible, type Panes } from './lib/panes';
@@ -22,14 +23,24 @@ const FONT_KEY = 'skye:fontSize';
 const FAMILY_KEY = 'skye:font';
 const CUSTOM_FONTS_KEY = 'skye:customFonts';
 const FOCUS_KEY = 'skye:focusOpen';
+// One flag hides the time in the title bar pill and folds the timer island.
+const TIME_HIDDEN_KEY = 'skye:timeHidden';
 
-function storedFocusOpen(): boolean {
+function storedFlag(key: string): boolean {
   try {
-    return localStorage.getItem(FOCUS_KEY) === '1';
+    return localStorage.getItem(key) === '1';
   } catch {
     return false;
   }
 }
+
+function storeFlag(key: string, on: boolean) {
+  try {
+    localStorage.setItem(key, on ? '1' : '0');
+  } catch {}
+}
+
+const storedFocusOpen = () => storedFlag(FOCUS_KEY);
 
 function storedFontSize(): number {
   try {
@@ -43,13 +54,13 @@ function ConnectionScreen({ state }: { state: ConnectionState }) {
   if (state.kind === 'error') {
     return (
       <div className="connection error">
-        <h2>não consegui abrir a skye</h2>
+        <h2>Não consegui abrir a skye</h2>
         <pre>{state.message}</pre>
-        <button onClick={retryConnection}>tentar de novo</button>
+        <button onClick={retryConnection}>Tentar de novo</button>
       </div>
     );
   }
-  return <div className="connection">iniciando a skye no WSL…</div>;
+  return <div className="connection">Iniciando a skye no WSL…</div>;
 }
 
 function storedCustomFonts(): TerminalFont[] {
@@ -104,6 +115,11 @@ export function App() {
   // The timer as the Go side last sent it, and when it arrived: the time left is counted from there.
   const [pomodoro, setPomodoroState] = useState<{ state: PomodoroState; at: number } | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [timeHidden, setTimeHidden] = useState(() => storedFlag(TIME_HIDDEN_KEY));
+  // The interface build this page loaded with; a different one after a reconnect means an update.
+  const seenVersion = useRef('');
+  // The phase that last ran out on its own, until the pill is clicked or the panel opened.
+  const [ended, setEnded] = useState<PomodoroPhase | null>(null);
   const receivePomodoro = (state: PomodoroState) => { setPomodoroState({ state, at: Date.now() }); setNow(Date.now()); };
   const [unread, setUnread] = useState<Set<string>>(() => new Set());
   // Marked unread from the right-click menu; only picking the terminal clears these.
@@ -148,7 +164,20 @@ export function App() {
     api().Usage().then(setUsage).catch(() => {});
     api().Notes().then(setNotes).catch(() => {});
     api().Pomodoro().then(receivePomodoro).catch(() => {});
+    api()
+      .Version()
+      .then((v) => {
+        if (shouldReload(seenVersion.current, v)) window.location.reload();
+        else if (!seenVersion.current) seenVersion.current = v;
+      })
+      .catch(() => {});
   };
+
+  // The window showed its built-in copy while the server was down; now that it answers, load the
+  // interface the server serves.
+  useEffect(() => {
+    if (link.kind === 'ready' && document.documentElement.dataset.fallback) window.location.reload();
+  }, [link.kind]);
 
   useEffect(() => {
     let previous = connection().kind;
@@ -215,6 +244,7 @@ export function App() {
       on('places', (list: Place[]) => setPlaces(list)),
       on('notes', (n: Notes) => setNotes(n)),
       on('pomodoro', (st: PomodoroState) => receivePomodoro(st)),
+      on('pomodoroEnded', (phase: PomodoroPhase) => setEnded(phase)),
       on('reconnected', () => {
         load();
         report();
@@ -239,6 +269,11 @@ export function App() {
   useEffect(() => {
     setPanes((p) => prune(p, terminals.map((t) => t.id)));
   }, [terminals]);
+
+  // With the panel open the end of a phase is already in view; nothing is left to acknowledge.
+  useEffect(() => {
+    if (focusOpen && !timeHidden && ended) setEnded(null);
+  }, [focusOpen, timeHidden, ended]);
 
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return;
@@ -288,11 +323,19 @@ export function App() {
   };
   const toggleFocus = () =>
     setFocusOpen((open) => {
-      try {
-        localStorage.setItem(FOCUS_KEY, open ? '0' : '1');
-      } catch {}
+      storeFlag(FOCUS_KEY, !open);
       return !open;
     });
+  const toggleTimeHidden = () =>
+    setTimeHidden((hidden) => {
+      storeFlag(TIME_HIDDEN_KEY, !hidden);
+      return !hidden;
+    });
+  // A pulsing pill is only acknowledged by the click; otherwise the pill opens the panel.
+  const clickPill = () => (ended ? setEnded(null) : toggleFocus());
+  const pickView = (next: 'terminals' | 'monitor' | 'files') => setView(next);
+  const running = pomodoro !== null && pomodoro.state.phase !== 'idle';
+
   const savePomodoro = (s: PomodoroSettings) => api().SetPomodoroSettings(s);
   const toggleSound = () => { api().SetSound(!sound); setSound(!sound); };
   const pickFont = (next: TerminalFont) => {
@@ -321,20 +364,20 @@ export function App() {
   return (
     <div className={isWindow() ? 'app windowed' : 'app'}>
       {link.kind !== 'ready' && <ConnectionScreen state={link} />}
-      <TitleBar presets={presets} repos={repos} places={places} onOpenPlace={openPlace} onAddPlace={addPlace} onRemovePlace={removePlace} onNewWorktree={newWorktree} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} customFonts={customFonts} onPickFont={pickFont} onAddFont={addFont} onRemoveFont={removeFont} monitor={monitor} onToggleMonitor={() => toggle('monitor')} files={view === 'files'} canFiles={activeId !== null} onToggleFiles={() => toggle('files')} focus={focusOpen} onToggleFocus={toggleFocus} pill={pomodoro ? pillLabel(pomodoro.state, remainingMs) : ''} pomodoro={pomodoro?.state.settings ?? null} onSavePomodoro={savePomodoro} />
+      <TitleBar presets={presets} repos={repos} places={places} onOpenPlace={openPlace} onAddPlace={addPlace} onRemovePlace={removePlace} onNewWorktree={newWorktree} sound={sound} ready={link.kind === 'ready'} onNew={open} onToggleSound={toggleSound} font={font} customFonts={customFonts} onPickFont={pickFont} onAddFont={addFont} onRemoveFont={removeFont} view={view} onView={pickView} canFiles={activeId !== null} focus={focusOpen} onToggleFocus={toggleFocus} pill={running && pomodoro ? { phase: pillPhase(pomodoro.state), time: clock(remainingMs) } : null} pillHidden={timeHidden} onTogglePillHidden={toggleTimeHidden} ended={ended ? endedLabel(ended) : ''} onPill={clickPill} pomodoro={pomodoro?.state.settings ?? null} onSavePomodoro={savePomodoro} onUpdate={() => api().Update()} />
       <div className={focusOpen ? 'body with-focus' : 'body'}>
         <Sidebar terminals={terminals} conversations={conversations} activeId={activeId} unread={shownUnread} shown={visible(panes, room)} onSelect={pickFromList} onReorder={reorder} onResume={resume} onMark={mark} usage={usage} />
         <main className="main island">
           {monitor && <Monitor terminals={terminals} onOpen={show} />}
           {view === 'files' && (
-            <Suspense fallback={<div className="empty">abrindo…</div>}>
+            <Suspense fallback={<div className="empty">Abrindo…</div>}>
               <FilesPanel terminal={terminals.find((t) => t.id === activeId)} onBack={() => setView('terminals')} />
             </Suspense>
           )}
           <div className="terminals" hidden={covered}>
             {problems.length > 0 && <div className="problems">{problems.join('\n')}</div>}
             {terminals.length === 0 && <div className="empty">Nenhum terminal. Abra um no +.</div>}
-            {split && <button className="unsplit" onClick={() => setPanes(closeSplit)} title="voltar a um terminal só">×</button>}
+            {split && <button className="unsplit" onClick={() => setPanes(closeSplit)} title="Voltar a um terminal só">×</button>}
             {views.map((t) => (
               <TerminalView
                 key={`${t.id}:${epoch}`}
@@ -348,7 +391,7 @@ export function App() {
             ))}
           </div>
         </main>
-        {focusOpen && <FocusPanel notes={notes} pomodoro={pomodoro?.state ?? null} remainingMs={remainingMs} now={new Date(now)} />}
+        {focusOpen && <FocusPanel notes={notes} pomodoro={pomodoro?.state ?? null} remainingMs={remainingMs} now={new Date(now)} collapsed={timeHidden} onToggleCollapsed={toggleTimeHidden} ended={ended} onAck={() => setEnded(null)} />}
       </div>
     </div>
   );

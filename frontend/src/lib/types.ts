@@ -77,6 +77,8 @@ export interface OutputEvent {
 }
 
 export interface Machine {
+  cacheMb: number;
+  largeFree: number;
   memTotalMb: number;
   memAvailMb: number;
   swapTotalMb: number;
@@ -127,6 +129,7 @@ export interface MonitorReport {
   host?: HostMemory;
   machine: Machine;
   history: MemoryPoint[] | null;
+  hostHistory?: MemoryPoint[] | null;
   selfMb: number;
   terminals: TerminalLoad[] | null;
   strays: Stray[] | null;
@@ -186,6 +189,7 @@ export interface NoteItem {
   date?: string;
   time?: string;
   repeat?: Repeat;
+  pinned?: boolean;
   created: string;
   doneAt?: string;
 }
@@ -225,5 +229,13 @@ export interface PomodoroState {
   remainingMs: number;
   totalMs: number;
   count: number;
+  stage: number;
+  nextMs: number;
   settings: PomodoroSettings;
+}
+
+export interface FreedCache {
+  freedMb: number;
+  cacheMb: number;
+  largeFree: number;
 }

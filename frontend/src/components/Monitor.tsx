@@ -1,10 +1,12 @@
 import { useEffect, useState, type MouseEvent } from 'react';
 import { api } from '../bridge';
 import { itemLabel } from '../lib/label';
-import { memoryLevel, nearest, size, sparkline, strayLabel } from '../lib/monitor';
+import { bridgeBroken, memoryLevel, nearest, size, sparkline, strayLabel } from '../lib/monitor';
 import { stateLabel } from '../lib/states';
+import { capitalize } from '../lib/text';
 import type { MemoryPoint, MonitorReport, Terminal } from '../lib/types';
 import { DogIcon } from './DogIcon';
+import { ConfirmDialog } from './ConfirmDialog';
 
 const REFRESH_MS = 3000;
 const CHART_W = 600;
@@ -12,7 +14,7 @@ const CHART_H = 64;
 
 const clock = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-function MemoryChart({ points, totalMb }: { points: MemoryPoint[]; totalMb: number }) {
+function MemoryChart({ points, totalMb, title }: { points: MemoryPoint[]; totalMb: number; title: string }) {
   const [hover, setHover] = useState<number | null>(null);
   const d = sparkline(points, totalMb, CHART_W, CHART_H);
   if (!d) return null;
@@ -24,9 +26,9 @@ function MemoryChart({ points, totalMb }: { points: MemoryPoint[]; totalMb: numb
   const x = hover === null ? 0 : (hover / (points.length - 1)) * 100;
   return (
     <figure className="mon-chart">
-      <figcaption>Memória disponível no WSL · últimas 3 h</figcaption>
+      <figcaption>{title}</figcaption>
       <div className="plot" onMouseMove={move} onMouseLeave={() => setHover(null)}>
-        <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} preserveAspectRatio="none" role="img" aria-label="memória disponível nas últimas 3 horas">
+        <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} preserveAspectRatio="none" role="img" aria-label="Memória disponível nas últimas 3 horas">
           <line x1="0" y1={CHART_H} x2={CHART_W} y2={CHART_H} className="axis" />
           <path d={d} className="series" />
         </svg>
@@ -51,6 +53,19 @@ function MemoryChart({ points, totalMb }: { points: MemoryPoint[]; totalMb: numb
 export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: (id: string) => void }) {
   const [report, setReport] = useState<MonitorReport | null>(null);
   const [error, setError] = useState('');
+  const [asking, setAsking] = useState(false);
+  const [freeing, setFreeing] = useState(false);
+  const [freed, setFreed] = useState('');
+  const freeCache = () => {
+    setAsking(false);
+    setFreeing(true);
+    setFreed('');
+    api()
+      .FreeCache()
+      .then((r) => setFreed(`Liberou ${size(r.freedMb)}; ${r.largeFree} blocos grandes livres agora.`))
+      .catch((e) => setFreed(String(e?.message ?? e)))
+      .finally(() => setFreeing(false));
+  };
 
   useEffect(() => {
     let alive = true;
@@ -64,7 +79,7 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
     return () => { alive = false; clearInterval(tick); };
   }, []);
 
-  if (!report) return <div className="monitor"><p className="hint">{error || 'medindo…'}</p></div>;
+  if (!report) return <div className="monitor"><p className="hint">{error || 'Medindo…'}</p></div>;
 
   const m = report.machine;
   const level = memoryLevel(m);
@@ -88,25 +103,25 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
 
   return (
     <div className="monitor">
-      {error && <p className="hint warn">falhou a última leitura: {error}</p>}
+      {error && <p className="hint warn">Falhou a última leitura: {error}</p>}
       <section className="mon-tiles">
         {host ? (
-          <div className="tile" title="o que o Gerenciador de Tarefas do Windows mostra como disponível; inclui o que a VM do WSL segura">
+          <div className="tile" title="O que o Gerenciador de Tarefas do Windows mostra como disponível; inclui o que a VM do WSL segura">
             <span className="label">Windows · disponível</span>
             <span className="value">{size(host.availMb)}</span>
             <span className="meter"><span className={hostLevel === 'ok' ? '' : 'warn'} style={{ width: `${hostUsedPct}%` }} /></span>
             <span className="note">
-              {hostLevel !== 'ok' && <strong className="warn">⚠ memória {hostLevel} · </strong>}
+              {hostLevel !== 'ok' && <strong className="warn">⚠ Memória {hostLevel} · </strong>}
               {hostUsedPct}% usada de {size(host.totalMb)}
             </span>
           </div>
         ) : null}
-        <div className="tile" title="dentro da VM do WSL, até o teto do .wslconfig">
+        <div className="tile" title="Dentro da VM do WSL, até o teto do .wslconfig">
           <span className="label">{host ? 'WSL · disponível' : 'RAM disponível'}</span>
           <span className="value">{size(m.memAvailMb)}</span>
           <span className="meter"><span className={level === 'ok' ? '' : 'warn'} style={{ width: `${usedPct}%` }} /></span>
           <span className="note">
-            {level !== 'ok' && <strong className="warn">⚠ memória {level} · </strong>}
+            {level !== 'ok' && <strong className="warn">⚠ Memória {level} · </strong>}
             {usedPct}% usada de {size(m.memTotalMb)}{host ? ' (teto do WSL)' : ''}
           </span>
         </div>
@@ -115,39 +130,63 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
           <span className="value">{size(m.swapUsedMb)}</span>
           <span className="note">de {size(m.swapTotalMb)}</span>
         </div>
+        <div className={bridgeBroken(m) ? 'tile cache warn-tile' : 'tile cache'} title="Cache de disco que o kernel do WSL segura e pode soltar">
+          <span className="label">Cache de disco</span>
+          <span className="value">{size(m.cacheMb)}</span>
+          <span className="note">
+            {bridgeBroken(m)
+              ? <strong className="warn">⚠ O Windows não consegue abrir programas no WSL</strong>
+              : m.largeFree >= 0 ? `${m.largeFree} blocos grandes livres` : 'Blocos livres desconhecidos'}
+          </span>
+          <button className="free" disabled={freeing} onClick={() => setAsking(true)}>{freeing ? 'Liberando…' : 'Liberar cache'}</button>
+          {freed && <span className="note">{freed}</span>}
+        </div>
         <div className="tile">
           <span className="label">Pressão de memória</span>
           <span className="value">{m.psiSome60.toFixed(1).replace('.', ',')}%</span>
-          <span className="note">tempo esperando memória (média de 60 s)</span>
+          <span className="note">Tempo esperando memória (média de 60 s)</span>
         </div>
         <div className="tile">
           <span className="label">Carga</span>
           <span className="value">{m.load1.toFixed(2).replace('.', ',')}</span>
-          <span className="note">média de 1 min</span>
+          <span className="note">Média de 1 min</span>
         </div>
       </section>
 
-      {report.history && report.history.length > 1 && <MemoryChart points={report.history} totalMb={m.memTotalMb} />}
+      {asking && (
+        <ConfirmDialog
+          title="Liberar o cache de disco?"
+          message="A skye grava o que está pendente no disco, solta o cache do WSL e compacta a memória. Nenhum programa é fechado; o disco pode ficar um pouco mais lento por alguns minutos."
+          confirm="Liberar"
+          onConfirm={freeCache}
+          onCancel={() => setAsking(false)}
+        />
+      )}
+
+      {host && report.hostHistory && report.hostHistory.length > 1 && (
+        <MemoryChart points={report.hostHistory} totalMb={host.totalMb} title="Memória disponível no Windows · últimas 3 h" />
+      )}
+      {report.history && report.history.length > 1 && <MemoryChart points={report.history} totalMb={m.memTotalMb} title="Memória disponível no WSL · últimas 3 h" />}
 
       <section>
         <h3>Terminais da skye ({loads.length})</h3>
         <div className="mon-scroll">
         <table className="mon-table">
           <thead>
-            <tr><th>terminal</th><th>estado</th><th className="num">processos</th><th className="num">memória</th><th className="bar-col" /></tr>
+            <tr><th>Terminal</th><th>Estado</th><th className="num">Processos</th><th className="num">Memória</th><th className="bar-col" /></tr>
           </thead>
           <tbody>
             {loads.map((l) => {
               const t = byId.get(l.id);
               return (
-                <tr key={l.id} className="link" onClick={() => onOpen(l.id)} title={`abrir · PID ${l.pid}`}>
+                <tr key={l.id} className="link" onClick={() => onOpen(l.id)} title={`Abrir · PID ${l.pid}`}>
                   <td>
                     <span className="name">
-                      {t && <DogIcon color={`var(--${t.state})`} title={stateLabel[t.state]} />}
+                      {t && <DogIcon color={`var(--${t.state})`} title={capitalize(stateLabel[t.state])} />}
                       <span>{t ? itemLabel(t).name : l.id}</span>
                     </span>
                   </td>
-                  <td>{t ? stateLabel[t.state] : ''}</td>
+                  <td>{t ? capitalize(stateLabel[t.state]) : ''}</td>
                   <td className="num">{l.procs + l.bgProcs}</td>
                   <td className="num" title={l.bgMb ? `${size(l.rssMb)} no terminal + ${size(l.bgMb)} em segundo plano` : undefined}>
                     {size(l.rssMb + l.bgMb)}
@@ -158,11 +197,11 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
               );
             })}
             <tr className="muted">
-              <td>a própria skye</td><td /><td /><td className="num">{size(report.selfMb)}</td><td />
+              <td>A própria skye</td><td /><td /><td className="num">{size(report.selfMb)}</td><td />
             </tr>
           </tbody>
           <tfoot>
-            <tr><td>total</td><td /><td /><td className="num">{size(total)}</td><td /></tr>
+            <tr><td>Total</td><td /><td /><td className="num">{size(total)}</td><td /></tr>
           </tfoot>
         </table>
         </div>
@@ -174,11 +213,11 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
           <div className="mon-scroll">
             <table className="mon-table">
               <thead>
-                <tr><th>terminal</th><th className="num">PID</th><th>comando</th><th>pasta</th><th className="num">processos</th><th className="num">memória</th></tr>
+                <tr><th>Terminal</th><th className="num">PID</th><th>Comando</th><th>Pasta</th><th className="num">Processos</th><th className="num">Memória</th></tr>
               </thead>
               <tbody>
                 {background.map((s) => (
-                  <tr key={s.pid} className="link" onClick={() => s.terminal && onOpen(s.terminal)} title="abrir o terminal que subiu este processo">
+                  <tr key={s.pid} className="link" onClick={() => s.terminal && onOpen(s.terminal)} title="Abrir o terminal que subiu este processo">
                     <td className="cmd">{terminalName(s.terminal)}</td>
                     <td className="num">{s.pid}</td>
                     <td className="cmd" title={s.args}>{s.args || s.name}</td>
@@ -203,12 +242,12 @@ export function Monitor({ terminals, onOpen }: { terminals: Terminal[]; onOpen: 
             <div className="mon-scroll">
             <table className="mon-table">
               <thead>
-                <tr><th>o quê</th><th className="num">PID</th><th>comando</th><th>pasta</th><th className="num">processos</th><th className="num">memória</th></tr>
+                <tr><th>O quê</th><th className="num">PID</th><th>Comando</th><th>Pasta</th><th className="num">Processos</th><th className="num">Memória</th></tr>
               </thead>
               <tbody>
                 {strays.map((s) => (
                   <tr key={`${s.kind}:${s.pid}`}>
-                    <td>{strayLabel(s.kind)}</td>
+                    <td>{capitalize(strayLabel(s.kind))}</td>
                     <td className="num">{s.pid}</td>
                     <td className="cmd" title={s.args}>{s.args || s.name}</td>
                     <td className="cmd" title={s.cwd}>{s.cwd}</td>

@@ -3,11 +3,13 @@ import type { DoneRecord, NoteItem, Notes, Repeat } from './types';
 export type Row = { kind: 'item'; item: NoteItem; done: boolean } | { kind: 'done'; record: DoneRecord };
 
 export interface Groups {
+  pinned: Row[];
   overdue: Row[];
   today: Row[];
   upcoming: Row[];
   undated: Row[];
-  history: { day: string; rows: Row[] }[];
+  // The Completas tab: checked notes by the day they were checked, newest first.
+  done: { day: string; rows: Row[] }[];
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -24,75 +26,80 @@ function shiftDay(day: string, by: number): string {
   return dayOf(new Date(y, m - 1, d + by));
 }
 
-type Slot = 'overdue' | 'today' | 'upcoming' | 'undated';
+type Slot = 'pinned' | 'overdue' | 'today' | 'upcoming' | 'undated';
 
-function slotOf(date: string | undefined, time: string | undefined, today: string, hm: string): Slot {
-  if (!date) return 'undated';
-  if (date < today) return 'overdue';
-  if (date > today) return 'upcoming';
+function slotOf(item: NoteItem, today: string, hm: string): Slot {
+  if (item.pinned) return 'pinned';
+  if (!item.date) return 'undated';
+  if (item.date < today) return 'overdue';
+  if (item.date > today) return 'upcoming';
   // A note for today whose time has come is late, right after its reminder.
-  return time && time <= hm ? 'overdue' : 'today';
+  return item.time && item.time <= hm ? 'overdue' : 'today';
 }
 
-interface Keyed {
-  row: Row;
-  date: string;
-  time: string;
-  created: string;
-}
-
-// Timed notes come before untimed ones on the same day; ties keep creation order.
-function compare(a: Keyed, b: Keyed): number {
-  if (a.date !== b.date) return a.date < b.date ? -1 : 1;
-  if (a.time !== b.time) {
-    if (!a.time) return 1;
-    if (!b.time) return -1;
-    return a.time < b.time ? -1 : 1;
-  }
-  return a.created < b.created ? -1 : a.created > b.created ? 1 : 0;
-}
+// Inside a group the date leads and the list's own order, which dragging sets, breaks the ties.
+const dated = (s: Slot) => s === 'overdue' || s === 'today' || s === 'upcoming';
 
 export function groupNotes(notes: Notes, now: Date, historyDays = 30): Groups {
   const today = dayOf(now);
   const hm = hmOf(now);
   const oldest = Number.isFinite(historyDays) ? shiftDay(today, -historyDays) : '';
-  const slots: Record<Slot, Keyed[]> = { overdue: [], today: [], upcoming: [], undated: [] };
-  const past: { day: string; at: string; row: Row }[] = [];
+  const slots: Record<Slot, { row: Row; date: string; index: number }[]> = { pinned: [], overdue: [], today: [], upcoming: [], undated: [] };
+  const past: { day: string; at: string; index: number; row: Row }[] = [];
 
-  for (const item of notes.items) {
-    const row: Row = { kind: 'item', item, done: !!item.doneAt };
+  notes.items.forEach((item, index) => {
     if (item.doneAt) {
       const day = dayOf(new Date(item.doneAt));
-      if (day !== today) {
-        if (day >= oldest) past.push({ day, at: item.doneAt, row });
-        continue;
-      }
+      if (day >= oldest) past.push({ day, at: item.doneAt, index, row: { kind: 'item', item, done: true } });
+      return;
     }
-    slots[slotOf(item.date, item.time, today, hm)].push({ row, date: item.date ?? '', time: item.time ?? '', created: item.created });
-  }
-  for (const record of notes.done) {
-    const row: Row = { kind: 'done', record };
+    slots[slotOf(item, today, hm)].push({ row: { kind: 'item', item, done: false }, date: item.date ?? '', index });
+  });
+  notes.done.forEach((record, i) => {
     const day = dayOf(new Date(record.doneAt));
-    if (day !== today) {
-      if (day >= oldest) past.push({ day, at: record.doneAt, row });
-      continue;
-    }
-    slots[slotOf(record.prevDate, undefined, today, hm)].push({ row, date: record.prevDate, time: '', created: record.doneAt });
-  }
+    if (day >= oldest) past.push({ day, at: record.doneAt, index: notes.items.length + i, row: { kind: 'done', record } });
+  });
 
-  const sorted = (s: Slot) => slots[s].sort(compare).map((k) => k.row);
-  past.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
-  const history: Groups['history'] = [];
+  const sorted = (s: Slot) =>
+    slots[s].sort((a, b) => (dated(s) && a.date !== b.date ? (a.date < b.date ? -1 : 1) : a.index - b.index)).map((k) => k.row);
+  // Newest day first; inside a day, the list's order.
+  past.sort((a, b) => (a.day !== b.day ? (a.day < b.day ? 1 : -1) : a.index - b.index));
+  const done: Groups['done'] = [];
   for (const p of past) {
-    const last = history[history.length - 1];
+    const last = done[done.length - 1];
     if (last && last.day === p.day) last.rows.push(p.row);
-    else history.push({ day: p.day, rows: [p.row] });
+    else done.push({ day: p.day, rows: [p.row] });
   }
-  return { overdue: sorted('overdue'), today: sorted('today'), upcoming: sorted('upcoming'), undated: sorted('undated'), history };
+  return { pinned: sorted('pinned'), overdue: sorted('overdue'), today: sorted('today'), upcoming: sorted('upcoming'), undated: sorted('undated'), done };
+}
+
+// canMove: a note can only be dragged among the open notes of its own group, and in a dated group
+// only among the same day, where the list's order is what decides.
+export function canMove(notes: Notes, from: string, to: string, now: Date): boolean {
+  if (from === to) return false;
+  const a = notes.items.find((i) => i.id === from);
+  const b = notes.items.find((i) => i.id === to);
+  if (!a || !b || a.doneAt || b.doneAt) return false;
+  const today = dayOf(now);
+  const hm = hmOf(now);
+  const slot = slotOf(a, today, hm);
+  if (slot !== slotOf(b, today, hm)) return false;
+  return !dated(slot) || a.date === b.date;
+}
+
+// moveItems puts note `from` where `to` is, shifting the ones between, as the Go store does.
+export function moveItems(items: NoteItem[], from: string, to: string): NoteItem[] {
+  const src = items.findIndex((i) => i.id === from);
+  const dst = items.findIndex((i) => i.id === to);
+  if (src < 0 || dst < 0 || src === dst) return items;
+  const next = [...items];
+  const [moved] = next.splice(src, 1);
+  next.splice(dst, 0, moved);
+  return next;
 }
 
 const WEEKDAYS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
-const SHORT = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export function repeatLabel(r: Repeat): string {
   switch (r.kind) {
@@ -113,9 +120,9 @@ export function dueLabel(item: NoteItem, now: Date): string {
   if (!item.date) return '';
   const today = dayOf(now);
   const time = item.time ? ` ${item.time}` : '';
-  if (item.date === today) return `hoje${time}`;
-  if (item.date === shiftDay(today, 1)) return `amanhã${time}`;
-  if (item.date === shiftDay(today, -1)) return `ontem${time}`;
+  if (item.date === today) return `Hoje${time}`;
+  if (item.date === shiftDay(today, 1)) return `Amanhã${time}`;
+  if (item.date === shiftDay(today, -1)) return `Ontem${time}`;
   const [y, m, d] = item.date.split('-').map(Number);
   if (item.date > today && item.date <= shiftDay(today, 6)) return `${SHORT[new Date(y, m - 1, d).getDay()]}${time}`;
   return `${pad(d)}/${pad(m)}${time}`;

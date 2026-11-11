@@ -11,15 +11,20 @@
   --shell: #565f89;
   --term-bg: #0e0e12;
   --titlebar: #0b0b0e;
-  font-family: system-ui, sans-serif;
-  font-size: 13px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --hover: rgba(255, 255, 255, 0.05);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13.5px;
+  -webkit-font-smoothing: antialiased;
   color: var(--text);
 }
 
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
-button { font: inherit; color: var(--text); background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 3px 9px; cursor: pointer; }
+button { font: inherit; color: var(--text); background: transparent; border: 1px solid var(--line); border-radius: 7px; padding: 3px 10px; cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s var(--ease), box-shadow 0.15s; }
 button:hover { background: var(--line); }
+button:active:not(:disabled) { transform: scale(0.96); }
+button:disabled { cursor: default; }
 
 /* Scrollbars as a thin rounded thumb over no track, the same pill as the islands and bars. */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -34,20 +39,24 @@ button:hover { background: var(--line); }
 .titlebar button, .titlebar .menu, .dialog-backdrop { --wails-draggable: no-drag; }
 .titlebar .brand { font-weight: 600; margin-right: 8px; }
 .titlebar .spacer { flex: 1; }
-.app.windowed { grid-template-rows: 30px 1fr; }
+.app.windowed { grid-template-rows: 36px 1fr; }
 .titlebar.windowed { gap: 4px; padding: 0 0 0 10px; background: var(--titlebar); border-bottom: 0; user-select: none; }
 .titlebar.windowed .brand { font-size: 12px; color: var(--muted); margin-right: 6px; }
 .titlebar.windowed .flat { border: 0; border-radius: 4px; padding: 2px 8px; }
 .titlebar.windowed .flat:hover { background: rgba(255, 255, 255, 0.08); }
 .titlebar.windowed .quit { color: var(--muted); margin-right: 6px; font-size: 12px; }
-.titlebar.windowed .menu-list { top: 26px; }
+.titlebar.windowed .menu-list { top: 34px; }
 .window-controls { display: flex; align-self: stretch; }
-.window-controls button { width: 46px; height: 30px; padding: 0; border: 0; border-radius: 0; font-size: 12px; line-height: 30px; color: var(--muted); }
+.window-controls button { width: 46px; height: 36px; padding: 0; border: 0; border-radius: 0; font-size: 12px; line-height: 36px; color: var(--muted); }
+.window-controls button:active:not(:disabled) { transform: none; }
 .window-controls button:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); }
 .window-controls button.close:hover { background: #e81123; color: #fff; }
 .menu { position: relative; }
-.menu-list { position: absolute; top: 30px; left: 0; z-index: 10; min-width: 220px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 4px; }
-.menu-list button { display: block; width: 100%; text-align: left; border: 0; }
+.menu-list { position: absolute; top: 34px; left: 0; z-index: 10; min-width: 220px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 4px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); transform-origin: top left; animation: pop-in 140ms var(--ease); }
+.menu-list button { display: block; width: 100%; text-align: left; border: 0; border-radius: 5px; }
+.menu-list button:hover { background: rgba(122, 162, 247, 0.16); }
+.menu-list button:active:not(:disabled) { transform: none; }
+.menu-list.right { transform-origin: top right; }
 .menu-list small { color: var(--muted); display: block; }
 .menu-list.right { left: auto; right: 0; }
 .menu-list .form { display: grid; gap: 4px; padding: 6px 8px; max-width: 320px; }
@@ -196,7 +205,7 @@ button:hover { background: var(--line); }
 .mon-servers summary { cursor: pointer; }
 .mon-servers details div { padding-left: 14px; }
 .settings-menu { min-width: 180px; }
-.settings-menu .section { display: flex; justify-content: space-between; }
+.settings-menu .section { display: flex; align-items: center; gap: 8px; }
 .settings-menu .section span { color: var(--muted); }
 .settings-menu .section.on { background: rgba(255, 255, 255, 0.06); }
 .settings-panel { top: -5px; left: auto; right: calc(100% - 2px); min-width: 260px; }
@@ -270,7 +279,10 @@ button:hover { background: var(--line); }
 
 /* Focus panel: a third island on the right with the pomodoro on top and the notes under it. */
 .body.with-focus { grid-template-columns: 260px minmax(0, 1fr) 260px; }
-.focus { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; overflow: hidden; }
+.focus { display: flex; flex-direction: column; gap: 6px; min-height: 0; min-width: 0; overflow: hidden; }
+.pomodoro-island { flex: none; }
+.notes-island { flex: 1; min-height: 0; display: grid; overflow: hidden; }
+.pomodoro-island .pomodoro { border-bottom: 0; }
 
 .titlebar .pill { --wails-draggable: no-drag; display: flex; align-items: center; gap: 6px; padding: 1px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); font-size: 12px; font-variant-numeric: tabular-nums; }
 .titlebar .pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
@@ -280,8 +292,8 @@ button:hover { background: var(--line); }
 .pomodoro.break, .pomodoro.long { --phase: var(--idle); }
 .pomodoro.idle { --phase: var(--shell); }
 .pomodoro .ring { position: relative; width: 128px; height: 128px; }
-.pomodoro svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-.pomodoro circle { fill: none; stroke-width: 7; }
+.pomodoro .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.pomodoro .ring circle { fill: none; stroke-width: 7; }
 .pomodoro .track { stroke: var(--line); }
 .pomodoro .fill { stroke: var(--phase); stroke-linecap: round; transition: stroke-dashoffset 1s linear, stroke 300ms ease; }
 .pomodoro.paused .fill { opacity: 0.55; }
@@ -344,3 +356,152 @@ button:hover { background: var(--line); }
   .pomodoro .fill, .note .check, .note .text, .pomodoro .controls button { transition: none; }
   .note .check.on::after { animation: none; }
 }
+
+/* Title bar, new style: the + Novo button, the views as icons with a sliding marker, the pill and
+   the icon group on the right. Every icon names itself in a tooltip under it. */
+.titlebar .logo { transition: transform 0.25s var(--ease); }
+.titlebar .logo:hover { transform: rotate(-12deg) scale(1.1); }
+.titlebar .new-button { white-space: nowrap; flex: none; background: var(--accent); border-color: var(--accent); color: #0b0b0e; font-weight: 600; font-size: 12.5px; padding: 2px 11px; }
+.titlebar .new-button:hover { background: #8fb2ff; box-shadow: 0 4px 16px rgba(122, 162, 247, 0.35); }
+.titlebar .new-button:disabled { opacity: 0.4; box-shadow: none; }
+
+.views { position: relative; display: flex; gap: 2px; padding: 3px; margin-left: 4px; background: var(--panel); border-radius: 8px; }
+.views-ind { position: absolute; top: 3px; left: 3px; width: 30px; height: 24px; border-radius: 6px; background: var(--line); transition: transform 0.25s var(--ease); }
+.views button { position: relative; z-index: 1; width: 30px; height: 24px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--muted); }
+.views button:hover { background: none; color: var(--text); }
+.views button.on { color: var(--accent); }
+.views button svg { width: 16px; height: 16px; transition: transform 0.15s var(--ease); }
+.views button:hover:not(:disabled) svg { transform: scale(1.1); }
+.views button:disabled { opacity: 0.35; }
+
+.icons { display: flex; gap: 2px; margin-left: 2px; }
+.icons > .menu { display: flex; }
+.titlebar .icon { position: relative; width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 7px; background: none; color: var(--muted); }
+.titlebar .icon:hover { background: var(--hover); color: var(--text); }
+.titlebar .icon.on { color: var(--accent); background: rgba(122, 162, 247, 0.12); }
+.titlebar .icon svg { width: 17px; height: 17px; }
+.titlebar .icon.quit:hover { color: #f7768e; background: rgba(247, 118, 142, 0.12); }
+.titlebar .icon.gear svg { transition: transform 0.4s var(--ease); }
+.titlebar .icon.gear:hover svg { transform: rotate(60deg); }
+.titlebar .icon.bell:hover svg { animation: ding 0.5s var(--ease); }
+@keyframes ding { 20% { transform: rotate(14deg); } 45% { transform: rotate(-10deg); } 70% { transform: rotate(5deg); } }
+
+[data-tip]::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); left: 50%; z-index: 40; transform: translateX(-50%) translateY(-3px); opacity: 0; pointer-events: none; white-space: nowrap; padding: 5px 9px; border: 1px solid var(--line); border-radius: 6px; background: #000; color: var(--text); font-size: 12px; font-weight: 500; transition: opacity 0.12s, transform 0.12s var(--ease); }
+[data-tip]:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); transition-delay: 0.25s; }
+[data-tip].tip-end::after { left: auto; right: 0; transform: translateY(-3px); }
+[data-tip].tip-end:hover::after { transform: translateY(0); }
+
+.titlebar .pill { --wails-draggable: no-drag; display: flex; align-items: center; height: 26px; padding: 0 3px 0 0; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); transition: border-color 0.2s, box-shadow 0.2s; }
+.titlebar .pill:hover { border-color: #3a3a46; }
+.titlebar .pill::before { content: none; }
+.pill .pill-main { display: flex; align-items: center; gap: 8px; height: 100%; padding: 0 8px 0 11px; border: 0; border-radius: 999px; background: none; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pill .pill-main:hover { background: none; }
+.pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.pill .left { display: inline-block; overflow: hidden; max-width: 50px; transition: max-width 0.25s var(--ease), opacity 0.2s; }
+.pill.hidden .left { max-width: 0; opacity: 0; }
+/* The phase ran out: the pill breathes blue until it is clicked. */
+.pill.ended { padding-right: 0; border-color: var(--accent); animation: pill-ring 1.6s ease-in-out infinite; }
+.pill.ended .pill-main { color: var(--accent); }
+.pill.ended .dot { animation: pill-dot 1.6s ease-in-out infinite; }
+@keyframes pill-ring { 0%, 100% { box-shadow: 0 0 0 0 rgba(122, 162, 247, 0.55); background: var(--panel); } 50% { box-shadow: 0 0 0 6px rgba(122, 162, 247, 0); background: rgba(122, 162, 247, 0.14); } }
+@keyframes pill-dot { 50% { transform: scale(1.5); } }
+
+/* Focus panel, new style. */
+.pomodoro .fill { stroke: url(#pomodoro-fill); }
+.pomodoro.break .fill, .pomodoro.long .fill { stroke: var(--idle); }
+.pomodoro.idle .fill { stroke: var(--shell); }
+.pomodoro .time { font-size: 27px; font-weight: 700; }
+.pomodoro .controls .primary { background: var(--accent); border-color: var(--accent); color: #0b0b0e; font-weight: 600; }
+.pomodoro .controls .primary:hover { background: #8fb2ff; box-shadow: 0 4px 16px rgba(122, 162, 247, 0.3); }
+.pomodoro.break .controls .primary, .pomodoro.long .controls .primary { background: var(--idle); border-color: var(--idle); }
+.note .check { width: 16px; height: 16px; border-radius: 5px; }
+.note-add input { border-radius: 8px; padding: 7px 10px; }
+.note-add input:hover { border-color: #3a3a46; }
+
+@media (prefers-reduced-motion: reduce) {
+  button, .views-ind, .pill .left, .titlebar .logo, .titlebar .icon.gear svg { transition: none; }
+  .pill.ended, .pill.ended .dot, .titlebar .icon.bell:hover svg, .menu-list { animation: none; }
+}
+
+/* Stage picker under the idle timer: the done ones filled, the chosen one ringed. */
+.pomodoro .stages { display: flex; gap: 6px; }
+.pomodoro .stage { position: relative; width: 24px; height: 24px; display: grid; place-items: center; padding: 0; border: 1.5px solid var(--line); border-radius: 50%; background: none; color: var(--muted); font-size: 11.5px; font-weight: 600; }
+.pomodoro .stage:hover { border-color: var(--accent); color: var(--text); background: none; }
+.pomodoro .stage.done { background: rgba(122, 162, 247, 0.22); border-color: transparent; color: var(--text); }
+.pomodoro .stage.current { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.15); }
+
+/* Disk cache tile: amber when no large free block is left, with the button that frees it. */
+.mon-tiles .tile.warn-tile { border-color: color-mix(in srgb, var(--waiting) 55%, var(--line)); }
+.mon-tiles .tile .free { justify-self: start; margin-top: 4px; font-size: 12px; padding: 2px 10px; }
+.mon-tiles .tile.warn-tile .free { border-color: var(--waiting); color: var(--waiting); }
+
+/* Notes: Pendentes and Completas tabs, pinned group, and the row being dragged. */
+.note-tabs { position: relative; display: grid; grid-template-columns: 1fr 1fr; margin: 8px 8px 2px; padding: 3px; border-radius: 8px; background: var(--bg); }
+.note-tabs-ind { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); border-radius: 6px; background: var(--line); transition: transform 0.25s var(--ease); }
+.note-tabs button { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 3px 0; border: 0; background: none; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+.note-tabs button:hover { background: none; color: var(--text); }
+.note-tabs button.on { color: var(--text); }
+.note-tabs .count { min-width: 18px; padding: 0 5px; border-radius: 9px; background: rgba(255, 255, 255, 0.07); font-size: 11px; font-variant-numeric: tabular-nums; }
+.note-tabs button.on .count { background: rgba(122, 162, 247, 0.2); color: var(--accent); }
+.notes { grid-template-rows: auto minmax(0, 1fr) auto; }
+.note-scroll { position: relative; }
+.note-group.pinned h4 { color: var(--accent); }
+.note { grid-template-columns: 16px minmax(0, 1fr) auto; }
+.note[draggable='true'] { cursor: grab; }
+.note.dragging { opacity: 0.35; }
+.note-tools { display: flex; align-items: center; gap: 2px; }
+.note .pin { width: 20px; height: 20px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; color: var(--muted); visibility: hidden; }
+.note .pin svg { width: 13px; height: 13px; }
+.note:hover .pin, .note .pin.on { visibility: visible; }
+.note .pin:hover { background: var(--hover); color: var(--text); }
+.note .pin.on { color: var(--accent); }
+.note .pin.on svg { fill: currentColor; fill-opacity: 0.3; }
+.list.island { position: relative; }
+@media (prefers-reduced-motion: reduce) { .note-tabs-ind { transition: none; } }
+
+/* Timer island folding: the eye in its top right corner, and the one-line status when folded. */
+.pomodoro { position: relative; }
+.pomodoro-line { position: relative; display: flex; align-items: center; min-height: 40px; padding: 0 40px 0 6px; border-radius: 10px; --phase: var(--accent); }
+.pomodoro-line.break, .pomodoro-line.long { --phase: var(--idle); }
+.pomodoro-line.idle { --phase: var(--shell); }
+.pomodoro-line .line-main { flex: 1; display: flex; align-items: center; gap: 9px; padding: 6px 8px; border: 0; background: none; font-weight: 600; text-align: left; }
+.pomodoro-line .line-main:hover { background: none; }
+.pomodoro-line .dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--phase); }
+.pomodoro-island.collapsed:has(.pomodoro-line.ended) { border-color: var(--accent); animation: pill-ring 1.6s ease-in-out infinite; }
+.pomodoro-line.ended .line-main { color: var(--accent); }
+.pomodoro-line.ended .dot { background: var(--accent); animation: pill-dot 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .pomodoro-island.collapsed:has(.pomodoro-line.ended), .pomodoro-line.ended .dot { animation: none; } }
+
+.note-add .add-row { display: flex; gap: 6px; }
+.note-add .add-row input { flex: 1; min-width: 0; }
+.note-add .when-toggle { flex: none; width: 34px; display: grid; place-items: center; padding: 0; border-radius: 8px; color: var(--muted); }
+.note-add .when-toggle svg { width: 15px; height: 15px; }
+.note-add .when-toggle:hover { color: var(--text); }
+.note-add .when-toggle.on { color: var(--accent); border-color: var(--accent); }
+.note-add .add-when { margin-top: 6px; animation: pop-in 140ms var(--ease); }
+
+/* Keep the panel inside its column: inputs and long words shrink instead of pushing it wider. */
+.focus > .island { min-width: 0; }
+.note-edit .when { min-width: 0; }
+.note-edit .when > * { width: 100%; min-width: 0; }
+/* The row tools float over the end of the text on hover, so the text keeps the whole width. */
+.note { position: relative; grid-template-columns: 16px minmax(0, 1fr); }
+.note-tools { position: absolute; top: 3px; right: 4px; padding-left: 10px; border-radius: 6px; background: linear-gradient(90deg, transparent, var(--panel) 10px); opacity: 0; transition: opacity 0.12s; }
+.note:hover .note-tools, .note-tools:has(.armed) { opacity: 1; }
+.note .pin { visibility: visible; }
+
+/* The eye that hides the time: the same button in the title bar pill and on the timer island. */
+.eye-toggle { position: relative; width: 20px; height: 20px; flex: none; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); }
+.eye-toggle:hover { background: var(--line); color: var(--text); }
+.eye-toggle svg { width: 14px; height: 14px; }
+.pomodoro-island .eye-toggle { position: absolute; top: 10px; right: 10px; }
+
+.update-panel { max-width: 300px; }
+.update-panel p { margin: 4px 8px 8px; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.update-panel .busy { color: var(--accent); }
+
+/* The clock turned into a field by a double click. */
+.pomodoro .time { cursor: default; user-select: none; }
+.pomodoro .time-input { inset: 34px 18px; width: auto; height: 60px; margin: auto; padding: 0; border: 1px solid var(--accent); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; font-size: 27px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; outline: none; }
+.pomodoro .time-input.wrong { border-color: var(--waiting); animation: shake 0.25s; }
+@keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }

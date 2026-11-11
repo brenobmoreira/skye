@@ -1,11 +1,20 @@
-import { useState, type FocusEvent, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type DragEvent, type FocusEvent, type KeyboardEvent } from 'react';
 import { api } from '../bridge';
-import { dayOf, dueLabel, groupNotes, repeatLabel, type Row } from '../lib/notes';
+import { canMove, dayOf, dueLabel, groupNotes, moveItems, repeatLabel, type Row } from '../lib/notes';
+import { capitalize } from '../lib/text';
 import type { NoteItem, Notes, Repeat } from '../lib/types';
+import { useFlip } from './useFlip';
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-const WEEKDAYS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+const WEEKDAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+const PinIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 17v5" />
+    <path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z" />
+  </svg>
+);
 
 interface Draft {
   text: string;
@@ -35,19 +44,66 @@ function repeatOf(d: Draft): Repeat | null {
   return { kind: d.kind };
 }
 
+type When = Pick<Draft, 'date' | 'time' | 'kind' | 'weekday' | 'day'>;
+
+// WhenFields: date, time and repetition, the same in the note editor and under the add field.
+function WhenFields({ value, onChange }: { value: When; onChange: (w: When) => void }) {
+  return (
+    <>
+      <div className="when">
+        <input type="date" value={value.date} onChange={(e) => onChange({ ...value, date: e.target.value })} title="Data" />
+        <input type="time" value={value.time} disabled={!value.date} onChange={(e) => onChange({ ...value, time: e.target.value })} title="Hora (avisa nesse horário)" />
+      </div>
+      <div className="when">
+        <select value={value.kind} disabled={!value.date} onChange={(e) => onChange({ ...value, kind: e.target.value as Draft['kind'] })} title={value.date ? 'Repetição' : 'Repetir precisa de data'}>
+          <option value="">Não repete</option>
+          <option value="daily">Todo dia</option>
+          <option value="weekdays">Dias úteis</option>
+          <option value="weekly">Toda semana</option>
+          <option value="monthly">Todo mês</option>
+        </select>
+        {value.kind === 'weekly' && (
+          <select value={value.weekday} onChange={(e) => onChange({ ...value, weekday: Number(e.target.value) })}>
+            {WEEKDAYS.map((w, i) => <option key={w} value={i}>{w}</option>)}
+          </select>
+        )}
+        {value.kind === 'monthly' && (
+          <input type="number" min={1} max={31} value={value.day} onChange={(e) => onChange({ ...value, day: Number(e.target.value) })} title="Dia do mês" />
+        )}
+      </div>
+    </>
+  );
+}
+
+const CalendarIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="5" width="18" height="16" rx="3" />
+    <path d="M3 10h18M8 3v4M16 3v4" />
+  </svg>
+);
+
 const rowId = (r: Row) => (r.kind === 'item' ? r.item.id : r.record.id);
 
 export function NoteList({ notes, now }: { notes: Notes; now: Date }) {
   const [add, setAdd] = useState('');
+  // The date, time and repetition for the note being added, behind the calendar button.
+  const [addWhen, setAddWhen] = useState<When | null>(null);
   const [addError, setAddError] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [armed, setArmed] = useState<string | null>(null);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [tab, setTab] = useState<'open' | 'done'>('open');
   const [allHistory, setAllHistory] = useState(false);
+  const [dragging, setDragging] = useState<string | null>(null);
+  // The order shown while dragging, and after the drop until the Go side sends the saved list.
+  const [preview, setPreview] = useState<NoteItem[] | null>(null);
+  useEffect(() => { if (!dragging) setPreview(null); }, [notes]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useFlip(scrollRef);
 
-  const groups = groupNotes(notes, now, allHistory ? Infinity : 30);
+  const shown: Notes = preview ? { ...notes, items: preview } : notes;
+  const groups = groupNotes(shown, now, allHistory ? Infinity : 30);
   const fail = (id: string) => (e: unknown) => setErrors((m) => ({ ...m, [id]: errText(e) }));
   const clear = (id: string) => setErrors((m) => {
     if (!(id in m)) return m;
@@ -58,11 +114,20 @@ export function NoteList({ notes, now }: { notes: Notes; now: Date }) {
 
   const submitAdd = () => {
     if (!add.trim()) return;
-    api().AddNote(add).then(() => { setAdd(''); setAddError(''); }).catch((e) => setAddError(errText(e)));
+    const when = addWhen;
+    api()
+      .AddNote(add)
+      .then((item) =>
+        when && when.date
+          ? api().EditNote(item.id, { text: item.text, date: when.date, time: when.time, repeat: repeatOf({ ...when, text: '' }) })
+          : item,
+      )
+      .then(() => { setAdd(''); setAddError(''); setAddWhen(null); })
+      .catch((e) => setAddError(errText(e)));
   };
   const addKeys = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') submitAdd();
-    if (e.key === 'Escape') { setAdd(''); setAddError(''); }
+    if (e.key === 'Escape') { setAdd(''); setAddError(''); setAddWhen(null); }
   };
 
   const toggle = (r: Row) => {
@@ -100,51 +165,83 @@ export function NoteList({ notes, now }: { notes: Notes; now: Date }) {
   const editor = (id: string) => draft && (
     <div className="note-edit" onBlur={editBlur} onKeyDown={editKeys}>
       <input autoFocus className="text" value={draft.text} onChange={(e) => setDraft({ ...draft, text: e.target.value })} />
-      <div className="when">
-        <input type="date" value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} title="data" />
-        <input type="time" value={draft.time} disabled={!draft.date} onChange={(e) => setDraft({ ...draft, time: e.target.value })} title="hora (avisa nesse horário)" />
-      </div>
-      <div className="when">
-        <select value={draft.kind} disabled={!draft.date} onChange={(e) => setDraft({ ...draft, kind: e.target.value as Draft['kind'] })} title={draft.date ? 'repetição' : 'repetir precisa de data'}>
-          <option value="">não repete</option>
-          <option value="daily">todo dia</option>
-          <option value="weekdays">dias úteis</option>
-          <option value="weekly">toda semana</option>
-          <option value="monthly">todo mês</option>
-        </select>
-        {draft.kind === 'weekly' && (
-          <select value={draft.weekday} onChange={(e) => setDraft({ ...draft, weekday: Number(e.target.value) })}>
-            {WEEKDAYS.map((w, i) => <option key={w} value={i}>{w}</option>)}
-          </select>
-        )}
-        {draft.kind === 'monthly' && (
-          <input type="number" min={1} max={31} value={draft.day} onChange={(e) => setDraft({ ...draft, day: Number(e.target.value) })} title="dia do mês" />
-        )}
-      </div>
+      <WhenFields value={draft} onChange={(w) => setDraft({ ...draft, ...w })} />
       <div className="actions">
-        <button onMouseDown={(e) => e.preventDefault()} onClick={saveEdit}>salvar</button>
-        <button onMouseDown={(e) => e.preventDefault()} onClick={cancelEdit}>cancelar</button>
+        <button onMouseDown={(e) => e.preventDefault()} onClick={saveEdit}>Salvar</button>
+        <button onMouseDown={(e) => e.preventDefault()} onClick={cancelEdit}>Cancelar</button>
       </div>
       {errors[id] && <div className="note-error">{errors[id]}</div>}
     </div>
   );
 
+  const pin = (item: NoteItem) => { clear(item.id); api().PinNote(item.id, !item.pinned).catch(fail(item.id)); };
+
+  // Dragging: the dragged note stays where the pointer is and the others slide out of its way.
+  const dragStart = (e: DragEvent, id: string) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+    setDragging(id);
+    setPreview(notes.items);
+  };
+  const dragOver = (e: DragEvent, id: string) => {
+    if (!dragging) return;
+    if (dragging === id) { e.preventDefault(); return; }
+    if (!canMove(shown, dragging, id, now)) return;
+    e.preventDefault();
+    setPreview(moveItems(shown.items, dragging, id));
+  };
+  const drop = (e: DragEvent) => {
+    e.preventDefault();
+    const id = dragging;
+    setDragging(null);
+    if (!id || !preview) return;
+    // The drop is one move on the saved list: to the index where the preview left the note.
+    const at = preview.findIndex((i) => i.id === id);
+    const from = notes.items.findIndex((i) => i.id === id);
+    if (at < 0 || at === from) { setPreview(null); return; }
+    api().MoveNote(id, notes.items[at].id).catch((err) => { setPreview(null); fail(id)(err); });
+  };
+  const dragEnd = () => { if (dragging) { setDragging(null); setPreview(null); } };
+
   const row = (r: Row, late: boolean, past: boolean) => {
     const id = rowId(r);
-    if (r.kind === 'item' && editing === r.item.id) return <li key={id} className="note editing">{editor(id)}</li>;
+    if (r.kind === 'item' && editing === r.item.id) return <li key={id} data-flip={id} className="note editing">{editor(id)}</li>;
     const done = r.kind === 'done' || r.done;
     const text = r.kind === 'item' ? r.item.text : r.record.text;
-    const due = r.kind === 'item' && !past ? dueLabel(r.item, now) : '';
+    const due = r.kind === 'item' && !done ? dueLabel(r.item, now) : '';
     const repeat = r.kind === 'item' && r.item.repeat ? repeatLabel(r.item.repeat) : r.kind === 'done' ? 'repete' : '';
+    const movable = r.kind === 'item' && !done;
     return (
-      <li key={id} className={`note${done ? ' done' : ''}${late && !done ? ' late' : ''}`} onMouseLeave={() => { if (armed === id) setArmed(null); }}>
-        <button className={done ? 'check on' : 'check'} disabled={past} onClick={() => toggle(r)} title={past ? 'feito antes de hoje' : done ? 'desmarcar' : 'marcar como feito'} aria-label={done ? 'desmarcar' : 'marcar'} />
+      <li
+        key={id}
+        data-flip={id}
+        className={`note${done ? ' done' : ''}${late && !done ? ' late' : ''}${dragging === id ? ' dragging' : ''}${r.kind === 'item' && r.item.pinned ? ' pinned' : ''}`}
+        draggable={movable}
+        onDragStart={movable ? (e) => dragStart(e, id) : undefined}
+        onDragOver={(e) => dragOver(e, id)}
+        onDrop={drop}
+        onDragEnd={dragEnd}
+        onMouseLeave={() => { if (armed === id) setArmed(null); }}
+      >
+        <button className={done ? 'check on' : 'check'} disabled={past} onClick={() => toggle(r)} title={past ? 'Feito antes de hoje' : done ? 'Desmarcar' : 'Marcar como feito'} aria-label={done ? 'Desmarcar' : 'Marcar'} />
         <div className="note-body">
-          <span className="text" onClick={() => { if (r.kind === 'item' && !done) startEdit(r.item); }}>{text}</span>
-          {(due || repeat) && <span className="meta">{[due, repeat].filter(Boolean).join(' · ')}</span>}
+          <span className="text" onClick={() => { if (movable && r.kind === 'item') startEdit(r.item); }}>{text}</span>
+          {(due || repeat) && <span className="meta">{capitalize([due, repeat].filter(Boolean).join(' · '))}</span>}
           {errors[id] && <span className="note-error">{errors[id]}</span>}
         </div>
-        <button className={armed === id ? 'remove armed' : 'remove'} onClick={() => remove(id)} title="apagar">{armed === id ? 'apagar?' : '×'}</button>
+        <div className="note-tools">
+          {movable && r.kind === 'item' && (
+            <button className="pin" onClick={() => startEdit(r.item)} aria-label="Data e repetição" title="Data e repetição">
+              <CalendarIcon />
+            </button>
+          )}
+          {movable && r.kind === 'item' && (
+            <button className={r.item.pinned ? 'pin on' : 'pin'} onClick={() => pin(r.item)} aria-label={r.item.pinned ? 'Desafixar' : 'Fixar'} title={r.item.pinned ? 'Desafixar' : 'Fixar no topo'}>
+              <PinIcon />
+            </button>
+          )}
+          <button className={armed === id ? 'remove armed' : 'remove'} onClick={() => remove(id)} title="Apagar">{armed === id ? 'Apagar?' : '×'}</button>
+        </div>
       </li>
     );
   };
@@ -156,43 +253,73 @@ export function NoteList({ notes, now }: { notes: Notes; now: Date }) {
     </section>
   );
 
-  const historyCount = groups.history.reduce((n, h) => n + h.rows.length, 0);
+  const doneCount = groups.done.reduce((n, h) => n + h.rows.length, 0);
+  const openCount = groups.pinned.length + groups.overdue.length + groups.today.length + groups.upcoming.length + groups.undated.length;
   const today = dayOf(now);
   const dayTitle = (day: string) => {
     const [y, m, d] = day.split('-').map(Number);
-    const date = new Date(y, m - 1, d);
     const diff = Math.round((new Date(`${today}T12:00`).getTime() - new Date(`${day}T12:00`).getTime()) / 86_400_000);
-    if (diff === 1) return 'ontem';
-    return date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+    if (diff === 0) return 'Hoje';
+    if (diff === 1) return 'Ontem';
+    return capitalize(new Date(y, m - 1, d).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }));
   };
-
-  const empty = !groups.overdue.length && !groups.today.length && !groups.upcoming.length && !groups.undated.length;
 
   return (
     <div className="notes">
-      <div className="note-scroll">
-        {empty && <p className="none">Nada anotado. Escreva abaixo e dê Enter.</p>}
-        {group('Atrasadas', groups.overdue, 'overdue')}
-        {group('Hoje', groups.today)}
-        {group('Próximas', groups.upcoming)}
-        {group('Sem data', groups.undated)}
-        {historyCount > 0 && (
-          <section className="note-group history">
-            <h4 className="toggle" onClick={() => setHistoryOpen(!historyOpen)}>{historyOpen ? '▾' : '▸'} Feitas · {historyCount}</h4>
-            {historyOpen && groups.history.map((h) => (
-              <div key={h.day}>
-                <h5>{dayTitle(h.day)}</h5>
-                <ul>{h.rows.map((r) => row(r, false, true))}</ul>
-              </div>
+      <div className="note-tabs" role="tablist">
+        <span className="note-tabs-ind" style={{ transform: tab === 'done' ? 'translateX(100%)' : 'none' }} />
+        <button role="tab" aria-selected={tab === 'open'} className={tab === 'open' ? 'on' : ''} onClick={() => setTab('open')}>
+          Pendentes <span className="count">{openCount}</span>
+        </button>
+        <button role="tab" aria-selected={tab === 'done'} className={tab === 'done' ? 'on' : ''} onClick={() => setTab('done')}>
+          Completas
+        </button>
+      </div>
+      <div className="note-scroll" ref={scrollRef}>
+        {tab === 'open' && (
+          <>
+            {openCount === 0 && <p className="none">Nada pendente. Escreva abaixo e dê Enter.</p>}
+            {group('Fixadas', groups.pinned, 'pinned')}
+            {group('Atrasadas', groups.overdue, 'overdue')}
+            {group('Hoje', groups.today)}
+            {group('Próximas', groups.upcoming)}
+            {group('Sem data', groups.undated)}
+          </>
+        )}
+        {tab === 'done' && (
+          <>
+            {doneCount === 0 && <p className="none">Nada completo ainda.</p>}
+            {groups.done.map((h) => (
+              <section key={h.day} className="note-group">
+                <h4>{dayTitle(h.day)}</h4>
+                <ul>{h.rows.map((r) => row(r, false, h.day !== today))}</ul>
+              </section>
             ))}
-            {historyOpen && !allHistory && <button className="more" onClick={() => setAllHistory(true)}>ver mais</button>}
-          </section>
+            {doneCount > 0 && !allHistory && <button className="more" onClick={() => setAllHistory(true)}>Ver mais</button>}
+          </>
         )}
       </div>
-      <div className="note-add">
-        <input placeholder="+ anotar…" value={add} onChange={(e) => setAdd(e.target.value)} onKeyDown={addKeys} />
-        {addError && <div className="note-error">{addError}</div>}
-      </div>
+      {tab === 'open' && (
+        <div className="note-add">
+          <div className="add-row">
+            <input placeholder="+ Anotar…" value={add} onChange={(e) => setAdd(e.target.value)} onKeyDown={addKeys} />
+            <button
+              className={addWhen ? 'when-toggle on' : 'when-toggle'}
+              onClick={() => setAddWhen(addWhen ? null : { date: dayOf(now), time: '', kind: '', weekday: now.getDay(), day: now.getDate() })}
+              aria-label="Data e repetição"
+              title="Data e repetição"
+            >
+              <CalendarIcon />
+            </button>
+          </div>
+          {addWhen && (
+            <div className="note-edit add-when" onKeyDown={(e) => { if (e.key === 'Enter') submitAdd(); }}>
+              <WhenFields value={addWhen} onChange={setAddWhen} />
+            </div>
+          )}
+          {addError && <div className="note-error">{addError}</div>}
+        </div>
+      )}
     </div>
   );
 }

@@ -6,7 +6,7 @@ export function elapsed(since: string | undefined, state: State, now: number): s
   const start = Date.parse(since);
   if (Number.isNaN(start)) return '';
   const min = Math.floor(Math.max(0, now - start) / 60_000);
-  if (min < 1) return 'agora';
+  if (min < 1) return 'Agora';
   if (min < 60) return `${min} min`;
   const h = Math.floor(min / 60);
   const rest = min % 60;

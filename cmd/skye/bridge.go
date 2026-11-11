@@ -25,6 +25,7 @@ import (
 	"github.com/brenobmoreira/skye/internal/resume"
 	"github.com/brenobmoreira/skye/internal/terminals"
 	"github.com/brenobmoreira/skye/internal/tmuxctl"
+	"github.com/brenobmoreira/skye/internal/update"
 	"github.com/brenobmoreira/skye/internal/winmem"
 	"github.com/brenobmoreira/skye/internal/worktree"
 )
@@ -47,6 +48,10 @@ type Bridge struct {
 	server   *hooks.Server
 	windows  *winmem.Watcher
 	problems []string
+	// version names the interface this server serves; restart, set by skye web, swaps the
+	// process for the binary just installed.
+	version string
+	restart func()
 }
 
 func newBridge(h host) *Bridge {
@@ -140,8 +145,12 @@ func (b *Bridge) boot() error {
 		b.problem("anotações: %v", err)
 	}
 	var hostMemory func() (winmem.Memory, bool)
+	var hostHistory func() []procs.Point
 	if w := winmem.New(); w != nil {
 		hostMemory = w.Latest
+		winDir := filepath.Join(paths.StateDir, "winmem")
+		hostHistory = func() []procs.Point { return procs.History(winDir, time.Now(), 3*time.Hour) }
+		go recordHost(w, winDir)
 		b.mu.Lock()
 		b.windows = w
 		b.mu.Unlock()
@@ -167,10 +176,12 @@ func (b *Bridge) boot() error {
 		TmuxSocket:     tmuxSocket,
 		CreateWorktree: worktree.Create,
 		Host:           hostMemory,
+		HostHistory:    hostHistory,
 		Places:         saved,
 		Notes:          noteStore,
 		PomodoroFile:   paths.Pomodoro,
 		Problem:        func(msg string) { b.problem("%s", msg) },
+		User:           os.Getenv("USER"),
 	})
 	b.mu.Lock()
 	b.app, b.client = a, client
@@ -572,4 +583,89 @@ func (b *Bridge) SetPomodoroSettings(s pomodoro.Settings) error {
 		return err
 	}
 	return a.SetPomodoroSettings(s)
+}
+
+func (b *Bridge) PomodoroBegin(phase string, stage int) error {
+	a, err := b.ready()
+	if err != nil {
+		return err
+	}
+	return a.PomodoroBegin(phase, stage)
+}
+
+func (b *Bridge) FreeCache() (app.FreedCache, error) {
+	a, err := b.ready()
+	if err != nil {
+		return app.FreedCache{}, err
+	}
+	return a.FreeCache()
+}
+
+// recordHost keeps the Windows reader running and writes one reading a minute, so the monitor
+// can chart the host the way mcp-sysagent's history charts the WSL. Asking more often than the
+// watcher's idle time keeps one powershell.exe alive instead of starting one a minute.
+func recordHost(w *winmem.Watcher, dir string) {
+	var last time.Time
+	pruned := ""
+	for now := range time.Tick(20 * time.Second) {
+		m, ok := w.Latest()
+		if !ok || now.Sub(last) < 55*time.Second {
+			continue
+		}
+		if err := winmem.Record(dir, m, now); err == nil {
+			last = now
+		}
+		if day := now.Format(time.DateOnly); day != pruned {
+			winmem.Prune(dir, now, 7)
+			pruned = day
+		}
+	}
+}
+
+func (b *Bridge) PinNote(id string, pinned bool) error {
+	a, err := b.ready()
+	if err != nil {
+		return err
+	}
+	return a.PinNote(id, pinned)
+}
+
+func (b *Bridge) MoveNote(id, to string) error {
+	a, err := b.ready()
+	if err != nil {
+		return err
+	}
+	return a.MoveNote(id, to)
+}
+
+func (b *Bridge) Version() string { return b.version }
+
+// Update rebuilds skye from the repository it was built from, installs it over the running
+// binary and restarts the server on it. The terminals stay in tmux; the windows reconnect and
+// reload when they see the new version.
+func (b *Bridge) Update() error {
+	if b.restart == nil {
+		return errors.New("atualizar daqui só funciona com o skye web; rode skye update no terminal")
+	}
+	self, err := executable()
+	if err != nil {
+		return err
+	}
+	if err := update.Run(update.Options{Repo: repoDir, Target: self}); err != nil {
+		return err
+	}
+	// Answer first, then restart: the window waits for this reply before it reconnects.
+	go func() {
+		time.Sleep(300 * time.Millisecond)
+		b.restart()
+	}()
+	return nil
+}
+
+func (b *Bridge) PomodoroSetRemaining(seconds int) error {
+	a, err := b.ready()
+	if err != nil {
+		return err
+	}
+	return a.PomodoroSetRemaining(seconds)
 }

@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/base64"
 	"fmt"
+	"os/exec"
 	"strings"
 	"sync"
 	"time"
@@ -55,8 +56,10 @@ type Options struct {
 	Servers func() []tmuxctl.Server
 	History func() []procs.Point
 	// Host is the Windows memory when skye runs in WSL; nil or not ok leaves it out.
-	Host       func() (winmem.Memory, bool)
-	TmuxSocket string
+	Host func() (winmem.Memory, bool)
+	// HostHistory is the Windows memory over the last hours, as skye recorded it.
+	HostHistory func() []procs.Point
+	TmuxSocket  string
 	// Places are the folders the + menu opens claude, agy, or codex in.
 	Places *places.Store
 	// CreateWorktree adds a git worktree and returns its path (worktree.Create outside tests).
@@ -70,6 +73,10 @@ type Options struct {
 	After pomodoro.After
 	// Problem reports something the user should see in the problems bar.
 	Problem func(msg string)
+	// RunRoot runs the cache cleanup commands and returns their output (exec outside tests).
+	RunRoot func(name string, args ...string) ([]byte, error)
+	// User is the login name, for the sudoers line FreeCache suggests when sudo asks a password.
+	User string
 }
 
 type ProcSource interface {
@@ -100,6 +107,9 @@ func New(o Options) *App {
 	}
 	if o.After == nil {
 		o.After = func(d time.Duration, f func()) func() bool { return time.AfterFunc(d, f).Stop }
+	}
+	if o.RunRoot == nil {
+		o.RunRoot = func(name string, args ...string) ([]byte, error) { return exec.Command(name, args...).CombinedOutput() }
 	}
 	if o.Problem == nil {
 		o.Problem = func(string) {}

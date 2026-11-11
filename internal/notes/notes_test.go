@@ -299,3 +299,50 @@ func TestStoreGivesHandAddedNotesAnID(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestPinMarksAndUnmarks(t *testing.T) {
+	f := newFixture(t)
+	s := f.open(t)
+	it, _ := s.Add("a")
+	if err := s.Pin(it.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if !mustList(t, s).Items[0].Pinned || !f.onDisk(t).Items[0].Pinned {
+		t.Fatal("not pinned")
+	}
+	s.Pin(it.ID, false)
+	if mustList(t, s).Items[0].Pinned {
+		t.Fatal("still pinned")
+	}
+	if err := s.Pin("nope", true); err == nil {
+		t.Fatal("unknown id accepted")
+	}
+}
+
+func TestMovePutsTheNoteWhereTheOtherOneWas(t *testing.T) {
+	f := newFixture(t)
+	s := f.open(t)
+	for _, x := range []string{"a", "b", "c", "d"} {
+		s.Add(x)
+	}
+	order := func() string {
+		var out []string
+		for _, it := range mustList(t, s).Items {
+			out = append(out, it.Text)
+		}
+		return strings.Join(out, "")
+	}
+	if err := s.Move("n4", "n2"); err != nil {
+		t.Fatal(err)
+	}
+	if got := order(); got != "adbc" {
+		t.Fatalf("up: %s", got)
+	}
+	s.Move("n1", "n3")
+	if got := order(); got != "dbca" {
+		t.Fatalf("down: %s", got)
+	}
+	if err := s.Move("n1", "nope"); err == nil {
+		t.Fatal("unknown target accepted")
+	}
+}

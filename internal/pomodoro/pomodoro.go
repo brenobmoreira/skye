@@ -19,12 +19,16 @@ const (
 )
 
 type State struct {
-	Phase       Phase    `json:"phase"`
-	Paused      bool     `json:"paused"`
-	RemainingMs int64    `json:"remainingMs"`
-	TotalMs     int64    `json:"totalMs"`
-	Count       int      `json:"count"`
-	Settings    Settings `json:"settings"`
+	Phase       Phase `json:"phase"`
+	Paused      bool  `json:"paused"`
+	RemainingMs int64 `json:"remainingMs"`
+	TotalMs     int64 `json:"totalMs"`
+	Count       int   `json:"count"`
+	// Stage is how many focuses of the current cycle are done; the long break starts it over.
+	Stage int `json:"stage"`
+	// NextMs, set while idle, is the length the next phase starts with instead of the settings.
+	NextMs   int64    `json:"nextMs"`
+	Settings Settings `json:"settings"`
 }
 
 // Ended is a phase that ran out on its own, and the state it left.
@@ -49,6 +53,8 @@ type Timer struct {
 	remaining time.Duration
 	total     time.Duration
 	count     int
+	stage     int
+	next      time.Duration
 	day       string
 	stop      func() bool
 	gen       int
@@ -61,7 +67,7 @@ func New(s Settings, now func() time.Time, after After, onChange func(State), on
 func (t *Timer) today() string { return t.now().Format("2006-01-02") }
 
 func (t *Timer) state() State {
-	st := State{Phase: t.phase, Paused: t.paused, Settings: t.settings}
+	st := State{Phase: t.phase, Paused: t.paused, Settings: t.settings, Stage: t.stage, NextMs: t.next.Milliseconds()}
 	if t.day == t.today() {
 		st.Count = t.count
 	}
@@ -99,12 +105,31 @@ func (t *Timer) run(p Phase, d, total time.Duration) {
 	t.stop = t.after(d, func() { t.fire(gen) })
 }
 
+// fresh starts phase p from its beginning: normal long, or the length chosen while idle, once.
+func (t *Timer) fresh(p Phase, normal time.Duration) {
+	d := normal
+	if t.next > 0 {
+		d, t.next = t.next, 0
+	}
+	t.run(p, d, d)
+}
+
 func (t *Timer) idle() {
 	t.cancel()
 	t.phase, t.paused, t.remaining, t.total = Idle, false, 0, 0
 }
 
 func minutes(m int) time.Duration { return time.Duration(m) * time.Minute }
+
+// runBreak starts the break that follows the focuses done: the long one closes the cycle.
+func (t *Timer) runBreak() {
+	if t.stage >= t.settings.Every {
+		t.stage = 0
+		t.fresh(Long, minutes(t.settings.Long))
+		return
+	}
+	t.fresh(Break, minutes(t.settings.Break))
+}
 
 func (t *Timer) fire(gen int) {
 	t.mu.Lock()
@@ -120,11 +145,8 @@ func (t *Timer) fire(gen int) {
 			t.day, t.count = today, 0
 		}
 		t.count++
-		if t.count%t.settings.Every == 0 {
-			t.run(Long, minutes(t.settings.Long), minutes(t.settings.Long))
-		} else {
-			t.run(Break, minutes(t.settings.Break), minutes(t.settings.Break))
-		}
+		t.stage++
+		t.runBreak()
 	} else {
 		t.idle()
 	}
@@ -143,7 +165,7 @@ func (t *Timer) Do(action string) error {
 			t.mu.Unlock()
 			return errors.New("já está rodando")
 		}
-		t.run(Focus, minutes(t.settings.Focus), minutes(t.settings.Focus))
+		t.fresh(Focus, minutes(t.settings.Focus))
 	case "pause":
 		if t.phase == Idle || t.paused {
 			t.mu.Unlock()
@@ -166,10 +188,60 @@ func (t *Timer) Do(action string) error {
 		t.idle()
 	case "reset":
 		t.idle()
-		t.count = 0
+		t.count, t.stage, t.next = 0, 0, 0
 	default:
 		t.mu.Unlock()
 		return fmt.Errorf("ação desconhecida: %q", action)
+	}
+	st := t.state()
+	t.mu.Unlock()
+	t.onChange(st)
+	return nil
+}
+
+// Begin starts from a chosen point of the cycle: the focus of stage n, or the break that follows
+// it (the long one after the last stage). Choosing does not change the day's count.
+func (t *Timer) Begin(p Phase, n int) error {
+	t.mu.Lock()
+	if t.phase != Idle {
+		t.mu.Unlock()
+		return errors.New("já está rodando")
+	}
+	if n < 1 || n > t.settings.Every {
+		t.mu.Unlock()
+		return fmt.Errorf("estágio de 1 a %d", t.settings.Every)
+	}
+	switch p {
+	case Focus:
+		t.stage = n - 1
+		t.fresh(Focus, minutes(t.settings.Focus))
+	case Break:
+		t.stage = n
+		t.runBreak()
+	default:
+		t.mu.Unlock()
+		return fmt.Errorf("só dá para começar por foco ou pausa, não %q", p)
+	}
+	st := t.state()
+	t.mu.Unlock()
+	t.onChange(st)
+	return nil
+}
+
+// SetRemaining sets the time left: of the phase running or paused, or, while idle, of the next
+// phase started.
+func (t *Timer) SetRemaining(d time.Duration) error {
+	if d < time.Second || d > 180*time.Minute {
+		return errors.New("tempo de 1 s a 180 min")
+	}
+	t.mu.Lock()
+	switch {
+	case t.phase == Idle:
+		t.next = d
+	case t.paused:
+		t.remaining = d
+	default:
+		t.run(t.phase, d, t.total)
 	}
 	st := t.state()
 	t.mu.Unlock()

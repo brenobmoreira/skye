@@ -5,8 +5,8 @@ const now = Date.parse('2026-09-24T12:00:00Z');
 const ago = (min: number) => new Date(now - min * 60_000).toISOString();
 
 describe('elapsed', () => {
-  it('says agora under a minute', () => {
-    expect(elapsed(ago(0.5), 'running', now)).toBe('agora');
+  it('says Agora under a minute', () => {
+    expect(elapsed(ago(0.5), 'running', now)).toBe('Agora');
   });
   it('counts minutes, then hours and minutes', () => {
     expect(elapsed(ago(12), 'waiting', now)).toBe('12 min');
@@ -19,6 +19,6 @@ describe('elapsed', () => {
     expect(elapsed('lixo', 'running', now)).toBe('');
   });
   it('does not go negative when the clocks disagree', () => {
-    expect(elapsed(ago(-2), 'running', now)).toBe('agora');
+    expect(elapsed(ago(-2), 'running', now)).toBe('Agora');
   });
 });

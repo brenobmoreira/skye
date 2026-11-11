@@ -89,12 +89,12 @@ export function NewMenu(props: {
 
   return (
     <div className="menu">
-      <button className="flat" disabled={!props.ready} onClick={() => (open ? close() : setOpen(true))} title="novo terminal">+</button>
+      <button className="new-button" disabled={!props.ready} onClick={() => (open ? close() : setOpen(true))} title="Novo terminal">+ Novo</button>
       {open && props.ready && (
         <div className="menu-list new-menu" onMouseLeave={() => { if (!picking && !adding) close(); }}>
           {props.places.map((p) => (
             <div key={p.name} className="place" onMouseLeave={() => { if (armed === p.name) setArmed(null); }}>
-              <button onClick={() => run(() => props.onOpenPlace(p.name, 'claude'))} title={`claude em ${p.path}`}>
+              <button onClick={() => run(() => props.onOpenPlace(p.name, 'claude'))} title={`Claude em ${p.path}`}>
                 {p.name}
               </button>
               {armed !== p.name && PLACE_COMMANDS.map((cmd) => (
@@ -102,7 +102,7 @@ export function NewMenu(props: {
                   {cmd}
                 </button>
               ))}
-              <button className={armed === p.name ? 'remove armed' : 'remove'} onClick={() => remove(p.name)} title="remover este path">
+              <button className={armed === p.name ? 'remove armed' : 'remove'} onClick={() => remove(p.name)} title="Remover este path">
                 {armed === p.name ? 'remover?' : '×'}
               </button>
             </div>
@@ -121,7 +121,7 @@ export function NewMenu(props: {
                 <small>nova worktree de {r.name}</small>
                 <input
                   autoFocus
-                  placeholder="nome da branch"
+                  placeholder="Nome da branch"
                   value={branch}
                   onChange={(e) => { setBranch(e.target.value); if (!busy) setStatus(''); }}
                   onKeyDown={keys(createWorktree)}
@@ -137,11 +137,11 @@ export function NewMenu(props: {
           <hr />
           {adding ? (
             <div className="form">
-              <input autoFocus placeholder="nome (ex.: LivIA)" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={keys(savePlace)} />
-              <input placeholder="path (ex.: ~/projects/ai_livia_copilot)" value={path} onChange={(e) => setPath(e.target.value)} onKeyDown={keys(savePlace)} />
+              <input autoFocus placeholder="Nome (ex.: LivIA)" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={keys(savePlace)} />
+              <input placeholder="Path (ex.: ~/projects/ai_livia_copilot)" value={path} onChange={(e) => setPath(e.target.value)} onKeyDown={keys(savePlace)} />
               <div className="actions">
-                <button onClick={savePlace} disabled={busy}>salvar</button>
-                <button onClick={close}>cancelar</button>
+                <button onClick={savePlace} disabled={busy}>Salvar</button>
+                <button onClick={close}>Cancelar</button>
               </div>
               {status && <small className={busy ? '' : 'error'}>{status}</small>}
             </div>

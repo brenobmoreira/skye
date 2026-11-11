@@ -40,6 +40,8 @@ func (a *App) pomodoroEnded(e pomodoro.Ended) {
 		}
 	}
 	a.toast("skye", body)
+	// Tells the windows a phase ran out on its own, so the closed panel's pill can pulse.
+	a.o.Emit("pomodoroEnded", e.Phase)
 }
 
 func (a *App) toast(title, body string) {
@@ -53,6 +55,16 @@ func (a *App) toast(title, body string) {
 func (a *App) Pomodoro() pomodoro.State { return a.timer.State() }
 
 func (a *App) PomodoroAction(action string) error { return a.timer.Do(action) }
+
+// PomodoroSetRemaining sets the time left, in seconds, of the running phase or of the next one.
+func (a *App) PomodoroSetRemaining(seconds int) error {
+	return a.timer.SetRemaining(time.Duration(seconds) * time.Second)
+}
+
+// PomodoroBegin starts at a chosen stage: phase is "focus" or "break".
+func (a *App) PomodoroBegin(phase string, stage int) error {
+	return a.timer.Begin(pomodoro.Phase(phase), stage)
+}
 
 func (a *App) SetPomodoroSettings(s pomodoro.Settings) error {
 	if err := s.Validate(); err != nil {
@@ -108,6 +120,20 @@ func (a *App) EditNote(id string, e notes.Edit) (notes.Item, error) {
 	}
 	it, err := a.o.Notes.Edit(id, e)
 	return it, a.changed(err)
+}
+
+func (a *App) PinNote(id string, pinned bool) error {
+	if a.o.Notes == nil {
+		return errNoNotes
+	}
+	return a.changed(a.o.Notes.Pin(id, pinned))
+}
+
+func (a *App) MoveNote(id, to string) error {
+	if a.o.Notes == nil {
+		return errNoNotes
+	}
+	return a.changed(a.o.Notes.Move(id, to))
 }
 
 func (a *App) CheckNote(id string) error {

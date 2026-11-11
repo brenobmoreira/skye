@@ -21,14 +21,16 @@ const (
 )
 
 type MonitorReport struct {
-	Host       *winmem.Memory   `json:"host,omitempty"`
-	Machine    procs.Machine    `json:"machine"`
-	History    []procs.Point    `json:"history"`
-	SelfMB     int              `json:"selfMb"`
-	Terminals  []TerminalLoad   `json:"terminals"`
-	Strays     []Stray          `json:"strays"`
-	Background []Stray          `json:"background"`
-	Servers    []tmuxctl.Server `json:"servers"`
+	Host    *winmem.Memory `json:"host,omitempty"`
+	Machine procs.Machine  `json:"machine"`
+	History []procs.Point  `json:"history"`
+	// HostHistory is the Windows memory skye recorded, for the same chart as History.
+	HostHistory []procs.Point    `json:"hostHistory"`
+	SelfMB      int              `json:"selfMb"`
+	Terminals   []TerminalLoad   `json:"terminals"`
+	Strays      []Stray          `json:"strays"`
+	Background  []Stray          `json:"background"`
+	Servers     []tmuxctl.Server `json:"servers"`
 }
 
 type TerminalLoad struct {
@@ -144,6 +146,9 @@ func (a *App) Monitor() (MonitorReport, error) {
 	}
 	if a.o.History != nil {
 		r.History = a.o.History()
+	}
+	if a.o.HostHistory != nil {
+		r.HostHistory = a.o.HostHistory()
 	}
 	if a.o.Host != nil {
 		if m, ok := a.o.Host(); ok {

@@ -47,6 +47,16 @@ func (f *fakeTarget) EditNote(id string, e notes.Edit) (notes.Item, error) {
 	return notes.Item{ID: id, Text: e.Text}, nil
 }
 
+func (f *fakeTarget) PinNote(id string, pinned bool) error {
+	f.record("PinNote(%s,%v)", id, pinned)
+	return nil
+}
+
+func (f *fakeTarget) MoveNote(id, to string) error {
+	f.record("MoveNote(%s,%s)", id, to)
+	return nil
+}
+
 func (f *fakeTarget) CheckNote(id string) error   { f.record("CheckNote(%s)", id); return nil }
 func (f *fakeTarget) UncheckNote(id string) error { f.record("UncheckNote(%s)", id); return nil }
 func (f *fakeTarget) DeleteNote(id string) error  { f.record("DeleteNote(%s)", id); return nil }
@@ -58,6 +68,25 @@ func (f *fakeTarget) Pomodoro() pomodoro.State {
 
 func (f *fakeTarget) PomodoroAction(action string) error {
 	f.record("PomodoroAction(%s)", action)
+	return nil
+}
+
+func (f *fakeTarget) Version() string { f.record("Version"); return "abc123" }
+
+func (f *fakeTarget) Update() error { f.record("Update"); return nil }
+
+func (f *fakeTarget) FreeCache() (app.FreedCache, error) {
+	f.record("FreeCache")
+	return app.FreedCache{FreedMB: 3400, CacheMB: 1200, LargeFree: 812}, nil
+}
+
+func (f *fakeTarget) PomodoroSetRemaining(seconds int) error {
+	f.record("PomodoroSetRemaining(%d)", seconds)
+	return nil
+}
+
+func (f *fakeTarget) PomodoroBegin(phase string, stage int) error {
+	f.record("PomodoroBegin(%s,%d)", phase, stage)
 	return nil
 }
 
@@ -250,10 +279,17 @@ func TestDispatchCallsEachMethodWithDecodedArgs(t *testing.T) {
 		{"EditNote", `["n1",{"text":"a","date":"2026-11-13","time":"14:00","repeat":{"kind":"weekly","weekday":5}}]`, "EditNote(n1,a,2026-11-13,14:00,weekly/5)", `{"id":"n1","text":"a"`, false},
 		{"EditNote", `["n1",{"text":"a","date":"","time":"","repeat":null}]`, "EditNote(n1,a,,,)", `{"id":"n1"`, false},
 		{"CheckNote", `["n1"]`, "CheckNote(n1)", `null`, false},
+		{"PinNote", `["n1",true]`, "PinNote(n1,true)", `null`, false},
+		{"MoveNote", `["n3","n1"]`, "MoveNote(n3,n1)", `null`, false},
 		{"UncheckNote", `["n1"]`, "UncheckNote(n1)", `null`, false},
 		{"DeleteNote", `["n1"]`, "DeleteNote(n1)", `null`, false},
 		{"Pomodoro", `[]`, "Pomodoro", `{"phase":"idle"`, false},
 		{"PomodoroAction", `["start"]`, "PomodoroAction(start)", `null`, false},
+		{"PomodoroSetRemaining", `[1080]`, "PomodoroSetRemaining(1080)", `null`, false},
+		{"PomodoroBegin", `["break",3]`, "PomodoroBegin(break,3)", `null`, false},
+		{"Version", `[]`, "Version", `"abc123"`, false},
+		{"Update", `[]`, "Update", `null`, false},
+		{"FreeCache", `[]`, "FreeCache", `{"freedMb":3400,"cacheMb":1200,"largeFree":812}`, false},
 		{"SetPomodoroSettings", `[{"focus":50,"break":10,"long":20,"every":3}]`, "SetPomodoroSettings(50,10,20,3)", `null`, false},
 	}
 	for _, c := range cases {

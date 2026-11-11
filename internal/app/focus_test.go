@@ -261,3 +261,66 @@ func TestAlarmsSkipAGapLikeASleep(t *testing.T) {
 		t.Fatalf("ticking resumed wrong: barks %v", r.barks)
 	}
 }
+
+func TestPomodoroEndEmitsWhichPhaseEnded(t *testing.T) {
+	r := newFocusRig(t, true)
+	var ended []string
+	r.app.o.Emit = func(ev string, data any) {
+		if ev == "pomodoroEnded" {
+			ended = append(ended, string(data.(pomodoro.Phase)))
+		}
+	}
+	r.app.PomodoroAction("start")
+	r.app.PomodoroAction("skip")
+	if len(ended) != 0 {
+		t.Fatalf("a skip emitted an end: %v", ended)
+	}
+	r.app.PomodoroAction("start")
+	r.fire()
+	r.fire()
+	if !slices.Equal(ended, []string{"focus", "break"}) {
+		t.Fatalf("ended = %v", ended)
+	}
+}
+
+func TestPomodoroBeginStartsAtTheChosenStage(t *testing.T) {
+	r := newFocusRig(t, true)
+	if err := r.app.PomodoroBegin("break", 2); err != nil {
+		t.Fatal(err)
+	}
+	if st := r.app.Pomodoro(); st.Phase != pomodoro.Break || st.Stage != 2 || r.count("pomodoro") != 1 {
+		t.Fatalf("state %+v events %v", st, r.events)
+	}
+	if err := r.app.PomodoroBegin("nap", 1); err == nil {
+		t.Fatal("unknown phase accepted")
+	}
+}
+
+func TestPinAndMoveEmitNotes(t *testing.T) {
+	r := newFocusRig(t, true)
+	a, _ := r.app.AddNote("a")
+	b, _ := r.app.AddNote("b")
+	if err := r.app.PinNote(a.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.app.MoveNote(b.ID, a.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got := r.count("notes"); got != 4 {
+		t.Fatalf("notes events = %d", got)
+	}
+	n, _ := r.app.Notes()
+	if n.Items[0].ID != b.ID || !n.Items[1].Pinned {
+		t.Fatalf("items %+v", n.Items)
+	}
+}
+
+func TestPomodoroSetRemainingTakesSeconds(t *testing.T) {
+	r := newFocusRig(t, true)
+	if err := r.app.PomodoroSetRemaining(18 * 60); err != nil {
+		t.Fatal(err)
+	}
+	if st := r.app.Pomodoro(); st.NextMs != 18*60_000 || r.count("pomodoro") != 1 {
+		t.Fatalf("state %+v", st)
+	}
+}

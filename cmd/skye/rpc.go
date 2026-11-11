@@ -53,10 +53,17 @@ type rpcTarget interface {
 	AddNote(text string) (notes.Item, error)
 	EditNote(id string, e notes.Edit) (notes.Item, error)
 	CheckNote(id string) error
+	PinNote(id string, pinned bool) error
+	MoveNote(id, to string) error
 	UncheckNote(id string) error
 	DeleteNote(id string) error
 	Pomodoro() pomodoro.State
 	PomodoroAction(action string) error
+	PomodoroBegin(phase string, stage int) error
+	PomodoroSetRemaining(seconds int) error
+	FreeCache() (app.FreedCache, error)
+	Version() string
+	Update() error
 	SetPomodoroSettings(s pomodoro.Settings) error
 }
 
@@ -254,6 +261,16 @@ func dispatcher(t rpcTarget) web.Dispatch {
 				return nil, err
 			}
 			return t.EditNote(a, e)
+		case "PinNote":
+			if err := decode(&a, &flag); err != nil {
+				return nil, err
+			}
+			return nil, t.PinNote(a, flag)
+		case "MoveNote":
+			if err := decode(&a, &b); err != nil {
+				return nil, err
+			}
+			return nil, t.MoveNote(a, b)
 		case "CheckNote":
 			if err := decode(&a); err != nil {
 				return nil, err
@@ -279,6 +296,32 @@ func dispatcher(t rpcTarget) web.Dispatch {
 				return nil, err
 			}
 			return nil, t.PomodoroAction(a)
+		case "Version":
+			if err := decode(); err != nil {
+				return nil, err
+			}
+			return t.Version(), nil
+		case "Update":
+			if err := decode(); err != nil {
+				return nil, err
+			}
+			return nil, t.Update()
+		case "FreeCache":
+			if err := decode(); err != nil {
+				return nil, err
+			}
+			return t.FreeCache()
+		case "PomodoroSetRemaining":
+			if err := decode(&cols); err != nil {
+				return nil, err
+			}
+			return nil, t.PomodoroSetRemaining(cols)
+		case "PomodoroBegin":
+			var stage int
+			if err := decode(&a, &stage); err != nil {
+				return nil, err
+			}
+			return nil, t.PomodoroBegin(a, stage)
 		case "SetPomodoroSettings":
 			var s pomodoro.Settings
 			if err := decode(&s); err != nil {

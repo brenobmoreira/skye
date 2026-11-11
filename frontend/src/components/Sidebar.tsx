@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../bridge';
 import { base, itemLabel } from '../lib/label';
 import { filterConversations } from '../lib/filter';
 import { elapsed } from '../lib/duration';
 import { contextBar, contextText } from '../lib/context';
 import { moveWithinGroup } from '../lib/order';
+import { useFlip } from './useFlip';
 import { DogIcon } from './DogIcon';
 import { stateLabel } from '../lib/states';
+import { capitalize } from '../lib/text';
 import { asksBeforeClose } from '../lib/close';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ContextMenu } from './ContextMenu';
@@ -41,7 +43,7 @@ function TerminalItem({ t, active, shown, unread, closing, now, onSelect, onClos
   const time = elapsed(t.since, t.state, now);
   const bar = contextBar(t.context);
   const said = t.state === 'waiting' ? t.ask : t.state === 'idle' ? t.replyFull : '';
-  const hover = [said ? `${stateLabel[t.state]}: ${said}` : stateLabel[t.state], contextText(t.context)]
+  const hover = [said ? `${capitalize(stateLabel[t.state])}: ${said}` : capitalize(stateLabel[t.state]), contextText(t.context)]
     .filter(Boolean)
     .join('\n');
   const [editing, setEditing] = useState(false);
@@ -53,6 +55,7 @@ function TerminalItem({ t, active, shown, unread, closing, now, onSelect, onClos
   };
   return (
     <div
+      data-flip={t.id}
       className={`item${active ? ' active' : shown ? ' shown' : ''}${unread ? ' unread' : ''}${drag.dragging === t.id ? ' dragging' : ''}${closing ? ' closing' : ''}`}
       onClick={(e) => onSelect(e.ctrlKey || e.metaKey)}
       onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
@@ -65,7 +68,7 @@ function TerminalItem({ t, active, shown, unread, closing, now, onSelect, onClos
       onDrop={(e) => { e.preventDefault(); drag.drop(t.id); }}
       onDragEnd={drag.end}
     >
-      <DogIcon color={`var(--${t.state})`} title={stateLabel[t.state]} />
+      <DogIcon color={`var(--${t.state})`} title={capitalize(stateLabel[t.state])} />
       <div>
         <div className="row">
           {editing ? (
@@ -82,8 +85,8 @@ function TerminalItem({ t, active, shown, unread, closing, now, onSelect, onClos
           ) : (
             <div className="name" onDoubleClick={() => { setName(label.name); setEditing(true); }}>{label.name}</div>
           )}
-          {unread && <span className="badge" title="não lido" />}
-          <button className="x" title="fechar terminal (ou clique do meio)" onClick={(e) => { e.stopPropagation(); press(e.currentTarget); onClose(); }}>×</button>
+          {unread && <span className="badge" title="Não lido" />}
+          <button className="x" title="Fechar terminal (ou clique do meio)" onClick={(e) => { e.stopPropagation(); press(e.currentTarget); onClose(); }}>×</button>
         </div>
         <div className="sub">
           <span>{label.sub}</span>
@@ -94,7 +97,7 @@ function TerminalItem({ t, active, shown, unread, closing, now, onSelect, onClos
             {answers(t).map((a) => (
               <button
                 key={a.text}
-                title={`responder ${a.text}`}
+                title={`Responder ${a.text}`}
                 onClick={(e) => { e.stopPropagation(); api().Answer(t.id, t.turn ?? 0, a.text).catch(() => {}); }}
               >
                 {a.label}
@@ -114,7 +117,7 @@ function UsagePanel({ usage }: { usage: Usage | null }) {
   const panel = usagePanel(usage, Date.now());
   if (!panel) return null;
   return (
-    <div className={panel.stale ? 'usage island stale' : 'usage island'} title={`atualizado às ${panel.updated}`}>
+    <div className={panel.stale ? 'usage island stale' : 'usage island'} title={`Atualizado às ${panel.updated}`}>
       {panel.rows.map((r) => (
         <div className="usage-row" key={r.label}>
           <span className="label">{r.label}</span>
@@ -140,6 +143,11 @@ export function Sidebar(props: {
   usage: Usage | null;
 }) {
   const [dragging, setDragging] = useState<string | null>(null);
+  // The order shown while dragging: the others make room where the dragged one would land.
+  const [preview, setPreview] = useState<Terminal[] | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  useFlip(listRef);
+  const shownTerminals = preview ?? props.terminals;
   const [asking, setAsking] = useState<string | null>(null);
   const [closing, setClosing] = useState<Set<string>>(() => new Set());
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
@@ -169,44 +177,50 @@ export function Sidebar(props: {
   const menuFor = menu && props.terminals.find((t) => t.id === menu.id);
   const drag: Drag = {
     dragging,
-    start: setDragging,
-    over: (id) => dragging !== null && moveWithinGroup(props.terminals, dragging, id) !== null,
-    drop: (id) => {
-      const next = dragging && moveWithinGroup(props.terminals, dragging, id);
-      setDragging(null);
-      if (next) props.onReorder(next);
+    start: (id) => { setDragging(id); setPreview(props.terminals); },
+    over: (id) => {
+      if (dragging === null) return false;
+      if (dragging === id) return true;
+      const next = moveWithinGroup(shownTerminals, dragging, id);
+      if (next) setPreview(next);
+      return next !== null;
     },
-    end: () => setDragging(null),
+    drop: () => {
+      if (preview && preview.some((t, i) => t.id !== props.terminals[i]?.id)) props.onReorder(preview);
+      setDragging(null);
+      setPreview(null);
+    },
+    end: () => { setDragging(null); setPreview(null); },
   };
   return (
     <aside className="sidebar">
-      <div className="list island">
+      <div className="list island" ref={listRef}>
       <h3>Terminais</h3>
-      {props.terminals.map((t) => (
+      {shownTerminals.map((t) => (
         <TerminalItem key={t.id} t={t} active={t.id === props.activeId} shown={props.shown.includes(t.id)} unread={props.unread.has(t.id)} closing={closing.has(t.id)} now={now} onSelect={(side) => props.onSelect(t.id, side)} onClose={() => requestClose(t)} onMenu={(x, y) => setMenu({ id: t.id, x, y })} drag={drag} />
       ))}
       {props.conversations.length > 0 && (
-        <h3 className="toggle" onClick={toggleEnded} title={endedOpen ? 'recolher' : 'mostrar'}>
+        <h3 className="toggle" onClick={toggleEnded} title={endedOpen ? 'Recolher' : 'Mostrar'}>
           {endedOpen ? '▾' : '▸'} Encerradas ({props.conversations.length})
         </h3>
       )}
       {endedOpen && (
         <input
           className="filter"
-          placeholder="filtrar por título ou pasta"
+          placeholder="Filtrar por título ou pasta"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Escape') setQuery(''); }}
         />
       )}
-      {endedOpen && ended.length === 0 && <div className="none">nenhuma encontrada</div>}
+      {endedOpen && ended.length === 0 && <div className="none">Nenhuma encontrada</div>}
       {endedOpen && ended.map((c) => (
-        <div className="item" key={c.sessionId} onClick={() => props.onResume(c.sessionId)} title="retomar">
-          <DogIcon color="var(--shell)" title="encerrada" />
+        <div className="item" key={c.sessionId} onClick={() => props.onResume(c.sessionId)} title="Retomar">
+          <DogIcon color="var(--shell)" title="Encerrada" />
           <div>
             <div className="row">
               <div className="name">{c.title}</div>
-              <button className="x" title="esquecer" onClick={(e) => { e.stopPropagation(); api().Forget(c.sessionId); }}>×</button>
+              <button className="x" title="Esquecer" onClick={(e) => { e.stopPropagation(); api().Forget(c.sessionId); }}>×</button>
             </div>
             <div className="sub"><span>{base(c.cwd)} · retomar</span></div>
           </div>
@@ -219,8 +233,8 @@ export function Sidebar(props: {
           x={menu.x}
           y={menu.y}
           items={[props.unread.has(menuFor.id)
-            ? { label: 'marcar como lido', run: () => props.onMark(menuFor.id, false) }
-            : { label: 'marcar como não lido', run: () => props.onMark(menuFor.id, true) }]}
+            ? { label: 'Marcar como lido', run: () => props.onMark(menuFor.id, false) }
+            : { label: 'Marcar como não lido', run: () => props.onMark(menuFor.id, true) }]}
           onClose={() => setMenu(null)}
         />
       )}
