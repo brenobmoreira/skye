@@ -144,6 +144,9 @@ type Paths struct {
 	Socket        string
 	WebToken      string
 	Places        string
+	// Notes is the focus panel's list; Pomodoro its timer lengths.
+	Notes    string
+	Pomodoro string
 	// ClaudeProjects holds claude's session transcripts, one folder per project.
 	ClaudeProjects string
 }
@@ -177,6 +180,8 @@ func DefaultPaths(getenv func(string) string) Paths {
 		Socket:         filepath.Join(runtimeDir, "skye.sock"),
 		WebToken:       filepath.Join(configDir, "web-token"),
 		Places:         filepath.Join(configDir, "paths.json"),
+		Notes:          filepath.Join(configDir, "notes.json"),
+		Pomodoro:       filepath.Join(configDir, "pomodoro.json"),
 		ClaudeProjects: filepath.Join(claudeDir, "projects"),
 	}
 }
