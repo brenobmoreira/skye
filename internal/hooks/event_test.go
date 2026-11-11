@@ -2,6 +2,9 @@ package hooks
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -71,6 +74,53 @@ func TestParseEventSupportsAgyPayloads(t *testing.T) {
 		t.Fatal(err)
 	}
 	if ev.Name != "UserPromptSubmit" || ev.Provider != "agy" || ev.SessionID != "conv-9" || ev.Cwd != "/home/demo/skye" || ev.Prompt != "adicione agy" || ev.Context == nil || ev.Context.Model != "Gemini 2.5 Pro" {
+		t.Fatalf("got %+v", ev)
+	}
+}
+
+func TestParseReadsClaudeLastMessage(t *testing.T) {
+	ev, err := Parse("t1", []byte(`{"hook_event_name":"Stop","last_assistant_message":"Faço o push?"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ev.LastMessage != "Faço o push?" {
+		t.Fatalf("got %+v", ev)
+	}
+}
+
+func writeTranscript(t *testing.T, lines ...string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "rollout.jsonl")
+	if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+const codexTokenCount = `{"type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"total_tokens":1000},"model_context_window":10000}}}`
+
+func TestParseReadsCodexLastMessage(t *testing.T) {
+	path := writeTranscript(t,
+		`{"type":"event_msg","payload":{"type":"task_complete","last_agent_message":"Primeiro turno."}}`,
+		codexTokenCount,
+		`{"type":"event_msg","payload":{"type":"task_complete","last_agent_message":"Posso commitar?"}}`,
+	)
+	ev, err := Parse("t1", []byte(`{"hook_event_name":"Stop","model":"gpt-5","transcript_path":"`+path+`"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ev.LastMessage != "Posso commitar?" || ev.Provider != "codex" {
+		t.Fatalf("got %+v", ev)
+	}
+}
+
+func TestParseCodexWithoutTaskComplete(t *testing.T) {
+	path := writeTranscript(t, codexTokenCount)
+	ev, err := Parse("t1", []byte(`{"hook_event_name":"Stop","model":"gpt-5","transcript_path":"`+path+`"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ev.LastMessage != "" || ev.Context == nil || ev.Context.ContextPct == nil || *ev.Context.ContextPct != 10 {
 		t.Fatalf("got %+v", ev)
 	}
 }

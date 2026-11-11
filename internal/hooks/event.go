@@ -27,8 +27,10 @@ type Event struct {
 	// Trigger says whether a PreCompact is manual or auto; AgentID names a subagent.
 	Trigger string
 	AgentID string
-	Usage   *Usage
-	Context *Session
+	// LastMessage is the text of the agent's last reply when its turn ends.
+	LastMessage string
+	Usage       *Usage
+	Context     *Session
 }
 
 var ErrNoTerminal = errors.New("hook without terminal id")
@@ -49,6 +51,7 @@ type payload struct {
 	Model          string   `json:"model"`
 	ModelName      string   `json:"modelName"`
 	TranscriptPath string   `json:"transcript_path"`
+	LastAssistant  string   `json:"last_assistant_message"`
 	ToolName       string   `json:"tool_name"`
 	ToolInput      struct {
 		Command  string `json:"command"`
@@ -130,8 +133,13 @@ func ParseEvent(terminal, eventHint string, body []byte) (Event, error) {
 		ctx = &Session{Model: model}
 	}
 	var usage *Usage
+	last := p.LastAssistant
 	if p.TranscriptPath != "" {
-		if u, pct := readCodexTranscript(p.TranscriptPath); u != nil || pct != nil {
+		u, pct, msg := readCodexTranscript(p.TranscriptPath)
+		if last == "" {
+			last = msg
+		}
+		if u != nil || pct != nil {
 			if provider == "" {
 				provider = "codex"
 			}
@@ -145,28 +153,30 @@ func ParseEvent(terminal, eventHint string, body []byte) (Event, error) {
 		}
 	}
 	return Event{
-		Terminal:  terminal,
-		Provider:  provider,
-		Name:      name,
-		SessionID: sessionID,
-		Cwd:       cwd,
-		Prompt:    prompt,
-		Message:   p.Message,
-		Reason:    p.Reason,
-		Source:    p.Source,
-		Tool:      p.tool(),
-		Trigger:   p.Trigger,
-		AgentID:   p.AgentID,
-		Usage:     usage,
-		Context:   ctx,
+		Terminal:    terminal,
+		Provider:    provider,
+		Name:        name,
+		SessionID:   sessionID,
+		Cwd:         cwd,
+		Prompt:      prompt,
+		Message:     p.Message,
+		Reason:      p.Reason,
+		Source:      p.Source,
+		Tool:        p.tool(),
+		Trigger:     p.Trigger,
+		AgentID:     p.AgentID,
+		LastMessage: last,
+		Usage:       usage,
+		Context:     ctx,
 	}, nil
 }
 
 type codexRolloutLine struct {
 	Type    string `json:"type"`
 	Payload struct {
-		Type string `json:"type"`
-		Info struct {
+		Type             string `json:"type"`
+		LastAgentMessage string `json:"last_agent_message"`
+		Info             struct {
 			TotalTokenUsage struct {
 				TotalTokens float64 `json:"total_tokens"`
 			} `json:"total_token_usage"`
@@ -182,17 +192,27 @@ type codexRolloutLine struct {
 	} `json:"payload"`
 }
 
-func readCodexTranscript(path string) (*Usage, *float64) {
+// readCodexTranscript reads the plan limits, the context use and the last reply (the message of
+// the last task_complete) from a Codex rollout file.
+func readCodexTranscript(path string) (*Usage, *float64, string) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, nil
+		return nil, nil, ""
 	}
 	var u *Usage
 	var pct *float64
+	var last string
 	sc := bufio.NewScanner(bytes.NewReader(data))
 	sc.Buffer(make([]byte, 64*1024), 2*1024*1024)
 	for sc.Scan() {
 		line := sc.Bytes()
+		if bytes.Contains(line, []byte(`"task_complete"`)) {
+			var row codexRolloutLine
+			if json.Unmarshal(line, &row) == nil && row.Payload.Type == "task_complete" {
+				last = row.Payload.LastAgentMessage
+			}
+			continue
+		}
 		if !bytes.Contains(line, []byte(`"token_count"`)) {
 			continue
 		}
@@ -216,5 +236,5 @@ func readCodexTranscript(path string) (*Usage, *float64) {
 			}
 		}
 	}
-	return u, pct
+	return u, pct, last
 }
