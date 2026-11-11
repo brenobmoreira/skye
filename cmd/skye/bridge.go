@@ -171,6 +171,7 @@ func (b *Bridge) boot() error {
 		Notes:          noteStore,
 		PomodoroFile:   paths.Pomodoro,
 		Problem:        func(msg string) { b.problem("%s", msg) },
+		User:           os.Getenv("USER"),
 	})
 	b.mu.Lock()
 	b.app, b.client = a, client
@@ -580,4 +581,12 @@ func (b *Bridge) PomodoroBegin(phase string, stage int) error {
 		return err
 	}
 	return a.PomodoroBegin(phase, stage)
+}
+
+func (b *Bridge) FreeCache() (app.FreedCache, error) {
+	a, err := b.ready()
+	if err != nil {
+		return app.FreedCache{}, err
+	}
+	return a.FreeCache()
 }

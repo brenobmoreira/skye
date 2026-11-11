@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/base64"
 	"fmt"
+	"os/exec"
 	"strings"
 	"sync"
 	"time"
@@ -70,6 +71,10 @@ type Options struct {
 	After pomodoro.After
 	// Problem reports something the user should see in the problems bar.
 	Problem func(msg string)
+	// RunRoot runs the cache cleanup commands and returns their output (exec outside tests).
+	RunRoot func(name string, args ...string) ([]byte, error)
+	// User is the login name, for the sudoers line FreeCache suggests when sudo asks a password.
+	User string
 }
 
 type ProcSource interface {
@@ -100,6 +105,9 @@ func New(o Options) *App {
 	}
 	if o.After == nil {
 		o.After = func(d time.Duration, f func()) func() bool { return time.AfterFunc(d, f).Stop }
+	}
+	if o.RunRoot == nil {
+		o.RunRoot = func(name string, args ...string) ([]byte, error) { return exec.Command(name, args...).CombinedOutput() }
 	}
 	if o.Problem == nil {
 		o.Problem = func(string) {}

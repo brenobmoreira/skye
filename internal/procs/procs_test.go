@@ -61,9 +61,28 @@ func TestMachineReadsMemoryPressureAndLoad(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := Machine{MemTotalMB: 10954, MemAvailMB: 8759, SwapTotalMB: 16384, SwapUsedMB: 8, PSISome60: 1.25, Load1: 0.52}
+	want := Machine{MemTotalMB: 10954, MemAvailMB: 8759, SwapTotalMB: 16384, SwapUsedMB: 8, PSISome60: 1.25, Load1: 0.52, LargeFree: -1}
 	if m != want {
 		t.Fatalf("machine = %+v", m)
+	}
+}
+
+func TestMachineReadsTheCacheAndTheLargeFreeBlocks(t *testing.T) {
+	root := fakeRoot(t)
+	write(t, filepath.Join(root, "meminfo"), "MemTotal:       11216896 kB\nMemAvailable:    8969216 kB\nBuffers:            6144 kB\nCached:          4194304 kB\nSReclaimable:     524288 kB\n")
+	write(t, filepath.Join(root, "buddyinfo"),
+		"Node 0, zone    DMA32   9137   3594   2380    366    118     31      7      2      1      0      3 \n"+
+			"Node 0, zone   Normal   5342   3049   1636     65      5      0      0      0      0      4      0 \n")
+	m, err := Reader{Root: root}.Machine()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.CacheMB != 4614 || m.LargeFree != 10 {
+		t.Fatalf("cache %d large %d", m.CacheMB, m.LargeFree)
+	}
+	write(t, filepath.Join(root, "buddyinfo"), "Node 0, zone   Normal   5342   3049   1636     65      5      0      0      0      0      0      0 \n")
+	if m, _ := (Reader{Root: root}).Machine(); m.LargeFree != 0 {
+		t.Fatalf("large %d", m.LargeFree)
 	}
 }
 

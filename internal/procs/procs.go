@@ -20,7 +20,16 @@ type Machine struct {
 	SwapUsedMB  int     `json:"swapUsedMb"`
 	PSISome60   float64 `json:"psiSome60"`
 	Load1       float64 `json:"load1"`
+	// CacheMB is the disk cache the kernel holds and can drop: what free shows as buff/cache.
+	CacheMB int `json:"cacheMb"`
+	// LargeFree counts the free blocks of 512 KB or more (order 7 up in buddyinfo); -1 when
+	// unknown. Hyper-V needs one to open each channel Windows uses to start a program in WSL, so at
+	// zero skye.exe, wsl.exe and cmd.exe stop working.
+	LargeFree int `json:"largeFree"`
 }
+
+// largeOrder is the smallest block, as a power of two of 4 KB pages, that counts as large.
+const largeOrder = 7
 
 type Proc struct {
 	PID   int
@@ -59,6 +68,11 @@ func (r Reader) Machine() (Machine, error) {
 		MemAvailMB:  kb["MemAvailable"] / 1024,
 		SwapTotalMB: kb["SwapTotal"] / 1024,
 		SwapUsedMB:  (kb["SwapTotal"] - kb["SwapFree"]) / 1024,
+		CacheMB:     (kb["Buffers"] + kb["Cached"] + kb["SReclaimable"]) / 1024,
+		LargeFree:   -1,
+	}
+	if buddy, err := os.ReadFile(filepath.Join(r.Root, "buddyinfo")); err == nil {
+		m.LargeFree = largeFree(string(buddy))
 	}
 	if pressure, err := os.ReadFile(filepath.Join(r.Root, "pressure", "memory")); err == nil {
 		for _, field := range strings.Fields(strings.SplitN(string(pressure), "\n", 2)[0]) {
@@ -73,6 +87,27 @@ func (r Reader) Machine() (Machine, error) {
 		}
 	}
 	return m, nil
+}
+
+// largeFree sums, over every zone, the free blocks of order largeOrder and up. A buddyinfo line
+// reads "Node 0, zone Normal" and then one count per order, from 0.
+func largeFree(buddy string) int {
+	total := 0
+	for _, line := range strings.Split(buddy, "\n") {
+		_, counts, ok := strings.Cut(line, "zone")
+		if !ok {
+			continue
+		}
+		f := strings.Fields(counts)
+		// f[0] is the zone's name; the counts follow.
+		for order, c := range f[1:] {
+			if order >= largeOrder {
+				n, _ := strconv.Atoi(c)
+				total += n
+			}
+		}
+	}
+	return total
 }
 
 // List returns the user's processes. A process that exits while being read is skipped.
