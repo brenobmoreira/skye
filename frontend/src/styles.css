@@ -293,7 +293,7 @@ button:disabled { cursor: default; }
 .pomodoro.idle { --phase: var(--shell); }
 .pomodoro .ring { position: relative; width: 128px; height: 128px; }
 .pomodoro .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-.pomodoro circle { fill: none; stroke-width: 7; }
+.pomodoro .ring circle { fill: none; stroke-width: 7; }
 .pomodoro .track { stroke: var(--line); }
 .pomodoro .fill { stroke: var(--phase); stroke-linecap: round; transition: stroke-dashoffset 1s linear, stroke 300ms ease; }
 .pomodoro.paused .fill { opacity: 0.55; }
