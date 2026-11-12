@@ -27,9 +27,11 @@ export function pillLabel(s: PomodoroState, remainingMs: number): string {
   return `${NAMES[s.phase]} ${clock(remainingMs)}`;
 }
 
-// pillPhase is the phase alone, for the pill when the time left is hidden.
+// pillPhase is the phase alone, for the pill when the time left is hidden; a paused one says so,
+// as the panel does.
 export function pillPhase(s: PomodoroState): string {
-  return s.phase === 'idle' ? '' : NAMES[s.phase];
+  if (s.phase === 'idle') return '';
+  return s.paused ? `${NAMES[s.phase]} · pausado` : NAMES[s.phase];
 }
 
 export function endedLabel(phase: PomodoroPhase): string {
@@ -44,11 +46,13 @@ export function breakLabel(n: number, every: number): string {
 const PHASE_NAMES = { idle: 'Foco', focus: 'Foco', break: 'Pausa', long: 'Pausa longa' } as const;
 
 // collapsedLabel is the one line the timer island shows when collapsed: the phase, and whether
-// it runs, ran out (until acknowledged) or has not started. Pausa takes the feminine ending.
+// it runs, is paused, ran out (until acknowledged) or has not started. Pausa takes the feminine
+// ending.
 export function collapsedLabel(s: PomodoroState, ended: PomodoroPhase | null): string {
   if (ended) return `${PHASE_NAMES[ended]} – ${ended === 'focus' ? 'Concluído' : 'Concluída'}`;
   if (s.phase === 'idle' && s.pending) return `${PHASE_NAMES[s.pending]} – Não iniciada`;
   if (s.phase === 'idle') return 'Foco – Não iniciado';
+  if (s.paused) return `${PHASE_NAMES[s.phase]} – ${s.phase === 'focus' ? 'Pausado' : 'Pausada'}`;
   return `${PHASE_NAMES[s.phase]} – Em andamento`;
 }
 

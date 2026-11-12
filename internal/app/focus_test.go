@@ -21,7 +21,6 @@ type focusRig struct {
 	barks    []string
 	problems []string
 	jobs     []func()
-	durs     []time.Duration
 	file     string
 }
 
@@ -54,7 +53,6 @@ func newFocusRig(t *testing.T, sound bool) *focusRig {
 			r.mu.Lock()
 			defer r.mu.Unlock()
 			r.jobs = append(r.jobs, f)
-			r.durs = append(r.durs, d)
 			return func() bool { return true }
 		},
 		Problem: func(msg string) { r.mu.Lock(); defer r.mu.Unlock(); r.problems = append(r.problems, msg) },
@@ -78,11 +76,12 @@ func (r *focusRig) at(h, m, s int) time.Time {
 	return time.Date(2026, 11, 11, h, m, s, 0, time.Local)
 }
 
-// fire advances the clock past the last scheduled phase and runs it.
+// fire moves the clock to the end of the running phase and runs its last wait.
 func (r *focusRig) fire() {
+	left := time.Duration(r.app.Pomodoro().RemainingMs) * time.Millisecond
 	r.mu.Lock()
-	f, d := r.jobs[len(r.jobs)-1], r.durs[len(r.durs)-1]
-	r.now = r.now.Add(d)
+	f := r.jobs[len(r.jobs)-1]
+	r.now = r.now.Add(left)
 	r.mu.Unlock()
 	f()
 }

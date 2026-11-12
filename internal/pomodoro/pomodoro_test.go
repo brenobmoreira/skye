@@ -8,13 +8,17 @@ import (
 )
 
 type scheduled struct {
-	d       time.Duration
+	due     time.Duration
 	f       func()
 	stopped bool
+	ran     bool
 }
 
+// rig keeps two clocks like the machine: now, the wall clock the timer reads, and mono, the one Go
+// timers wait on, which stands still while the machine (or the WSL VM) sleeps.
 type rig struct {
 	now     time.Time
+	mono    time.Duration
 	jobs    []*scheduled
 	changes []State
 	ends    []Ended
@@ -25,7 +29,7 @@ func newRig(t *testing.T, s Settings) *rig {
 	t.Helper()
 	r := &rig{now: time.Date(2026, 11, 11, 10, 0, 0, 0, time.Local)}
 	after := func(d time.Duration, f func()) func() bool {
-		j := &scheduled{d: d, f: f}
+		j := &scheduled{due: r.mono + d, f: f}
 		r.jobs = append(r.jobs, j)
 		return func() bool { was := !j.stopped; j.stopped = true; return was }
 	}
@@ -33,15 +37,50 @@ func newRig(t *testing.T, s Settings) *rig {
 	return r
 }
 
-// fire moves the clock to the end of the last scheduled job and runs it.
+// elapse moves both clocks by d, running each wait as its time comes.
+func (r *rig) elapse(d time.Duration) {
+	end := r.mono + d
+	for {
+		var next *scheduled
+		for _, j := range r.jobs {
+			if !j.stopped && !j.ran && j.due <= end && (next == nil || j.due < next.due) {
+				next = j
+			}
+		}
+		if next == nil {
+			break
+		}
+		r.now = r.now.Add(next.due - r.mono)
+		r.mono = next.due
+		next.ran = true
+		next.f()
+	}
+	r.now = r.now.Add(end - r.mono)
+	r.mono = end
+}
+
+// waiting counts the waits that have neither run nor been stopped.
+func (r *rig) waiting() int {
+	n := 0
+	for _, j := range r.jobs {
+		if !j.stopped && !j.ran {
+			n++
+		}
+	}
+	return n
+}
+
+// sleep moves only the wall clock: the machine was asleep and no timer counted it.
+func (r *rig) sleep(d time.Duration) { r.now = r.now.Add(d) }
+
+// fire runs the phase to its end.
 func (r *rig) fire(t *testing.T) {
 	t.Helper()
-	j := r.jobs[len(r.jobs)-1]
-	if j.stopped {
-		t.Fatal("firing a stopped job")
+	ends := len(r.ends)
+	r.elapse(time.Duration(r.t.State().RemainingMs) * time.Millisecond)
+	if len(r.ends) != ends+1 {
+		t.Fatalf("the phase did not end: %+v", r.t.State())
 	}
-	r.now = r.now.Add(j.d)
-	j.f()
 }
 
 func (r *rig) do(t *testing.T, action string) {
@@ -73,12 +112,11 @@ func TestFocusEndWaitsForStartWithTheBreakDue(t *testing.T) {
 	r := newRig(t, Default)
 	r.do(t, "start")
 	r.fire(t)
-	jobs := len(r.jobs)
 	st := r.t.State()
 	if st.Count != 1 || st.Phase != Idle || st.Pending != Break || st.RemainingMs != 0 {
 		t.Fatalf("state %+v", st)
 	}
-	if len(r.jobs) != jobs {
+	if r.waiting() != 0 {
 		t.Fatal("the break started on its own")
 	}
 	if len(r.ends) != 1 || r.ends[0].Phase != Focus || r.ends[0].Next.Pending != Break {
@@ -163,7 +201,6 @@ func TestBreakEndWaitsForStart(t *testing.T) {
 	r.do(t, "start")
 	r.fire(t)
 	r.do(t, "start")
-	jobs := len(r.jobs)
 	r.fire(t)
 	st := r.t.State()
 	if st.Phase != "idle" || st.RemainingMs != 0 || st.Pending != "" {
@@ -172,7 +209,7 @@ func TestBreakEndWaitsForStart(t *testing.T) {
 	if r.ends[len(r.ends)-1].Phase != "break" {
 		t.Fatalf("ends %+v", r.ends)
 	}
-	if len(r.jobs) != jobs {
+	if r.waiting() != 0 {
 		t.Fatal("something was scheduled after the break")
 	}
 }
@@ -194,12 +231,18 @@ func TestPauseAndResume(t *testing.T) {
 		t.Fatalf("time ran while paused: %+v", st)
 	}
 	r.do(t, "resume")
-	if r.jobs[len(r.jobs)-1].d != 15*time.Minute {
-		t.Fatalf("rescheduled for %v", r.jobs[len(r.jobs)-1].d)
-	}
 	if st := r.t.State(); st.Paused || st.TotalMs != 25*60_000 {
 		t.Fatalf("state %+v", st)
 	}
+	r.elapse(15*time.Minute - time.Second)
+	if len(r.ends) != 0 {
+		t.Fatal("ended before the 15 minutes left")
+	}
+	r.elapse(time.Second)
+	if len(r.ends) != 1 {
+		t.Fatal("did not end after the 15 minutes left")
+	}
+	r.do(t, "start")
 	if err := r.t.Do("resume"); err == nil {
 		t.Fatal("resume while running accepted")
 	}
@@ -401,8 +444,9 @@ func TestSetRemainingWhileRunningOrPaused(t *testing.T) {
 	if st.RemainingMs != 18*60_000 || st.TotalMs != 25*60_000 || !r.jobs[0].stopped {
 		t.Fatalf("state %+v", st)
 	}
-	if last := r.jobs[len(r.jobs)-1]; last.d != 18*time.Minute {
-		t.Fatalf("rescheduled for %v", last.d)
+	r.elapse(17 * time.Minute)
+	if st := r.t.State(); st.Phase != Focus || st.RemainingMs != 60_000 {
+		t.Fatalf("after 17 of the 18 minutes %+v", st)
 	}
 	r.do(t, "pause")
 	r.t.SetRemaining(5 * time.Minute)
@@ -410,8 +454,13 @@ func TestSetRemainingWhileRunningOrPaused(t *testing.T) {
 		t.Fatalf("paused %+v", st)
 	}
 	r.do(t, "resume")
-	if last := r.jobs[len(r.jobs)-1]; last.d != 5*time.Minute {
-		t.Fatalf("resumed for %v", last.d)
+	r.elapse(5*time.Minute - time.Second)
+	if len(r.ends) != 0 {
+		t.Fatal("ended before the 5 minutes set")
+	}
+	r.elapse(time.Second)
+	if len(r.ends) != 1 {
+		t.Fatal("did not end after the 5 minutes set")
 	}
 }
 
@@ -449,5 +498,34 @@ func TestResetForgetsTheChosenLength(t *testing.T) {
 	r.do(t, "reset")
 	if st := r.t.State(); st.NextMs != 0 {
 		t.Fatalf("state %+v", st)
+	}
+}
+
+// Go timers wait on the monotonic clock, which stands still while Windows sleeps the WSL VM: the
+// phase still ends by the wall clock, within a second of the machine waking.
+func TestPhaseEndsByTheWallClockAfterASleep(t *testing.T) {
+	r := newRig(t, Default)
+	r.do(t, "start")
+	r.elapse(5 * time.Minute)
+	r.sleep(30 * time.Minute)
+	if st := r.t.State(); st.Phase != Focus || st.RemainingMs != 0 {
+		t.Fatalf("after the sleep %+v", st)
+	}
+	r.elapse(time.Second)
+	if len(r.ends) != 1 || r.ends[0].Phase != Focus {
+		t.Fatalf("the focus did not end a second after waking: %+v", r.t.State())
+	}
+}
+
+func TestPausedPhaseKeepsItsTimeThroughASleep(t *testing.T) {
+	r := newRig(t, Default)
+	r.do(t, "start")
+	r.elapse(5 * time.Minute)
+	r.do(t, "pause")
+	r.sleep(30 * time.Minute)
+	r.elapse(time.Minute)
+	r.do(t, "resume")
+	if st := r.t.State(); st.RemainingMs != 20*60_000 || len(r.ends) != 0 {
+		t.Fatalf("after the sleep %+v", st)
 	}
 }
