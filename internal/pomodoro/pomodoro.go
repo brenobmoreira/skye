@@ -69,6 +69,22 @@ func New(s Settings, now func() time.Time, after After, onChange func(State), on
 
 func (t *Timer) today() string { return t.now().Format("2006-01-02") }
 
+// checkEvery caps each wait for the end of a phase. Go timers wait on the monotonic clock, which
+// stands still while Windows sleeps the WSL VM; a single wait for the whole phase would end it
+// that much late, with the interface already at 0:00. Short waits check the wall clock instead.
+const checkEvery = time.Second
+
+// wall is now on the wall clock alone: Round(0) drops the monotonic reading, so the time left
+// counts the sleep too.
+func (t *Timer) wall() time.Time { return t.now().Round(0) }
+
+// arm waits for the end of the running phase, a check at a time.
+func (t *Timer) arm() {
+	gen := t.gen
+	wait := min(max(t.endsAt.Sub(t.wall()), 0), checkEvery)
+	t.stop = t.after(wait, func() { t.fire(gen) })
+}
+
 func (t *Timer) state() State {
 	st := State{Phase: t.phase, Paused: t.paused, Settings: t.settings, Stage: t.stage, NextMs: t.next.Milliseconds()}
 	if t.day == t.today() {
@@ -80,7 +96,7 @@ func (t *Timer) state() State {
 	if t.phase != Idle {
 		left := t.remaining
 		if !t.paused {
-			left = max(t.endsAt.Sub(t.now()), 0)
+			left = max(t.endsAt.Sub(t.wall()), 0)
 		}
 		st.RemainingMs = left.Milliseconds()
 		st.TotalMs = t.total.Milliseconds()
@@ -106,9 +122,8 @@ func (t *Timer) cancel() {
 func (t *Timer) run(p Phase, d, total time.Duration) {
 	t.cancel()
 	t.phase, t.paused, t.total, t.breakDue = p, false, total, false
-	t.endsAt = t.now().Add(d)
-	gen := t.gen
-	t.stop = t.after(d, func() { t.fire(gen) })
+	t.endsAt = t.wall().Add(d)
+	t.arm()
 }
 
 // fresh starts phase p from its beginning: normal long, or the length chosen while idle, once.
@@ -151,6 +166,11 @@ func (t *Timer) fire(gen int) {
 		t.mu.Unlock()
 		return
 	}
+	if t.wall().Before(t.endsAt) {
+		t.arm()
+		t.mu.Unlock()
+		return
+	}
 	t.stop = nil
 	ended := t.phase
 	if ended == Focus {
@@ -190,7 +210,7 @@ func (t *Timer) Do(action string) error {
 			t.mu.Unlock()
 			return errors.New("nada rodando para pausar")
 		}
-		t.remaining = max(t.endsAt.Sub(t.now()), 0)
+		t.remaining = max(t.endsAt.Sub(t.wall()), 0)
 		t.cancel()
 		t.paused = true
 	case "resume":
