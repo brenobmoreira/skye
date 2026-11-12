@@ -43,6 +43,10 @@ describe('pillPhase', () => {
     expect(pillPhase(state({ phase: 'long' }))).toBe('Pausa longa');
     expect(pillPhase(state({}))).toBe('');
   });
+  it('says when the phase is paused', () => {
+    expect(pillPhase(state({ phase: 'focus', paused: true }))).toBe('Foco · pausado');
+    expect(pillPhase(state({ phase: 'break', paused: true }))).toBe('Pausa · pausado');
+  });
 });
 
 describe('endedLabel', () => {
@@ -73,6 +77,11 @@ describe('collapsedLabel', () => {
     expect(collapsedLabel(state({ pending: 'break' }), null)).toBe('Pausa – Não iniciada');
     expect(collapsedLabel(state({ pending: 'long' }), null)).toBe('Pausa longa – Não iniciada');
     expect(collapsedLabel(state({ pending: 'break' }), 'focus')).toBe('Foco – Concluído');
+  });
+  it('says when the phase is paused', () => {
+    expect(collapsedLabel(state({ phase: 'focus', paused: true }), null)).toBe('Foco – Pausado');
+    expect(collapsedLabel(state({ phase: 'break', paused: true }), null)).toBe('Pausa – Pausada');
+    expect(collapsedLabel(state({ phase: 'long', paused: true }), null)).toBe('Pausa longa – Pausada');
   });
 });
 
