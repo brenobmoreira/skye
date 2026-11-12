@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { api } from '../bridge';
 import { base, itemLabel } from '../lib/label';
 import { filterConversations } from '../lib/filter';
 import { elapsed } from '../lib/duration';
 import { contextBar, contextText } from '../lib/context';
-import { moveWithinGroup } from '../lib/order';
+import { placeItem } from '../lib/order';
+import { spotUnder } from './dragSpot';
 import { useFlip } from './useFlip';
 import { DogIcon } from './DogIcon';
 import { stateLabel } from '../lib/states';
@@ -36,7 +37,7 @@ function press(el: HTMLElement) {
   if (!calm()) el.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.65)' }, { transform: 'scale(1)' }], { duration: 160, easing: 'ease-out' });
 }
 
-type Drag = { dragging: string | null; start: (id: string) => void; over: (id: string) => boolean; drop: (id: string) => void; end: () => void };
+type Drag = { dragging: string | null; start: (id: string) => void; end: () => void };
 
 function TerminalItem({ t, active, shown, unread, closing, now, onSelect, onClose, onMenu, drag }: { t: Terminal; active: boolean; shown: boolean; unread: boolean; closing: boolean; now: number; onSelect: (side: boolean) => void; onClose: () => void; onMenu: (x: number, y: number) => void; drag: Drag }) {
   const label = itemLabel(t);
@@ -64,8 +65,6 @@ function TerminalItem({ t, active, shown, unread, closing, now, onSelect, onClos
       title={hover}
       draggable={!editing}
       onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; drag.start(t.id); }}
-      onDragOver={(e) => { if (drag.over(t.id)) e.preventDefault(); }}
-      onDrop={(e) => { e.preventDefault(); drag.drop(t.id); }}
       onDragEnd={drag.end}
     >
       <DogIcon color={`var(--${t.state})`} title={capitalize(stateLabel[t.state])} />
@@ -178,23 +177,31 @@ export function Sidebar(props: {
   const drag: Drag = {
     dragging,
     start: (id) => { setDragging(id); setPreview(props.terminals); },
-    over: (id) => {
-      if (dragging === null) return false;
-      if (dragging === id) return true;
-      const next = moveWithinGroup(shownTerminals, dragging, id);
-      if (next) setPreview(next);
-      return next !== null;
-    },
-    drop: () => {
-      if (preview && preview.some((t, i) => t.id !== props.terminals[i]?.id)) props.onReorder(preview);
-      setDragging(null);
-      setPreview(null);
-    },
     end: () => { setDragging(null); setPreview(null); },
+  };
+  // The whole list takes the drag, not each item: the spot comes from the pointer against the
+  // middle of the terminals of the same state (the server keeps the groups in state order, so a
+  // move across them would snap back), and letting go anywhere in the list keeps the order shown.
+  const dragOver = (e: DragEvent<HTMLDivElement>) => {
+    if (dragging === null) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const state = shownTerminals.find((t) => t.id === dragging)?.state;
+    const spot = spotUnder(e.currentTarget, e.clientY, (id) => id !== dragging && shownTerminals.some((t) => t.id === id && t.state === state));
+    if (!spot) return;
+    const next = placeItem(shownTerminals, dragging, spot.id, spot.side);
+    if (next !== shownTerminals) setPreview(next);
+  };
+  const drop = (e: DragEvent<HTMLDivElement>) => {
+    if (dragging === null) return;
+    e.preventDefault();
+    if (preview && preview.some((t, i) => t.id !== props.terminals[i]?.id)) props.onReorder(preview);
+    setDragging(null);
+    setPreview(null);
   };
   return (
     <aside className="sidebar">
-      <div className="list island" ref={listRef}>
+      <div className="list island" ref={listRef} onDragOver={dragOver} onDrop={drop}>
       <h3>Terminais</h3>
       {shownTerminals.map((t) => (
         <TerminalItem key={t.id} t={t} active={t.id === props.activeId} shown={props.shown.includes(t.id)} unread={props.unread.has(t.id)} closing={closing.has(t.id)} now={now} onSelect={(side) => props.onSelect(t.id, side)} onClose={() => requestClose(t)} onMenu={(x, y) => setMenu({ id: t.id, x, y })} drag={drag} />

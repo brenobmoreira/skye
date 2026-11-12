@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type DragEvent, type FocusEvent, type KeyboardEvent } from 'react';
 import { api } from '../bridge';
-import { canMove, dayOf, dueLabel, groupNotes, moveItems, repeatLabel, type Row } from '../lib/notes';
+import { canMove, dayOf, dueLabel, groupNotes, repeatLabel, type Row } from '../lib/notes';
+import { placeItem } from '../lib/order';
+import { spotUnder } from './dragSpot';
 import { capitalize } from '../lib/text';
 import type { NoteItem, Notes, Repeat } from '../lib/types';
 import { useFlip } from './useFlip';
@@ -177,18 +179,22 @@ export function NoteList({ notes, now }: { notes: Notes; now: Date }) {
   const pin = (item: NoteItem) => { clear(item.id); api().PinNote(item.id, !item.pinned).catch(fail(item.id)); };
 
   // Dragging: the dragged note stays where the pointer is and the others slide out of its way.
+  // The whole list takes the drag, not each row: the spot comes from the pointer against the
+  // middle of the notes it can go among, and letting go anywhere in the list keeps the order shown.
   const dragStart = (e: DragEvent, id: string) => {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', id);
     setDragging(id);
     setPreview(notes.items);
   };
-  const dragOver = (e: DragEvent, id: string) => {
+  const dragOver = (e: DragEvent<HTMLDivElement>) => {
     if (!dragging) return;
-    if (dragging === id) { e.preventDefault(); return; }
-    if (!canMove(shown, dragging, id, now)) return;
     e.preventDefault();
-    setPreview(moveItems(shown.items, dragging, id));
+    e.dataTransfer.dropEffect = 'move';
+    const spot = spotUnder(e.currentTarget, e.clientY, (id) => canMove(shown, dragging, id, now));
+    if (!spot) return;
+    const next = placeItem(shown.items, dragging, spot.id, spot.side);
+    if (next !== shown.items) setPreview(next);
   };
   const drop = (e: DragEvent) => {
     e.preventDefault();
@@ -218,8 +224,6 @@ export function NoteList({ notes, now }: { notes: Notes; now: Date }) {
         className={`note${done ? ' done' : ''}${late && !done ? ' late' : ''}${dragging === id ? ' dragging' : ''}${r.kind === 'item' && r.item.pinned ? ' pinned' : ''}`}
         draggable={movable}
         onDragStart={movable ? (e) => dragStart(e, id) : undefined}
-        onDragOver={(e) => dragOver(e, id)}
-        onDrop={drop}
         onDragEnd={dragEnd}
         onMouseLeave={() => { if (armed === id) setArmed(null); }}
       >
@@ -275,7 +279,7 @@ export function NoteList({ notes, now }: { notes: Notes; now: Date }) {
           Completas
         </button>
       </div>
-      <div className="note-scroll" ref={scrollRef}>
+      <div className="note-scroll" ref={scrollRef} onDragOver={dragOver} onDrop={drop}>
         {tab === 'open' && (
           <>
             {openCount === 0 && <p className="none">Nada pendente. Escreva abaixo e dê Enter.</p>}

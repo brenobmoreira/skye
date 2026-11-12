@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canMove, dueLabel, groupNotes, moveItems, repeatLabel, type Row } from './notes';
+import { canMove, dueLabel, groupNotes, repeatLabel, type Row } from './notes';
 import type { DoneRecord, NoteItem, Notes } from './types';
 
 const now = new Date(2026, 10, 11, 10, 0);
@@ -82,13 +82,6 @@ describe('canMove', () => {
   });
 });
 
-describe('moveItems', () => {
-  it('puts the note where the other one was, like the Go store', () => {
-    const [a, b, c, d] = [item({}), item({}), item({}), item({})];
-    expect(moveItems([a, b, c, d], d.id, b.id).map((x) => x.id)).toEqual([a.id, d.id, b.id, c.id]);
-    expect(moveItems([a, d, b, c], a.id, c.id).map((x) => x.id)).toEqual([d.id, b.id, c.id, a.id]);
-  });
-});
 
 describe('repeatLabel', () => {
   it('names each kind', () => {

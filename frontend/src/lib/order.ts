@@ -1,13 +1,10 @@
-import type { Terminal } from './types';
-
-// Moves `from` to where `to` is, but only inside the same state group: the server keeps the
-// groups in state order, so a move across them would snap back.
-export function moveWithinGroup(list: Terminal[], from: string, to: string): Terminal[] | null {
-  const src = list.findIndex((t) => t.id === from);
-  const dst = list.findIndex((t) => t.id === to);
-  if (src < 0 || dst < 0 || src === dst || list[src].state !== list[dst].state) return null;
-  const next = [...list];
-  const [moved] = next.splice(src, 1);
-  next.splice(dst, 0, moved);
-  return next;
+// placeItem puts item `id` right before or after `target`; the same list back when that changes
+// nothing, so a drag held over the same spot does not render again.
+export function placeItem<T extends { id: string }>(list: T[], id: string, target: string, side: 'before' | 'after'): T[] {
+  const src = list.findIndex((i) => i.id === id);
+  if (src < 0 || id === target || !list.some((i) => i.id === target)) return list;
+  const next = list.filter((i) => i.id !== id);
+  const at = next.findIndex((i) => i.id === target) + (side === 'after' ? 1 : 0);
+  next.splice(at, 0, list[src]);
+  return next.every((i, k) => i === list[k]) ? list : next;
 }

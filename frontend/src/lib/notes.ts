@@ -87,16 +87,6 @@ export function canMove(notes: Notes, from: string, to: string, now: Date): bool
   return !dated(slot) || a.date === b.date;
 }
 
-// moveItems puts note `from` where `to` is, shifting the ones between, as the Go store does.
-export function moveItems(items: NoteItem[], from: string, to: string): NoteItem[] {
-  const src = items.findIndex((i) => i.id === from);
-  const dst = items.findIndex((i) => i.id === to);
-  if (src < 0 || dst < 0 || src === dst) return items;
-  const next = [...items];
-  const [moved] = next.splice(src, 1);
-  next.splice(dst, 0, moved);
-  return next;
-}
 
 const WEEKDAYS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 const SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
